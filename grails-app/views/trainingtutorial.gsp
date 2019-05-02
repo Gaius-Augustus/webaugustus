@@ -1,98 +1,12 @@
-
-
 <!DOCTYPE html>
-<html lang="de">
-   <head>
-      <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-      <meta charset="utf-8">
-      <meta name="robots" content="INDEX,FOLLOW">
-      <meta name="revisit-after" content="7 days">
-      <meta name="abstract" content="Bioinformatics Greifswald">
-      <meta name="keywords" content="Bioinformatics Greifswald">
-      <meta name="description" content="University of Greifswald">
-      <meta property="author" content="University of Greifswald">
-      <meta name="date" content="2018-07-17">
-      <link rel="stylesheet" href="${resource(dir: 'css', file: 'new1.css')}" type="text/css">
-      <link rel="stylesheet" href="${resource(dir: 'css', file: 'new2.css')}" type="text/css">
-      <title>Bioinformatics Web Server - University of Greifswald</title>
-      <meta name="lastModified" content="2018-07-16">
-      <meta http-equiv="X-UA-Compatible" content="IE=edge">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-      <style>.stickyFixed {position: fixed !important;  top:0 !important;} </style>
-   </head>
-   <body id="page-6289" class="">
-      <!-- dark header topbar -->
-      <div class="topbar">
-      </div>
-      <!-- header with uni logo -->
-      <header class="header">
-         <a name="seitenanfang"></a>
-         <div class="header__content">
-            <div class="header__top-wrapper">
-               <!-- left side banner white spacer -->
-               <div class="header__submenu"></div>
-               <div class="logo">
-                  <a href="https://www.uni-greifswald.de/" title="Universität Greifswald" class="logo-main">
-                  <img src="http://bioinf.uni-greifswald.de/bioinf/img/uni-greifswald_opt.svg" width="400" height="118"   alt="Universität Greifswald" title="Universität Greifswald" >
-                  </a>
-               </div>
-               <!-- middle part of header -->
-               <div class="organization">
-                  <a href="http://bioinf.uni-greifswald.de/">
-                     <h3>Bioinformatics Web Server</h3>
-                  </a>
-               </div>
-            </div>
-            <nav id="nav" class="navigation">
-               <ul class="navigation-list navigation-list--table">
-                  <li class="navigation-list__item navigation-list__item--level-1 navigation-list__item--active" data-dropdown="true"><a href="http://bioinf.uni-greifswald.de/">Bioinformatics Group</a></li>
-                  <li class="navigation-list__item navigation-list__item--level-1" data-dropdown="true"><a href="http://math-inf.uni-greifswald.de/">Mathematics and Computer Science</a></li>
-                  <li class="navigation-list__item navigation-list__item--level-1" data-dropdown="true"><a href="https://mnf.uni-greifswald.de/en/faculty/">Faculty of Math and Natural Sciences</a></li>
-               </ul>
-            </nav>
-         </div>
-      </header>
-      <div class="container">
-         <div class="grid">
-            <div class="column-1 grid__column grid__column--md-3">
-               <ul class="navigation-sub">
-                  <li class="navigation-sub__item">
-                     <span class="navigation-sub__headline">AUGUSTUS Web Server Navigation</span>
-                     <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><a href="index.gsp">Introduction</a></li>
-                        <li class="navigation-sub__item"><a href="about.gsp">About AUGUSTUS</a></li>
-                        <li class="navigation-sub__item"><a href="accuracy.gsp">Accuracy</a></li>
-                        <li class="navigation-sub__item"><a href="trainingtutorial.gsp">Training Tutorial</a></li>
-                        <li class="navigation-sub__item"><g:link controller="training" action="create">Submit Training</g:link></li>
-                        <li class="navigation-sub__item"><a href="predictiontutorial.gsp">Prediction Tutorial</a></li>
-                        <li class="navigation-sub__item">
-                           <g:link controller="prediction" action="create">Submit Prediction</g:link>
-                        </li>
-                        <li class="navigation-sub__item"><a href="datasets.gsp">Datasets for Download</a></li>
-                        <li class="navigation-sub__item"><a href="references.gsp">Links & References</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/impressum.html">Impressum</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a></li>
-                     </ul>
-                  </li>
-                  <li class="navigation-sub__item">
-                     <span class="navigation-sub__headline">Other AUGUSTUS Resources</span>
-                     <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/wiki/pmwiki.php?n=Augustus.Augustus">AUGUSTUS Wiki</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/forum">AUGUSTUS Forum</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/augustus/downloads/index.php">Download AUGUSTUS</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/augustus">Old AUGUSTUS web server</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/braker">BRAKER</a></li>
-                     </ul>
-                  </li>
-                  <li class="navigation-sub__item">
-                     <span class="navigation-sub__headline">Other Links</span>
-                     <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de">Bioinformatics Greifswald</a></li>
-                     </ul>
-                  </li>
-               </ul>
-            </div>
-            <div class="column-2 grid__column grid__column--md-9">
+<html>
+	<head>
+		<meta name="layout" content="main"/>
+		<title>Bioinformatics Web Server - University of Greifswald</title>
+        <meta name="date" content="2018-07-17">
+        <meta name="lastModified" content="2018-07-16">
+	</head>
+	<body>
                <main class="main-content">
                   <div id="c180465" class="csc-default">
                      <div class="csc-header csc-header-n1">
@@ -163,7 +77,7 @@
                         <a href="#references">References</a><br>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -177,7 +91,7 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="2">
                         <tr>
-                           <td><img src="images/autoAug.jpg" alt="image of the autoAug.pl pipeline processes"></td>
+                           <td><g:img dir="images" file="autoAug.jpg" alt="image of the autoAug.pl pipeline processes" /></td>
                         </tr>
                      </table>
                      </p>
@@ -196,7 +110,7 @@
 
                      <p>In the following, you find detailed instructions for submitting an AUGUSTUS training job.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -210,12 +124,12 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/submitt-link.jpg" alt="image of submission link"></td>
+                           <td><g:img dir="images" file="submitt-link.jpg" alt="image of submission link" /></td>
                         </tr>
                      </table>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -233,7 +147,7 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/email-training.jpg" alt="image of e-mail address field"></td>
+                           <td><g:img dir="images" file="email-training.jpg" alt="image of e-mail address field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -258,7 +172,7 @@
                      </p>
                      <p>We do <b>not</b> use your e-mail address to send you any <i>spam</i>, i.e. about web service updates. We do not share your e-mail addresses with any third parties.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -271,7 +185,7 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/species-name.jpg" alt="image of species name field"></td>
+                           <td><g:img dir="images" file="species-name.jpg" alt="image of species name field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -285,7 +199,7 @@
                      <p>The species name is the name of the species for whose genome you want to train AUGUSTUS. The species name is an obligatory parameter. Considering that AUGUSTUS training is such a time consuming process, our objective is to know the names of species for which AUGUSTUS was trained in order to make the trained parameters available to the public so that others who are interested in the same species as you do not have to rerun the training process. (You will be asked for permission before your parameter set is shared.)</p>
                      <p>However, if you do not want to reveal the true species name, you may use any other string shorter than 30 characters as a species name.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -341,7 +255,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/training-genome.jpg" alt="image of genome submission field"></td>
+                           <td><g:img dir="images" file="training-genome.jpg" alt="image of genome submission field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -365,7 +279,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      </ul>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -377,7 +291,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      </div>
                      <p>This section describes a number of fields from which <b>at least one</b>  must be specified for training AUGUSTUS.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -391,7 +305,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/training-cDNA.jpg" alt="image of cDNA submission field"></td>
+                           <td><g:img dir="images" file="training-cDNA.jpg" alt="image of cDNA submission field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -417,7 +331,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      </ul>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -430,7 +344,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/training-protein.jpg" alt="image of protein submission field"></td>
+                           <td><g:img dir="images" file="training-protein.jpg" alt="image of protein submission field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -469,7 +383,7 @@ mdhdltgladrpglrftvpqikcymkqlltglhychvnqv
                      </div>
                      <p>The protein file is used for generating training gene structures by mapping the protein sequences against the supplied genome sequence. You may e.g. upload a file with protein sequences from a closely related species in order to obtain training genes and AUGUSTUS parameters for the new sspecies whose genome you uploaded.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -482,7 +396,7 @@ mdhdltgladrpglrftvpqikcymkqlltglhychvnqv
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/structure-file.jpg" alt="image of structure file upload field"></td>
+                           <td><g:img dir="images" file="structure-file.jpg" alt="image of structure file upload field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -659,7 +573,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>While the cDNA and protein file upload options fulfill the purpose of training gene generation in context with a genome sequence file, the gene structure file upload form provides a flexible interface to users who generated training gene structures externally instead of using our webserver application for this purpose. Supplied training gene structures are directly used for optimizing species-specific AUGUSTUS parameters.</p>
                      <p>If the training gene structure file is in gff-format, sequence names in the gff file have to match fasta headers in the genome file. If the training gene structure file is in genbank format, no direct dependency between training gene strcuture file and genome file exists, i.e. you could submitt training genes that were generated from a different chromosome than the genome file that you submitt.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -672,13 +586,13 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/verification.jpg" alt="image of verification field"></td>
+                           <td><g:img dir="images" file="verification.jpg" alt="image of verification field" /></td>
                         </tr>
                      </table>
                      </p>
                      <p>Trying to avoid abuse of our web server application through bots, we implemented a <i>captcha</i>. The captcha is an image that contains a string. You have to type the string from the image into the field next to the image.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -691,13 +605,13 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/train-submitt.jpg" alt="image of submission button"></td>
+                           <td><g:img dir="images" file="train-submitt.jpg" alt="image of submission button" /></td>
                         </tr>
                      </table>
                      </p>
                           <p>After filling out the appropriate fields in the submission form, you have to click on the button that says "Start Training" at the bottom of the page. It might take a while until you are redirected to the status page of your job. The reason is that we are checking various file formats prior job acceptance, and that the transfer of files from your local harddrive to our server might take a while. Please be patient and wait until you are redirected to the status page! Do not click the button more than once (it won't do any harm but it also doesn't speed up anything).</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -722,12 +636,12 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/train-sample.jpg" alt="image of sample button"></td>
+                           <td><g:img dir="images" file="train-sample.jpg" alt="image of sample button" /></td>
                         </tr>
                      </table>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -742,14 +656,14 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/training-job-status.jpg" alt="image of job status page"></td>
+                           <td><g:img dir="images" file="training-job-status.jpg" alt="image of job status page" /></td>
                         </tr>
                      </table>
                      </p>
                      <p>In the beginning, the status page will display that your job has been <b>submitted</b>. This means, the web server application is currently uploading your files and validating file formats. After a while, the status will change to <b>waiting for execution</b>. This means that all file formats have been confirmed and an actually AUGUSTUS training job has been submitted to our grid engine, but the job is still pending. Depending on waiting queue length, this status may persist for a while. Please contact us in case you job is pending for more than one month. Later, the job status will change to <b>computing</b>. This means the job is currently computing. When the page displays <b>finished</b>, all computations have been finished and a website with your job's results has been generated.</p>
                      <p>You will be notified by email when your job has finished - if you supplied an email adress.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -761,7 +675,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </div>
                      <p>Since training AUGUSTUS is a very resource consuming process, we try to avoid data duplication. In case you or somebody else tries to submitt exactly the same input file combination more than once, the duplicated job will be stopped and the submitter of the redundant job will receive information where to find the previous job status page.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -773,7 +687,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </div>
                      <p>You should automatically receive an e-mail in case an error occurs during the AUGUSTUS training process. The admin of this server is also notified by e-mail about errors. We will get in touch with you, again, after we figured out what caused the error. (If you did not supply an email adress, we will probably ignore the error because we cannot communicate with you about the input files.)</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -787,7 +701,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><img src="images/training-results-example.jpg" alt="image of results example"></td>
+                           <td><g:img dir="images" file="training-results-example.jpg" alt="image of results example" /></td>
                         </tr>
                      </table>
                      </p>
@@ -799,7 +713,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>Unpack *.tar.gz archives locally on your system by typing <tt>tar -xzvf *.tar.gz</tt> into your shell. (You find more information about the software tar at the <a href="http://www.gnu.org/s/tar/">GNU tar website</a>.)</p>
                      <p>To view a real training output example, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>!</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -816,7 +730,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         Commonly observed values at this position range from 40 to 60 percent. If you obtain a very low value, this gives a strong indication that the obtained parameter set is not very useful for predicting genes accurately.
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -832,7 +746,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
                      <p>Further error messages (that e.g. lead to null results) are explained on <a href="help.gsp#noResults">our Help page</a>.</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -862,7 +776,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
  
                      <p>If you want to run further predictions for your species of interest in other genomic sequences or with other hints on our web server application, you do not need to save the parameter archive locally for re-upload. Just remember the ID of your job and specify it on the prediction interface. You find your job's ID in the headline of this web site at "Training results for job ...".</p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -876,7 +790,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         This file contains generated training genes that were used to optimize AUGUSTUS parameters in genbank format. The file is compressed with gzip. To unpack it, type <tt>gunzip training.gb.gz</tt> in your shell. You find more information about gzip at <a href="http://www.gzip.org/">gzip.org</a>.
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -908,7 +822,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </ul>
                      </p>
                      <p><a href="#seitenanfang">
-                        <img hspace="5" height="4" border="0" width="7" alt="Seitenanfang" src="images/top.gif" />
+                        <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
                         </a>
                         <br>
@@ -949,20 +863,6 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </div>
                   </div>
                </main>
-            </div>
-         </div>
-      </div>
-      <footer class="footer footer--padding-bottom">
-         <div class="footer-column footer-column--dark">
-            <div class="footer__content-wrapper">
-               <div class="footer-bottom">
-                  <div class="footer-bottom__copyright">
-                     <p>&copy;&nbsp;2018&nbsp; Universität Greifswald</p>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </footer>
-   </body>
+	</body>
 </html>
 
