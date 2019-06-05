@@ -580,7 +580,7 @@ class TrainingController {
                 def cmd = ["cksum ${dirName}/training-gene-structure.gff"]
                 trainingInstance.struct_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "structCksumScript", cmd, "(\\d*) \\d* ")
                 trainingInstance.struct_size = uploadedStructFile.size
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "struct.fa is ${trainingInstance.struct_size} big and has a cksum of ${structCksum}.")
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "training-gene-structure.gff is ${trainingInstance.struct_size} big and has a cksum of ${trainingInstance.struct_cksum}.")
             }
 
 
