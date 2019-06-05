@@ -23,9 +23,12 @@ class Training extends AbstractWebAugustusDomainClass {
      * 2 - waiting for execution
      * 3 - computing
      * 4 - finished
-     * 5 - error
      */
     String job_status // SGE job status will be determined by controller
+    /**
+     * 0 - OK
+     * 5 - error
+     */
     String job_error
     String protein_file
     String protein_ftp_link
