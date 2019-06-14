@@ -25,13 +25,13 @@
                         <li>the training of AUGUSTUS and 
                         <li>predicting genes in a new genomic sequence with pre-trained parameters.
                      </ul>
-                     <br>For more detailed instructions, please read <a href="trainingtutorial.gsp">Training Tutorial</a> and <a href="predictiontutorial.gsp">Prediction Tutorial</a>.</p>
+                     <br>For more detailed instructions, please read <a href="${createLink(uri:'/trainingtutorial')}">Training Tutorial</a> and <a href="${createLink(uri:'/predictiontutorial')}">Prediction Tutorial</a>.</p>
                      <hr>
                      <br>
                      <h2>Contents</h2>
                      <p>
                         <a href="#noResults">Why do I not get any results?</a><br>
-                        <a href="#buisy">Why is the server busy?</a><br>
+                        <a href="#busy">Why is the server busy?</a><br>
                         <a href="#species_name">What is the species name?</a><br>
                         <a href="#email">Why should I give my e-mail address?</a><br>
                         <a href="#upload_link">File upload versus web link</a><br>
@@ -64,8 +64,8 @@
                      <ul>
                         <li>
                            <b>Did an obvious error occur?</b><br>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> if you are not sure what the error message is telling you.<br>
-                           <p>One frequently occuring error in the AutoAug.err file is the following:</p>
-                           <p><b>The file with UTR parameters for train****** does not seem to exist.</b> This likely means that the UTR model has not beeen trained yet for train******.</p>
+                           <p>One frequently occurring error in the AutoAug.err file is the following:</p>
+                           <p><b>The file with UTR parameters for train****** does not seem to exist.</b> This likely means that the UTR model has not been trained yet for train******.</p>
                            <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
                            <p><b>Illegal division by zero at /usr/local/augustus/trunks/scripts/autoAugTrain.pl line 241.<br>
                               failed to execute: No such file or directory<br></b> This error occurs when not training gene structures were generated/available. This may be caused by one of the following circumstances:<br>
@@ -74,7 +74,7 @@
                               <li>The files that you supplied had long an complex fasta headers. This causes problems with PASA and Scipio. Take care that the fasta headers in all your files are unique, short, do not contain whitespaces or special characters.</li>
                            </ul>
                         </li>
-                        <li><b>Did you submitt your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> to inquire whether your job is really still running.</li>
+                        <li><b>Did you submit your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> to inquire whether your job is really still running.</li>
                         <li><b>Did your job finish but there are just no parameters or predictions?</b><br>The quality of results depends on the quality and combination of your input data. If the input data did e.g. not provide sufficient information for generating training genes, then no AUGUSTUS parameters will be optimized for your species, and no predictions will be made. In case of the gene prediction web server application, it is also possible that your submitted genome sequence does not contain any protein coding genes.</li>
                      </ul>
                      </p>
@@ -87,8 +87,8 @@
                      </p>
                      <hr>
                      <br>
-                     <h2 id="buisy">Why is the server busy?</h2>
-                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is buisy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a>.</p>
+                     <h2 id="busy">Why is the server busy?</h2>
+                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is busy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a>.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -214,7 +214,7 @@
                      </ul>
                      </p>
                      <p>
-                        Please consider that training AUGUSTUS is a time and resource consuming process. For optimal results, you should specify as much information as possible for a single training run instead of starting the AUGUSTUS training multiple times with different file combinations! If you have a lot of EST data, we recommend that you submitt ESTs instead of protein sequences since ESTs will likely allow the generation of a UTR training set.
+                        Please consider that training AUGUSTUS is a time and resource consuming process. For optimal results, you should specify as much information as possible for a single training run instead of starting the AUGUSTUS training multiple times with different file combinations! If you have a lot of EST data, we recommend that you submit ESTs instead of protein sequences since ESTs will likely allow the generation of a UTR training set.
                      </p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
@@ -293,7 +293,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <div id="cDNA">
                         <h2>cDNA file</h2>
                      </div>
-                     <p>The cDNA file is a multiple fasta DNA file that contains e.g. ESTs or full-length cDNA sequences. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n U u</b>. Empty lines are not allowed and will be removed from the submitted file by the webserver application. See <a href="#genome_file">Genome file</a> for a format example. Upload of a cDNA file to our web server application will invoke the software <a href="http://genome.ucsc.edu/cgi-bin/hgBlat?command=start">BLAT</a> [<a href="trainingtutorial.gsp#ref2">2</a>], which is on our webserver application only available <b><font color="f40b0b">for academic, personal and  non-profit use</font></b>.</p>
+                     <p>The cDNA file is a multiple fasta DNA file that contains e.g. ESTs or full-length cDNA sequences. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n U u</b>. Empty lines are not allowed and will be removed from the submitted file by the webserver application. See <a href="#genome_file">Genome file</a> for a format example. Upload of a cDNA file to our web server application will invoke the software <a href="http://genome.ucsc.edu/cgi-bin/hgBlat?command=start">BLAT</a> [<a href="${createLink(uri:'/trainingtutorial#ref2')}">2</a>], which is on our webserver application only available <b><font color="f40b0b">for academic, personal and  non-profit use</font></b>.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -320,7 +320,7 @@ mdhdltgladrpglrftvpqikcymkqlltglhychvnqv
 ...
             </pre>
                      </p>
-                     <p>Submitting a protein file to our AUGUSTUS training web server application will invoke <a href="http://www.webscipio.org/">Scipio</a> [<a href="trainingtutorial.gsp#ref3">3</a>], which uses <a href="http://genome.ucsc.edu/cgi-bin/hgBlat?command=start">BLAT</a> [<a href="trainingtutorial.gsp#ref2">2</a>]. Therefore, protein file upload is only available <b><font color="f40b0b">for academic, personal and  non-profit use</font></b> on our web server application.</p>
+                     <p>Submitting a protein file to our AUGUSTUS training web server application will invoke <a href="http://www.webscipio.org/">Scipio</a> [<a href="${createLink(uri:'/trainingtutorial#ref3')}">3</a>], which uses <a href="http://genome.ucsc.edu/cgi-bin/hgBlat?command=start">BLAT</a> [<a href="${createLink(uri:'/trainingtutorial#ref2')}">2</a>]. Therefore, protein file upload is only available <b><font color="f40b0b">for academic, personal and  non-profit use</font></b> on our web server application.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -808,7 +808,9 @@ HSACKI10 AUGUSTUS stop_codon  3058  3060  .  +  0  transcript_id "g1.t1"; gene_i
                      <div id="results_train">
                         <h2>Training results</h2>
                      </div>
-                     <p>You find a detailed description of training results by <a href="trainingtutorial.gsp#results">clicking here</a>. To view a sample output, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>!</p>
+                     <p>You find a detailed description of training results by <a href="${createLink(uri:'/trainingtutorial#results')}">clicking here</a>. 
+                         <!-- To view a sample output, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>! -->
+                     </p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page

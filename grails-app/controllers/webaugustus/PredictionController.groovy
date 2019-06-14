@@ -31,7 +31,7 @@ class PredictionController {
     // sgeLen length of SGE queue, when is reached "the server is busy" will be displayed
     def sgeLen = 20;
     // max button filesize
-    def long maxButtonFileSize = 104857600 // 100 MB = 13107200 bytes = 104857600 bit, getFile etc. gives size in bit
+    def long maxButtonFileSize = 104857600 // 100 MB = 104857600 bytes getFile etc. gives size in byte
     // max ftp/http filesize
     def long maxFileSizeByWget = 1073741824 // 1 GB = 1073741824 bytes, curl gives size in bytes
     // EST sequence properties (length)
@@ -48,7 +48,7 @@ class PredictionController {
     // human verification:
     def simpleCaptchaService
     
-    def show = {
+    def show() {
         def instance = Prediction.get(params.id)
         if (instance == null) {
             render(view: '/jobnotfound')
@@ -57,7 +57,7 @@ class PredictionController {
         respond instance
     }
     
-    def create = {
+    def create() {
          // check whether the server is busy
         def processForLog = "SGE         "
         def cmd = ['qstat -u "*" | grep qw | wc -l']
@@ -79,16 +79,16 @@ class PredictionController {
         respond new Prediction(params)
     }
     
-    def fillSample = {
-        redirect(action:create, params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/LG16.fa",project_id:"honeybee1"])
+    def fillSample() {
+        redirect(action:'create', controller: 'prediction', params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/LG16.fa",project_id:"honeybee1"])
     }
 
     // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Prediction Controller and contains a Thread method that will continue running as a background process after the user is redirected to the job status page.
-    def commit = {
+    def commit() {
         def predictionInstance = new Prediction(params)
         if(!(predictionInstance.id == null)){
             flash.error = "Internal error 2. Please contact augustus-web@uni-greifswald.de if the problem persists!"
-            redirect(action:create)
+            redirect(action:'create', controller: 'prediction')
             return
         }
         
@@ -109,7 +109,15 @@ class PredictionController {
         if(!(uploadedStructFile.empty)){
             predictionInstance.hint_file = uploadedStructFile.originalFilename
         }
-        predictionInstance.save()
+        predictionInstance.message = ""
+        predictionInstance.dateCreated = new Date();
+        predictionInstance.validate()
+        
+        if (predictionInstance.hasErrors()) {
+            render(view:'create', model:[prediction:predictionInstance])
+            return
+        }
+        
         // info string for confirmation E-Mail
         def confirmationString
         def mailStr
@@ -138,7 +146,6 @@ class PredictionController {
         // get date
         def today = new Date()
         Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "AUGUSTUS prediction webserver starting on ${today}")
-        Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "committed predictionInstance.id ${predictionInstance.id}")
         // get IP-address
         // String userIP = request.remoteAddr
         logDate = new Date()
@@ -206,7 +213,7 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
             }
             flash.message = "Info: Please check all fields marked in blue for completeness before starting the prediction job!"
-            redirect(action:create, params:redirParams)
+            redirect(action:'create', controller: 'prediction', params:redirParams)
         }
         // clean up directory (delete) function
         def String dirName = "${output_dir}/${predictionInstance.accession_id}"
@@ -247,7 +254,7 @@ class PredictionController {
             def long preUploadSize = uploadedParamArch.getSize()
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected parameter archive file was bigger than ${maxButtonFileSize}.")
-                flash.error = "Parameter archive file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                flash.error = "Parameter archive file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                 cleanRedirect()
                 return
             }
@@ -292,7 +299,7 @@ class PredictionController {
         if(!(predictionInstance.project_id == null)){
             def spec_conf_dir = new File("${AUGUSTUS_CONFIG_PATH}/species/${predictionInstance.project_id}")
             if(!spec_conf_dir.exists()){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter-string does not exist on our system.")
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter-string \"${predictionInstance.project_id}\" does not exist on our system.")
                 deleteDir()
                 flash.error = "The specified parameter ID ${predictionInstance.project_id} does not exist on our system."
                 cleanRedirect()
@@ -491,7 +498,7 @@ class PredictionController {
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected genome file was bigger than ${maxButtonFileSize}. Submission rejected.")
                 deleteDir()
-                flash.error = "Genome file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                flash.error = "Genome file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                 cleanRedirect()
                 return
             }
@@ -626,7 +633,7 @@ class PredictionController {
             def long preUploadSize = uploadedEstFile.getSize()
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected cDNA file was bigger than ${maxButtonFileSize}.")
-                flash.error = "cDNA file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                flash.error = "cDNA file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                 deleteDir()
                 cleanRedirect()
                 return
@@ -752,7 +759,7 @@ class PredictionController {
             if(preUploadSize > allowedHintsSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected Hints file was bigger than ${allowedHintsSize}.")
                 deleteDir()
-                flash.error = "Hints file is bigger than ${allowedHintsSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                flash.error = "Hints file is bigger than ${allowedHintsSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                 cleanRedirect()
                 return
             }
@@ -915,10 +922,10 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User selected an experimental prokaryotic parameter set.");
         }
         // send confirmation email and redirect
-        if(!predictionInstance.hasErrors() && predictionInstance.save()){
-            // save new variables in database
-            predictionInstance.message = ""
-            predictionInstance.save()
+        predictionInstance.validate();
+        if(!predictionInstance.hasErrors() && Utilities.saveDomainWithTransaction(predictionInstance)){
+            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "committed predictionInstance.id ${predictionInstance.id}")
+            
             // generate empty results page
             def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
             Utilities.execute(logFile, verb, predictionInstance.accession_id, "emptyPageScript", cmd)
@@ -927,6 +934,8 @@ class PredictionController {
             mailStr = "Details of your job:\n\n${confirmationString}\n"
             predictionInstance.message = "----------------------------------------\n${logDate} - Message:\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n\n${mailStr}"
+            Utilities.saveDomainWithTransaction(predictionInstance)
+            
             if(predictionInstance.email_adress != null){
                 msgStr = "Hello!\n\n"
                 msgStr = "${msgStr}Thank you for submitting the AUGUSTUS gene prediction "
@@ -944,12 +953,12 @@ class PredictionController {
             }else{
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Did not send confirmation e-mail because user stays anonymous, but everything is ok.")
             }
-            redirect(action:show,id:predictionInstance.id)
+            redirect(action:'show', controller: 'prediction', id: predictionInstance.id)
         } else {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "An error occurred in the predictionInstance (e.g. E-Mail missing, see domain restrictions).")
             deleteDir()
             logAbort()
-            render(view:'create', model:[predictionInstance:predictionInstance])
+            render(view:'create', model:[prediction:predictionInstance])
             return
         }
 
@@ -982,7 +991,7 @@ class PredictionController {
                     predictionInstance.message = "${predictionInstance.message} - Error Message:\n-----------"
                     predictionInstance.message = "${predictionInstance.message}-----------------------------"
                     predictionInstance.message = "${predictionInstance.message}------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                         sendMail {
@@ -993,7 +1002,7 @@ class PredictionController {
                     }
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
 
@@ -1022,7 +1031,7 @@ class PredictionController {
                     predictionInstance.message = "${predictionInstance.message} - Error Message:\n----------"
                     predictionInstance.message = "${predictionInstance.message}------------------------------"
                     predictionInstance.message = "------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                         sendMail {
@@ -1033,7 +1042,7 @@ class PredictionController {
                     }
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
                 if(genomeFastaFlag == 1) {
@@ -1043,7 +1052,7 @@ class PredictionController {
                     mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided genome file ${predictionInstance.genome_ftp_link} was not in DNA fasta format.\n\n"
                     logDate = new Date()
                     predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress == null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                         sendMail {
@@ -1054,7 +1063,7 @@ class PredictionController {
                     }
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
                 // check gff format
@@ -1093,7 +1102,7 @@ class PredictionController {
                         mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                         logDate = new Date()
                         predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         if(predictionInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                             sendMail {
@@ -1104,7 +1113,7 @@ class PredictionController {
                         }
                         predictionInstance.results_urls = null
                         predictionInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         return
                     }
                     if(gffColErrorFlag == 1){
@@ -1112,7 +1121,7 @@ class PredictionController {
                         mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\n${predictionInstance.hint_file}\ndid not contain 9 columns in each line. Please make sure the gff-format complies\nwith the instructions in our 'Help' section before submitting another job!\n\n"
                         logDate = new Date()
                         predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         if(predictionInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                             sendMail {
@@ -1127,7 +1136,7 @@ class PredictionController {
                         mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequence names in\nthe provided hints file\n${predictionInstance.hint_file}\ndid not comply with the sequence names in the supplied genome file\n${predictionInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
                         logDate = new Date()
                         predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         if(predictionInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                             sendMail {
@@ -1142,7 +1151,7 @@ class PredictionController {
                         mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the last column of your\nhints file\n${predictionInstance.hint_file}\ndoes not contain the content source=M. Please make sure the gff-format complies with\nthe instructions in our 'Help' section before submitting another job!\n\n"
                         logDate = new Date()
                         predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         if(predictionInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                             sendMail {
@@ -1157,7 +1166,7 @@ class PredictionController {
                         logAbort()
                         predictionInstance.results_urls = null
                         predictionInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(predictionInstance)
+                        Utilities.saveDomainWithTransaction(predictionInstance)
                         return
                     }
                 }
@@ -1198,7 +1207,7 @@ class PredictionController {
                     mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                     logDate = new Date()
                     predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                         sendMail {
@@ -1209,7 +1218,7 @@ class PredictionController {
                     }
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
                 if(estFastaFlag == 1) {
@@ -1219,7 +1228,7 @@ class PredictionController {
                     mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                     logDate = new Date()
                     predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                         sendMail {
@@ -1230,7 +1239,7 @@ class PredictionController {
                     }
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
 
@@ -1255,11 +1264,11 @@ class PredictionController {
                 if(avEstLen < estMinLen){
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
                     logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might contain RNAseq\nraw sequences. Currently, our web server application does not support the integration\nof RNAseq raw sequences. Please either assemble your sequences into longer contigs,\nor remove short sequences from your current file, or submitt a new job without\nspecifying a cDNA file.\n\n"
+                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might contain RNAseq\nraw sequences. Currently, our web server application does not support the integration\nof RNAseq raw sequences. Please either assemble your sequences into longer contigs,\nor remove short sequences from your current file, or submit a new job without\nspecifying a cDNA file.\n\n"
                     def errorStrMsg = "Hello!\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                     logDate = new Date()
                     predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
 
                         sendMail {
@@ -1271,16 +1280,16 @@ class PredictionController {
                     deleteDir()
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }else if(avEstLen > estMaxLen){
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
                     logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequence\nfiles with an average sequence length longer than ${estMaxLen} might not contain\nESTs or cDNAs. Please either remove long sequences from your current file, or\nsubmitt a new job without specifying a cDNA file.\n\n"
+                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequence\nfiles with an average sequence length longer than ${estMaxLen} might not contain\nESTs or cDNAs. Please either remove long sequences from your current file, or\nsubmit a new job without specifying a cDNA file.\n\n"
                     def errorStrMsg = "Hello!\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                     logDate = new Date()
                     predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     if(predictionInstance.email_adress != null){
                         sendMail {
                             to "${predictionInstance.email_adress}"
@@ -1291,17 +1300,18 @@ class PredictionController {
                     deleteDir()
                     predictionInstance.results_urls = null
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                     return
                 }
             }
 
             // confirm file upload via e-mail
             if((!(predictionInstance.genome_ftp_link == null)) || (!(predictionInstance.est_ftp_link == null))){
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Retrieved all ftp files successfully.")
                 mailStr = "We have retrieved all files that you specified, successfully. You may delete them\nfrom the public server, now, without affecting the AUGUSTUS prediction job.\n\n"
                 logDate = new Date()
                 predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 if(predictionInstance.email_adress != null){
                     msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
                     sendMail {
@@ -1344,7 +1354,7 @@ class PredictionController {
                 predictionInstance.old_url = "${war_url}prediction/show/${oldID}"
                 logDate = new Date()
                 predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 if(predictionInstance.email_adress != null){
                     msgStr = "Hello!\n\n${mailStr}The old job with identical input files and identical parameters"
                     msgStr = "${msgStr} is available at\n${war_url}prediction/show/${oldID}.\n\nBest regards,\n\n"
@@ -1360,7 +1370,7 @@ class PredictionController {
                 logAbort()
                 predictionInstance.results_urls = null
                 predictionInstance.job_status = 5
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 return
             } // end of job was submitted before check
 
@@ -1406,13 +1416,13 @@ class PredictionController {
             sgeFile << "${cmdStr}"
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "sgeFile=${cmdStr}")
             // write submission script
-            def submissionScript = new File(projectDir, "submitt.sh")
+            def submissionScript = new File(projectDir, "submit.sh")
             def fileID = "${dirName}/jobID"
             cmd2Script = "cd ${dirName}; qsub aug-pred.sh > ${fileID} 2> /dev/null"
             submissionScript << "${cmd2Script}"
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "submissionScript << \"${cmd2Script}\"")
-            // submitt job
-            cmdStr = "bash ${dirName}/submitt.sh"
+            // submit job
+            cmdStr = "bash ${dirName}/submit.sh"
             def jobSubmission = "${cmdStr}".execute()
             Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
             jobSubmission.waitFor()
@@ -1422,7 +1432,7 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The augustus job wasn't started")
                 predictionInstance.results_urls = null
                 predictionInstance.job_status = 5
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 return
             }
 
@@ -1433,7 +1443,7 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} submitted.")
             // check for job status
             predictionInstance.job_status = 1 // submitted
-            Utilities.saveDomainWithNewSession(predictionInstance)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             def statusScript = new File(projectDir, "status.sh")
             def statusFile = "${dirName}/job.status"
             cmd2Script = "cd ${dirName}; qstat -u \"*\" | grep aug-pred | grep ${jobID} > ${statusFile} 2> /dev/null"
@@ -1469,7 +1479,7 @@ class PredictionController {
                     today = new Date()
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} left SGE at ${today}.")
                 }
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
             }
             // set file rigths to readable by others
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "set file permissions on ${web_output_dir}/${predictionInstance.accession_id}")
@@ -1482,7 +1492,7 @@ class PredictionController {
             // collect results link information
             if(new File("${web_output_dir}/${predictionInstance.accession_id}/predictions.tar.gz").exists()){
                 predictionInstance.results_urls = "<p><b>Prediction archive</b>&nbsp;&nbsp;<a href=\"${web_output_url}${predictionInstance.accession_id}/predictions.tar.gz\">predictions.tar.gz</a><br></p>"
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
             }
             // check whether errors occured by log-file-sizes
             if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
@@ -1501,7 +1511,7 @@ class PredictionController {
                 mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} finished.\n\n"
                 logDate = new Date()
                 predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 if(predictionInstance.email_adress == null){
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail adress was supplied.")
                 }
@@ -1557,7 +1567,7 @@ class PredictionController {
                         }
                     }
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                 }else{
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "an error occured during writing results!");
                     msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
@@ -1581,12 +1591,12 @@ class PredictionController {
                         }
                     }
                     predictionInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(predictionInstance)
+                    Utilities.saveDomainWithTransaction(predictionInstance)
                 }
                 mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
                 logDate = new Date()
                 predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact augustus-web@uni-greifswald.de if you want to find out what went wrong.\n\n"
-                Utilities.saveDomainWithNewSession(predictionInstance)
+                Utilities.saveDomainWithTransaction(predictionInstance)
                 if(predictionInstance.email_adress == null){
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email adress was supplied.")
                 }else{

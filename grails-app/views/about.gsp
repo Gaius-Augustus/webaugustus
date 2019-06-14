@@ -19,10 +19,10 @@
                            <hr>
                         </div>
                      </div>
-                     <p align="center"><a href="http://bioinf.uni-greifswald.de/webaugustus/index.gsp"><g:img dir="images" file="augustus.head.transparent.gif" alt="" width="93" height="100" />
+                     <p align="center"><a href="${createLink(uri:'/index')}"><g:img dir="images" file="augustus.head.transparent.gif" alt="" width="93" height="100" />
                      </a></p>
-                     <p>AUGUSTUS is a program that predicts genes in eukaryotic genomic sequences. It can be <a href="http://bioinf.uni-greifswald.de/webaugustus/prediction/create">run with pre-trained parameters on this web server</a> or be downloaded and <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">run locally</a>. It is open source so you can compile it for your computing platform. You can also run AUGUSTUS on the German <a href="http://www.medigrid.de/anw_bio.html">MediGRID</a>. This enables you to submit larger sequence files and allows to use protein homology information in the prediction. The MediGRID requires an instant easy registration by email for first-time users.</p>
-                     <p>The <a href="http://bioinf.uni-greifswald.de/webaugustus/training/create">AUGUSTUS training web server application</a> automatically generates training gene sets from genomic sequence(s) and a set of Proteins or ESTs and subsequently trains AUGUSTUS parameters for a new species, and runs gene predictions with the new parameters and the supplied extrinsic evidence. Alternatively, you can also download the <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">autoAug.pl pipeline</a> and execute our training and prediction pipeline locally.</p>
+                     <p>AUGUSTUS is a program that predicts genes in eukaryotic genomic sequences. It can be <a href="/webaugustus/prediction/create">run with pre-trained parameters on this web server</a> or be downloaded and <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">run locally</a>. It is open source so you can compile it for your computing platform. You can also run AUGUSTUS on the German <a href="http://www.medigrid.de/anw_bio.html">MediGRID</a>. This enables you to submit larger sequence files and allows to use protein homology information in the prediction. The MediGRID requires an instant easy registration by email for first-time users.</p>
+                     <p>The <a href="/webaugustus/training/create">AUGUSTUS training web server application</a> automatically generates training gene sets from genomic sequence(s) and a set of Proteins or ESTs and subsequently trains AUGUSTUS parameters for a new species, and runs gene predictions with the new parameters and the supplied extrinsic evidence. Alternatively, you can also download the <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">autoAug.pl pipeline</a> and execute our training and prediction pipeline locally.</p>
                      <br>
                      <h2>Features</h2>
                      <br>
@@ -39,7 +39,7 @@
                            for. Often it is the most accurate <i>ab initio</i> program. For example, at the independent gene finder
                            assessment (EGASP) on the human ENCODE regions AUGUSTUS was the most accurate gene finder among the
                            tested <i>ab initio</i> programs. At the more recent nGASP (worm), it was among the best in the <i>ab initio</i>
-                           and transcript-based categories. See <a href="http://bioinf.uni-greifswald.de/webaugustus/accuracy.gsp">accuracy statistics</a> for further statics.
+                           and transcript-based categories. See <a href="${createLink(uri:'/accuracy')}">accuracy statistics</a> for further statics.
                         </li>
                         <li>
                            AUGUSTUS can be used <i>ab initio</i> and has a flexible mechanism for incorporating extrinsic
@@ -76,9 +76,10 @@
                      </ul>
                      <br>
                      <h3>Parameters are already available for the following species:</h3>
-                     AUGUSTUS has currently been trained on species specific training sets to predict genes in the
+                     <p>AUGUSTUS has currently been trained on species specific training sets to predict genes in the
                      following species. Note that for closely related species usually only one version is necessary. For
-                     example, the human version is good for all mammals. <a href="http://bioinf.uni-greifswald.de/webaugustus/references.gsp#contrib">Contributions</a>.
+                     example, the human version is good for all mammals. <a href="${createLink(uri:'/references#contrib')}">Contributions</a>.
+                     </p>
                      <table border="0" cellspacing="10" align="center">
                         <tr>
                            <th>animals:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>

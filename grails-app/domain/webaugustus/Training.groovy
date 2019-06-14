@@ -18,7 +18,7 @@ class Training extends AbstractWebAugustusDomainClass {
     String job_id // SGE Job ID will be determined by controller
     /**
      * SGE job status
-     * 0 - Job submitted
+     * 0 - Job preparation
      * 1 - Job submitted
      * 2 - waiting for execution
      * 3 - computing
@@ -67,36 +67,36 @@ class Training extends AbstractWebAugustusDomainClass {
         email_adress(email:true,blank:true,nullable:true)
         agree_email(validator: {val, obj ->
                        if(obj.email_adress != null && obj.agree_email!=true){
-                               return 'training.not_email_agreed'
+                               return 'not_agreed'
                    }
                    })
          agree_nonhuman(validator: { val, obj ->
                if(obj.agree_nonhuman == false){
-                         return 'training.not_nonhuman_agreed'
+                         return 'not_agreed'
            }
      })
         project_name(blank:false, unique:false, maxSize:30)
         genome_file(nullable:true, blank:true, validator: { val, obj ->
              if (obj.genome_file == null && obj.genome_ftp_link == null) {
-                 return 'training.genome_file.no_genome_file'
+                 return 'no_genome_file'
              } else if (!(obj.genome_ftp_link == null) && !(obj.genome_file == null)) {
-                 return 'training.genome_file.not_both'
+                 return 'not_both'
              } else if ((obj.est_file == null) && (obj.est_ftp_link == null) && (obj.struct_file == null) && (obj.protein_file == null) && (obj.protein_ftp_link == null)) {
-                 return 'training.genome_file.at_least_one'
+                 return 'at_least_one'
              } else if (!(obj.protein_file == null) && !(obj.struct_file == null)) {
-                 return 'training.protein_file.not_struct'
+                 return 'not_struct'
              } else if (!(obj.protein_ftp_link == null) && !(obj.struct_file == null)) {
-                 return 'training.protein_file.not_struct'
+                 return 'not_struct'
              } else if (obj.genome_ftp_link =~ /dropbox/) {
-             return 'training.genome_ftp_link.no_dropbox'
+             return 'no_dropbox'
          }
         })
         genome_ftp_link(nullable:true, blank:true, url:true)
         est_file(nullable:true, blank:true, validator: { val, obj ->
             if (!(obj.est_file == null) && !(obj.est_ftp_link == null)) {
-                 return 'training.est_file.not_both'
+                 return 'not_both'
             } else if (obj.est_ftp_link =~ /dropbox/) {
-                 return 'training.est_ftp_link.no_dropbox'
+                 return 'no_dropbox'
             }
 
 
@@ -104,9 +104,9 @@ class Training extends AbstractWebAugustusDomainClass {
         est_ftp_link(nullable:true, blank:true, url:true)
         protein_file(nullable:true, blank:true, validator: { val, obj ->
             if (!(obj.protein_file == null) && !(obj.protein_ftp_link == null)) {
-                 return 'training.protein_file.not_both'
+                 return 'not_both'
             }else if (obj.protein_ftp_link =~ /dropbox/) {
-                 return 'training.protein_ftp_link.no_dropbox'
+                 return 'no_dropbox'
              }
         })
         struct_file(nullable:true, blank:true)
@@ -122,7 +122,7 @@ class Training extends AbstractWebAugustusDomainClass {
         job_id(nullable:true)
         job_status(nullable:true)
         job_error(nullable:true)
-        dateCreated()
+        dateCreated(nullable:false) // or  dateCreated [:] 
         old_url(nullable:true)
         results_urls(maxSize:1000000000, nullable:true)
         message(maxSize:1000000000, nullable:true) 

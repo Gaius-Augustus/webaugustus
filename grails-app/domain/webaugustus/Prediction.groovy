@@ -4,12 +4,12 @@ package webaugustus
  * Domain file belonging to ../../controllers/webaugustus/PredictionController.groovy
  * This file contains the variables of all database columns.
  */
-class Prediction extends AbstractWebAugustusDomainClass  {
+class Prediction extends AbstractWebAugustusDomainClass {
     
     static searchable = true
     String id 
-    static mapping ={
-        id generator:'uuid', sqlType: "varchar(36)"
+    static mapping = {
+        id generator: 'uuid', sqlType: "varchar(36)"
     }
     String email_adress
     Boolean agree_email = false
@@ -32,7 +32,7 @@ class Prediction extends AbstractWebAugustusDomainClass  {
     String job_id // SGE Job ID will be determined by controller
     /**
      * SGE job status
-     * 0 - Job submitted
+     * 0 - Job preparation
      * 1 - Job submitted
      * 2 - waiting for execution
      * 3 - computing
@@ -76,25 +76,25 @@ class Prediction extends AbstractWebAugustusDomainClass  {
         email_adress(email:true,blank:true,nullable:true)
         agree_email(validator: {val, obj ->
                 if(obj.email_adress != null && obj.agree_email!=true){
-                    return 'prediction.not_email_agreed'
+                    return 'not_agreed'
                 }
             })
         agree_nonhuman(validator: { val, obj ->
                 if(obj.agree_nonhuman == false){
-                    return 'prediction.not_nonhuman_agreed'
+                    return 'not_agreed'
                 }
             })
 
         genome_file(nullable:true, blank:true, validator: { val, obj ->
                 if (obj.genome_file == null && obj.genome_ftp_link == null) {
-                    return 'training.genome_file.no_genome_file'
+                    return 'no_genome_file'
                 } else if (!(obj.genome_ftp_link == null) && !(obj.genome_file == null)) {
-                    return 'training.genome_file.not_both'
+                    return 'not_both'
                 }else if (obj.genome_ftp_link =~ /dropbox/) {
-                    return 'prediction.genome_ftp_link.no_dropbox'
+                    return 'no_dropbox'
                 }
                 //else if ((obj.project_id == null) && (obj.archive_file == null)) {
-                //   return 'prediction.genome_file.archive_or_id'
+                //   return 'archive_or_id'
                 //}
             })
         genome_ftp_link(nullable:true, blank:true, url:true)
@@ -103,9 +103,9 @@ class Prediction extends AbstractWebAugustusDomainClass  {
         species_select(maxSize:100, nullable:true)
         est_file(nullable:true, blank:true, validator: { val, obj ->
                 if (!(obj.est_file == null) && !(obj.est_ftp_link == null)) {
-                    return 'training.est_file.not_both'
+                    return 'not_both'
                 } else if (obj.est_ftp_link =~ /dropbox/) {
-                    return 'prediction.genome_ftp_link.no_dropbox'
+                    return 'no_dropbox'
                 }
 
             })
@@ -124,8 +124,8 @@ class Prediction extends AbstractWebAugustusDomainClass  {
         job_status(nullable:true)
         results_urls(nullable:true)
         message(maxSize:1000000000, nullable:true)
-        utr()
-        dateCreated()
+        utr(nullable:false)          // or  utr [:]
+        dateCreated(nullable:false)  // or  dateCreated [:]
         has_genome_file(nullable:true)
         has_est_file(nullable:true)
         warn(nullable:true)

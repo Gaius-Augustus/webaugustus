@@ -475,7 +475,7 @@
                      <p><b>araset</b> is a set of 74 multi-gene sequences with 168 genes of Arabidopsis thaliana. 
                         The specificity is likely to be underestimated because there are sometimes genes at the boundaries of a sequence that are not annotated.
                      </p>
-                     <p>The <a href="datasets.gsp">datasets</a> can be downloaded.</p>
+                     <p>The <a href="${createLink(uri:'/datasets')}">datasets</a> can be downloaded.</p>
                      <div class="csc-default">
                         <div class="divider">
                            <hr>

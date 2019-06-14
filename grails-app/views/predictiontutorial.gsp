@@ -19,7 +19,7 @@
                            <hr>
                         </div>
                      </div>
-                     <p>This website explains step-by-step how to use the AUGUSTUS prediction web server application to predict genes in a genomic sequence. You find a similar tutorial on how to train AUGUSTUS parameters <a href="trainingtutorial.gsp">here (click)</a>.</p>
+                     <p>This website explains step-by-step how to use the AUGUSTUS prediction web server application to predict genes in a genomic sequence. You find a similar tutorial on how to train AUGUSTUS parameters <a href="${createLink(uri:'/trainingtutorial')}">here (click)</a>.</p>
                      <p>Functionalities of the AUGUSTUS prediction web server application are (with a single run):</p>
                      <p>
                      <ul>
@@ -57,8 +57,8 @@
                         <a href="#strand">1.3.4 - Strand specific prediction</a><br>
                         <a href="#alternative">1.3.5 - Alternative transcripts</a><br>
                         <a href="#allowed_structure">1.3.6 - Allowed gene structure</a><br>
-                        <a href="#verification">1.4 - Verfification that you are a human</a><br>
-                        <a href="#submitt">1.5 - The submitt button</a><br>
+                        <a href="#verification">1.4 - Verification that you are a human</a><br>
+                        <a href="#submit">1.5 - The submit button</a><br>
                         <a href="#exampledata">1.6 - Example data files</a><br><br>
                         <a href="#job_status">2 - What happens after submission</a><br>
                         <a href="#duplication">2.1 - Submission duplication</a><br>
@@ -95,7 +95,7 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="submitt-link-pred.jpg" alt="image of submission link" /></td>
+                           <td><g:img dir="images" file="submit-link-pred.jpg" alt="image of submission link" /></td>
                         </tr>
                      </table>
                      </p>
@@ -652,7 +652,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                         <h3><a href="#cDNA_format">1.3.1.1 - cDNA file format</a></h3>
                      </div>
                      <p>The cDNA file is a multiple fasta DNA file that contains e.g. ESTs or full-length cDNA sequences. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n U u</b>. Empty lines are not allowed and will be removed from the submitted file by the webserver application. An example for correct cDNA file format is given at <a href="#genome_file_format">1.2.3.1 - Genome file format</a>.</p>
-                     <p>It is currently possible to submitt assembled RNA-seq transcripts instead of or mixed with ESTs as a cDNA/EST file. However, you should be aware that RNA-seq files are often much bigger than EST or cDNA files, which increases runtime of a prediction job. In order to keep runtime of your prediction job as low as possible, you should remove all assembled RNA-seq transcripts from your file that do not map to the submitted genome sequence. (In principle, this holds true for EST and cDNA files, too, but there, the problem is not as pronounced due to a smaller number of sequences.)</p>
+                     <p>It is currently possible to submit assembled RNA-seq transcripts instead of or mixed with ESTs as a cDNA/EST file. However, you should be aware that RNA-seq files are often much bigger than EST or cDNA files, which increases runtime of a prediction job. In order to keep runtime of your prediction job as low as possible, you should remove all assembled RNA-seq transcripts from your file that do not map to the submitted genome sequence. (In principle, this holds true for EST and cDNA files, too, but there, the problem is not as pronounced due to a smaller number of sequences.)</p>
                      <p>It is currently not allowed to upload RNA-seq raw sequences. (We filter for the average length of cDNA fasta entries and may reject the entire training job in case the sequences are on average too short, i.e. shorter than 400 bp.)</p>
                      <p>Besides plain fasta format, our server accepts <b>gzipped-fasta</b> format for cDNA file upload. You find more information about gzip at the <a href="http://www.gzip.org/">gzip homepage</a>. Gzipped files have the file ending <tt>*.gz</tt>. The maximal supported file size is 1 GB.</p>
                      <div id="cDNA_upload">
@@ -858,13 +858,13 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      </p>
                      <hr>
                      <br>
-                     <div id="submitt">
-                        <h2><a href="#submitt">1.5 - The submitt button</a></h2>
+                     <div id="submit">
+                        <h2><a href="#submit">1.5 - The submit button</a></h2>
                      </div>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="pred-submitt.jpg" alt="image of submission button" /></td>
+                           <td><g:img dir="images" file="pred-submit.jpg" alt="image of submission button" /></td>
                         </tr>
                      </table>
                      </p>
@@ -926,7 +926,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <div id="duplication">
                         <h2><a href="#duplication">2.1 - Submission duplication</a></h2>
                      </div>
-                     <p>Since predicting genes wiht AUGUSTUS may under certain circumstances be is a very resource consuming process, we try to avoid data duplication. In case you or somebody else tries to submitt exactly the same input file combination more than once, the duplicated job will be stopped and the submitter of the redundant job will receive information where the status page of the previously submitted job is located.</p>
+                     <p>Since predicting genes wiht AUGUSTUS may under certain circumstances be is a very resource consuming process, we try to avoid data duplication. In case you or somebody else tries to submit exactly the same input file combination more than once, the duplicated job will be stopped and the submitter of the redundant job will receive information where the status page of the previously submitted job is located.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page

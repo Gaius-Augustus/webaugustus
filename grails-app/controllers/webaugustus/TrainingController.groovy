@@ -27,10 +27,10 @@ class TrainingController {
     def AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts"
     // Admin mail for errors
     def admin_email = "xxx@email.com"
-    // sgeLen length of SGE queue, when is reached "the server is buisy" will be displayed
+    // sgeLen length of SGE queue, when is reached "the server is busy" will be displayed
     def sgeLen = 20;
     // max button filesize
-    def long maxButtonFileSize = 104857600 // 100 MB = 13107200 bytes = 104857600 bit, getFile etc. gives size in bit
+    def long maxButtonFileSize = 104857600 // 100 MB = 104857600 bytes getFile etc. gives size in byte
     // max ftp/http filesize
     def long maxFileSizeByWget = 1073741824 // 1 GB = 1073741824 bytes, curl gives size in bytes
     // EST sequence properties (length)
@@ -46,7 +46,7 @@ class TrainingController {
     // human verification:
     def simpleCaptchaService
 
-    def show = {
+    def show() {
         def instance = Training.get(params.id)
         if (instance == null) {
             render(view: '/jobnotfound')
@@ -55,7 +55,7 @@ class TrainingController {
         respond instance
     }
     
-    def create = {
+    def create() {
         // check whether the server is busy
         def processForLog = "SGE         "
         def cmd = ['qstat -u "*" | grep qw | wc -l']
@@ -76,16 +76,16 @@ class TrainingController {
     }
 
     // fill in sample data
-    def fillSample = {
-        redirect(action:create, params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/chr1to6.fa", protein_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/rattusProteinsChr1to6.fa", project_name:"Mus_musculus"])
+    def fillSample() {
+        redirect(action:'create', controller: 'training', params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/chr1to6.fa", protein_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/rattusProteinsChr1to6.fa", project_name:"Mus_musculus"])
     }
 
     // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Training Controller and contains a Thread method that will continue running as a background process after the user is redirected to the job status page.
-    def commit = {
+    def commit() {
         def trainingInstance = new Training(params)
         if(!(trainingInstance.id == null)){
             flash.error = "Internal error 2. Please contact augustus-web@uni-greifswald.de if the problem persists!"
-            redirect(action:create)
+            redirect(action:'create', controller: 'training')
             return
         }else{
             // retrieve parameters of form for early save()
@@ -107,7 +107,14 @@ class TrainingController {
             }
             trainingInstance.results_urls = ""
             trainingInstance.message = ""
-            trainingInstance.save()
+            trainingInstance.dateCreated = new Date();
+            trainingInstance.validate()
+
+            if (trainingInstance.hasErrors()) {
+                render(view:'create', model:[training:trainingInstance])
+                return
+            }
+            
             // info string for confirmation E-Mail
             def confirmationString
             confirmationString = "Training job ID: ${trainingInstance.accession_id}\n"
@@ -136,7 +143,6 @@ class TrainingController {
             // get date
             def today = new Date()
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "AUGUSTUS training webserver starting on ${today}")
-            Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "committed trainingInstance.id ${trainingInstance.id}")
             // get IP-address
             //String userIP = request.remoteAddr
             //Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "user IP: ${userIP}")
@@ -192,7 +198,7 @@ class TrainingController {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
                 }
                 flash.message = "Info: Please check all fields marked in blue for completeness before starting the training job!"
-                redirect(action:create, params:redirParams)
+                redirect(action:'create', controller: 'training', params:redirParams)
 
             }
             // directory delete function
@@ -241,7 +247,7 @@ class TrainingController {
                 
                 if(preUploadSize > maxButtonFileSize){
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected genome file was bigger than ${maxButtonFileSize}.")
-                    flash.error = "Genome file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                    flash.error = "Genome file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                     cleanRedirect()
                     return
                 }
@@ -376,7 +382,7 @@ class TrainingController {
                 if(preUploadSize > maxButtonFileSize){
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected cDNA file was bigger than ${maxButtonFileSize}.")
                     deleteDir()
-                    flash.error = "cDNA file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                    flash.error = "cDNA file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                     cleanRedirect()
                     return
                 }
@@ -571,7 +577,7 @@ class TrainingController {
                     def allowedStructSize = maxButtonFileSize * 2
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected training gene structure file was bigger than ${allowedStructSize}.")
                     deleteDir()
-                    flash.error = "Training gene structure file is bigger than ${allowedStructSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                    flash.error = "Training gene structure file is bigger than ${allowedStructSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                     cleanRedirect()
                     return
                 }
@@ -592,7 +598,7 @@ class TrainingController {
                 if(preUploadSize > maxButtonFileSize){
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected protein file was bigger than ${maxButtonFileSize}.")
                     deleteDir()
-                    flash.error = "Protein file is bigger than ${maxButtonFileSize} bytes, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
+                    flash.error = "Protein file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                     cleanRedirect()
                     return
                 }
@@ -740,10 +746,10 @@ class TrainingController {
 
             }
             // send confirmation email and redirect
-            if(!trainingInstance.hasErrors() && trainingInstance.save()){
-                // save new variables in database
-                trainingInstance.message = ""
-                trainingInstance.save()
+            trainingInstance.validate();
+            if(!trainingInstance.hasErrors() && Utilities.saveDomainWithTransaction(trainingInstance)){
+                Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "committed trainingInstance.id ${trainingInstance.id}")
+                
                 // generate empty results page
                 def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name}  ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
                 Utilities.execute(logFile, verb, trainingInstance.accession_id, "emptyPageScript", cmd)
@@ -751,6 +757,8 @@ class TrainingController {
                 mailStr = "Details of your job:\n\n${confirmationString}\n"
                 trainingInstance.message = "----------------------------------------\n${logDate} - Message:\n"
                 trainingInstance.message = "${trainingInstance.message}----------------------------------------\n\n${mailStr}"
+                Utilities.saveDomainWithTransaction(trainingInstance)
+                
                 if(trainingInstance.email_adress != null){
                     msgStr = "Hello!\n\nThank you for submitting a job to train AUGUSTUS parameters for species ${trainingInstance.project_name}.\n\n${mailStr}The status/results page of your job is ${war_url}training/show/${trainingInstance.id}.\n\nYou will be notified by e-mail after computations of your job have finished.\n\nBest regards,\n\nthe AUGUSTUS web server team"
                     sendMail {
@@ -762,14 +770,12 @@ class TrainingController {
                 }else{
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Did not send confirmation e-mail because user stays anonymous, but everything is ok.")
                 }
-                redirect(action:show,id:trainingInstance.id)
-                //forward(action:"show",id:trainingInstance.id)
-                //forward action: "show", id: trainingInstance.id
+                redirect(action:'show', controller: 'training', id: trainingInstance.id)
             } else {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "An error occurred in the trainingInstance (e.g. E-Mail missing, see domain restrictions).")
                 deleteDir()
                 logAbort()
-                render(view:'create', model:[trainingInstance:trainingInstance])
+                render(view:'create', model:[training:trainingInstance])
                 return
             }
 
@@ -802,7 +808,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "${trainingInstance.message}------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -813,7 +819,7 @@ class TrainingController {
                         }
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     // check for fasta format & get seq names for gff validation:
@@ -836,7 +842,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -849,7 +855,7 @@ class TrainingController {
                         //trainingInstance.delete()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     if(genomeFastaFlag == 1) {
@@ -863,7 +869,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -876,7 +882,7 @@ class TrainingController {
                         //trainingInstance.delete()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
 
@@ -934,7 +940,7 @@ class TrainingController {
                             trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                             trainingInstance.message = "${trainingInstance.message}-----------------------------"
                             trainingInstance.message = "------\n\n${mailStr}"
-                            Utilities.saveDomainWithNewSession(trainingInstance)
+                            Utilities.saveDomainWithTransaction(trainingInstance)
                             if(trainingInstance.email_adress != null){
                                 msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                                 sendMail {
@@ -947,7 +953,7 @@ class TrainingController {
                             //trainingInstance.delete()
                             trainingInstance.results_urls = null
                             trainingInstance.job_status = 5
-                            Utilities.saveDomainWithNewSession(trainingInstance)
+                            Utilities.saveDomainWithTransaction(trainingInstance)
                             return
                         }
                         if(gffColErrorFlag == 1 && structureGbkFlag == 0){
@@ -959,7 +965,7 @@ class TrainingController {
                             trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                             trainingInstance.message = "${trainingInstance.message}-----------------------------"
                             trainingInstance.message = "------\n\n${mailStr}"
-                            Utilities.saveDomainWithNewSession(trainingInstance)
+                            Utilities.saveDomainWithTransaction(trainingInstance)
                             if(trainingInstance.email_adress != null){
                                 msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                                 sendMail {
@@ -978,7 +984,7 @@ class TrainingController {
                             trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                             trainingInstance.message = "${trainingInstance.message}-----------------------------"
                             trainingInstance.message = "------\n\n${mailStr}"
-                            Utilities.saveDomainWithNewSession(trainingInstance)
+                            Utilities.saveDomainWithTransaction(trainingInstance)
                             if(trainingInstance.email_adress != null){
                                 msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                                 sendMail {
@@ -995,7 +1001,7 @@ class TrainingController {
                             //trainingInstance.delete()
                             trainingInstance.results_urls = null
                             trainingInstance.job_status = 5
-                            Utilities.saveDomainWithNewSession(trainingInstance)
+                            Utilities.saveDomainWithTransaction(trainingInstance)
                             return
                         }
                     }
@@ -1041,7 +1047,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1054,7 +1060,7 @@ class TrainingController {
                         //trainingInstance.delete()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     if(estFastaFlag == 1) {
@@ -1068,7 +1074,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1079,7 +1085,7 @@ class TrainingController {
                         }
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     
@@ -1106,14 +1112,14 @@ class TrainingController {
                     if(avEstLen < estMinLen){
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
                         logAbort()
-                        mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might\ncontain RNAseq raw sequences. Currently, our web server application does not support\nthe integration of RNAseq raw sequences. Please either assemble\nyour sequences into longer contigs, or remove short sequences from your current file,\nor submitt a new job without specifying a cDNA file.\n\n"
+                        mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might\ncontain RNAseq raw sequences. Currently, our web server application does not support\nthe integration of RNAseq raw sequences. Please either assemble\nyour sequences into longer contigs, or remove short sequences from your current file,\nor submit a new job without specifying a cDNA file.\n\n"
                         logDate = new Date()
                         trainingInstance.message = "${trainingInstance.message}----------------------------"
                         trainingInstance.message = "${trainingInstance.message}------------------\n${logDate}"
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1125,19 +1131,19 @@ class TrainingController {
                         deleteDir()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }else if(avEstLen > estMaxLen){
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
                         logAbort()
-                        mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because\nthe sequences in your cDNA file have an average length of ${avEstLen}.\nWe suspect that sequences files with an average sequence length longer than ${estMaxLen}\nmight not contain ESTs or cDNAs. Please either remove long sequences from your\ncurrent file, or submitt a new job without specifying a cDNA file.\n\n"
+                        mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because\nthe sequences in your cDNA file have an average length of ${avEstLen}.\nWe suspect that sequences files with an average sequence length longer than ${estMaxLen}\nmight not contain ESTs or cDNAs. Please either remove long sequences from your\ncurrent file, or submit a new job without specifying a cDNA file.\n\n"
                         logDate = new Date()
                         trainingInstance.message = "${trainingInstance.message}----------------------------"
                         trainingInstance.message = "${trainingInstance.message}------------------\n${logDate}"
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1149,7 +1155,7 @@ class TrainingController {
                         deleteDir()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                 }
@@ -1194,7 +1200,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n-----------"
                         trainingInstance.message = "${trainingInstance.message}-----------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1207,7 +1213,7 @@ class TrainingController {
                         //trainingInstance.delete()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     cRatio = cytosinCounter/allAminoAcidsCounter
@@ -1222,7 +1228,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n----------"
                         trainingInstance.message = "${trainingInstance.message}------------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1235,7 +1241,7 @@ class TrainingController {
                         //trainingInstance.delete()
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     
@@ -1250,7 +1256,7 @@ class TrainingController {
                         trainingInstance.message = "${trainingInstance.message} - Error Message:\n----------"
                         trainingInstance.message = "${trainingInstance.message}------------------------------"
                         trainingInstance.message = "------\n\n${mailStr}"
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         if(trainingInstance.email_adress != null){
                             msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                             sendMail {
@@ -1261,7 +1267,7 @@ class TrainingController {
                         }
                         trainingInstance.results_urls = null
                         trainingInstance.job_status = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         return
                     }
                     
@@ -1278,7 +1284,7 @@ class TrainingController {
                     mailStr = "We have retrieved all files that you specified, successfully. You may delete\nthem from the public server, now, without affecting the AUGUSTUS training job.\n\n"
                     logDate = new Date()
                     trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                     if(trainingInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
                         sendMail {
@@ -1321,7 +1327,7 @@ class TrainingController {
                     trainingInstance.old_url = "${war_url}training/show/${oldID}"
                     logDate = new Date()
                     trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                     if(trainingInstance.email_adress != null){
                         msgStr = "Hello!\n\n${mailStr}The old job with identical input files and identical parameters"
                         msgStr = "${msgStr} is available at\n${war_url}training/show/${oldID}.\n\nBest regards,\n\n"
@@ -1340,7 +1346,7 @@ class TrainingController {
                     logAbort()
                     trainingInstance.results_urls = null
                     trainingInstance.job_status = 5
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                     return
                 } // end of job was submitted before check
                 //Write DB file:
@@ -1352,7 +1358,7 @@ class TrainingController {
                 sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
                 // this has been checked, works.
                 if( estExistsFlag ==1 && proteinExistsFlag == 0 && structureExistsFlag == 0){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --pasa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH}  1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --pasa --useGMAPforPASA -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH}  1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                     // this is currently tested
@@ -1385,13 +1391,13 @@ class TrainingController {
                 }
                 Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile=${cmdStr}")
                 // write submission script
-                def submissionScript = new File(projectDir, "submitt.sh")
+                def submissionScript = new File(projectDir, "submit.sh")
                 def fileID = "${dirName}/jobID"
                 cmd2Script = "cd ${dirName}; /usr/bin/qsub augtrain.sh > ${fileID} 2> /dev/null"
                 submissionScript << "${cmd2Script}"
                 Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "submissionScript << \"${cmd2Script}\"")
-                // submitt job
-                cmdStr = "bash ${dirName}/submitt.sh"
+                // submit job
+                cmdStr = "bash ${dirName}/submit.sh"
                 def jobSubmission = "${cmdStr}".execute()
                 Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
                 jobSubmission.waitFor()
@@ -1404,7 +1410,7 @@ class TrainingController {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} submitted.")
                 // check for job status
                 trainingInstance.job_status = 1 // submitted
-                Utilities.saveDomainWithNewSession(trainingInstance)
+                Utilities.saveDomainWithTransaction(trainingInstance)
                 def statusScript = new File(projectDir, "status.sh")
                 def statusFile = "${dirName}/job.status"
                 cmd2Script = "cd ${dirName}; /usr/bin/qstat -u \"*\" |grep augtrain |grep ${jobID} > ${statusFile} 2> /dev/null"
@@ -1439,7 +1445,7 @@ class TrainingController {
                         today = new Date()
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} left SGE at ${today}.")
                     }
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                 }
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_status} when job leaves SGE.")
                 
@@ -1462,7 +1468,7 @@ class TrainingController {
                 }else{
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${web_output_dir}/${trainingInstance.accession_id}/AutoAug.log is missing!")
                 }
-                Utilities.saveDomainWithNewSession(trainingInstance)
+                Utilities.saveDomainWithTransaction(trainingInstance)
                 if(new File("${web_output_dir}/${trainingInstance.accession_id}/AutoAug.err").exists()){
                     if(trainingInstance.results_urls == null){
                         trainingInstance.results_urls = "<p><b>Error-file</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/AutoAug.err\">AutoAug.err</a><br></p>"
@@ -1473,7 +1479,7 @@ class TrainingController {
                 }else{
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${web_output_dir}/${trainingInstance.accession_id}/AutoAug.err is missing!")
                 }
-                Utilities.saveDomainWithNewSession(trainingInstance)
+                Utilities.saveDomainWithTransaction(trainingInstance)
                 if(new File("${web_output_dir}/${trainingInstance.accession_id}/parameters.tar.gz").exists()){
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${web_output_dir}/${trainingInstance.accession_id}/parameters.tar.gz does exist and is linked.")
                     if(trainingInstance.results_urls == null){
@@ -1555,7 +1561,7 @@ class TrainingController {
                     mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} finished.\n\n"
                     logDate = new Date()
                     trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                     if(trainingInstance.email_adress == null){
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Computation was successful. Did not send e-mail to user because not e-mail adress was supplied.")
                     }
@@ -1612,7 +1618,7 @@ class TrainingController {
                             }
                         }
                         trainingInstance.job_error = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when autoAug error occured.")
                         def packResults = new File("${output_dir}/pack${trainingInstance.accession_id}.sh")
                         cmd2Script = "cd ${output_dir}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
@@ -1654,7 +1660,7 @@ class TrainingController {
                             }
                         }
                         trainingInstance.job_error = 5
-                        Utilities.saveDomainWithNewSession(trainingInstance)
+                        Utilities.saveDomainWithTransaction(trainingInstance)
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when SGE error occured.")
                     }
                     if(!(writeResultsErrSize == 0)){
@@ -1684,7 +1690,7 @@ class TrainingController {
                     mailStr = "An error occured while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\nPlease check the log-files carefully before proceeding to work with the produced results.\n\n"
                     logDate = new Date()
                     trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithNewSession(trainingInstance)
+                    Utilities.saveDomainWithTransaction(trainingInstance)
                     if(trainingInstance.email_adress == null){
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email adress was supplied.")
                     }else{

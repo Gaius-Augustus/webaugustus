@@ -1,0 +1,174 @@
+---
+grails:
+    profile: web
+    codegen:
+        defaultPackage: webaugustus
+    gorm:
+        reactor:
+            # Whether to translate GORM events into Reactor events
+            # Disabled by default for performance reasons
+            events: false
+info:
+    app:
+        name: '@info.app.name@'
+        version: '@info.app.version@'
+        grailsVersion: '@info.app.grailsVersion@'
+spring:
+    jmx:
+        unique-names: true
+    main:
+        banner-mode: "off"
+    groovy:
+        template:
+            check-template-location: false
+    devtools:
+        restart:
+            additional-exclude: 
+                - '*.gsp'  
+                - '**/*.gsp'
+                - '*.gson'
+                - '**/*.gson'
+                - 'logback.groovy'
+                - '*.properties'
+management:
+    endpoints:
+        enabled-by-default: false
+
+---
+grails:
+    mime:
+        disable:
+            accept:
+                header:
+                    userAgents:
+                        - Gecko
+                        - WebKit
+                        - Presto
+                        - Trident
+        types:
+            all: '*/*'
+            atom: application/atom+xml
+            css: text/css
+            csv: text/csv
+            form: application/x-www-form-urlencoded
+            html:
+              - text/html
+              - application/xhtml+xml
+            js: text/javascript
+            json:
+              - application/json
+              - text/json
+            multipartForm: multipart/form-data
+            pdf: application/pdf
+            rss: application/rss+xml
+            text: text/plain
+            hal:
+              - application/hal+json
+              - application/hal+xml
+            xml:
+              - text/xml
+              - application/xml
+    urlmapping:
+        cache:
+            maxsize: 1000
+    controllers:
+        defaultScope: singleton
+        upload:
+            maxFileSize: 10000000000000    # the real max file size has to be and 
+            maxRequestSize: 10000000000000 # is limited in the controllers - this values are for tomcat
+    converters:
+        encoding: UTF-8
+    views:
+        default:       
+            codec: html
+        gsp:
+            encoding: UTF-8
+            htmlcodec: xml
+            codecs:
+                expression: html
+                scriptlet: html
+                taglib: none
+                staticparts: none
+management:
+    endpoints:
+        jmx:
+            unique-names: true
+
+---
+hibernate:
+    cache:
+        queries: false
+        use_second_level_cache: false
+        use_query_cache: false
+        
+server:
+    servlet:
+        context-path: /webaugustus
+
+dataSource:
+    pooled: true
+    dbCreate: update
+    jmxExport: true
+    jmxEnabled: true
+    driverClassName: com.mysql.jdbc.Driver
+    dialect: org.hibernate.dialect.MySQL5InnoDBDialect
+    username: xxx
+    password: 'xxx'
+#    logSql: true
+    properties:
+        maxIdle: 25
+        minIdle: 5
+        initialSize: 5
+        minEvictableIdleTimeMillis: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        maxWait: 10000
+        maxAge: 600000
+        validationQuery: SELECT 1
+        validationQueryTimeout: 3
+        validationInterval: 15000
+        testOnBorrow: true
+        testWhileIdle: true
+        jdbcInterceptors: ConnectionState
+        defaultTransactionIsolation: 2 # TRANSACTION_READ_COMMITTED
+
+environments:
+    development:
+        dataSource:
+            url: jdbc:mysql://localhost/webaugustus_devDB
+    test:
+        dataSource:
+            url: jdbc:mysql://localhost/webaugustus_devDB
+    production:
+        dataSource:
+            url: jdbc:mysql://localhost/webaugustusDB
+
+grails:            
+    mail:
+       host: xxx
+       port: 587
+       username: xxx      
+       password: 'xxx'
+       default.from: xxx@email.com
+       props:
+            mail.smtp.auth: true
+            mail.smtp.starttls.enable: true
+            mail.smtp.port: 587
+
+simpleCaptcha:
+    # font size used in CAPTCHA images
+    fontSize: 30
+    height: 200
+    width: 200
+    # number of characters in CAPTCHA text
+    length: 6
+
+    # amount of space between the bottom of the CAPTCHA text and the bottom of the CAPTCHA image
+    bottomPadding: 16
+
+    # distance between the diagonal lines used to obfuscate the text
+    lineSpacing: 10
+
+    # the charcters shown in the CAPTCHA text must be one of the following
+    chars: 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!-?'
+    
+    #storeInSession: false

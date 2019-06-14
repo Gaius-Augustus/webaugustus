@@ -81,15 +81,15 @@
                   <li class="navigation-sub__item">
                      <span class="navigation-sub__headline">AUGUSTUS Web Server Navigation</span>
                      <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><g:link resource="index.gsp">Introduction</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="about.gsp">About AUGUSTUS</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="accuracy.gsp">Accuracy</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="trainingtutorial.gsp">Training Tutorial</g:link></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/index')}">Introduction</a></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/about')}">About AUGUSTUS</a></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/accuracy')}">Accuracy</a></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/trainingtutorial')}">Training Tutorial</a></li>
                         <li class="navigation-sub__item"><g:link controller="training" action="create">Submit Training</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="predictiontutorial.gsp">Prediction Tutorial</g:link></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/predictiontutorial')}">Prediction Tutorial</a></li>
                         <li class="navigation-sub__item"><g:link controller="prediction" action="create">Submit Prediction</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="datasets.gsp">Datasets for Download</g:link></li>
-                        <li class="navigation-sub__item"><g:link resource="references.gsp">Links & References</g:link></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/datasets')}">Datasets for Download</a></li>
+                        <li class="navigation-sub__item"><a href="${createLink(uri:'/references')}">Links & References</a></li>
                         <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/impressum.html">Impressum</a></li>
                         <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a></li>
                      </ul>

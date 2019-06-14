@@ -20,7 +20,7 @@
                         </div>
                      </div>
 
-                     <p>This website explains step-by-step how to use the AUGUSTUS training web server application to train AUGUSTUS parameters for you individual species of interest. You find a similar tutorial on how to predict genes with pre-trained AUGUSTUS parameters <a href="predictiontutorial.gsp">here (click)</a>.</p>
+                     <p>This website explains step-by-step how to use the AUGUSTUS training web server application to train AUGUSTUS parameters for you individual species of interest. You find a similar tutorial on how to predict genes with pre-trained AUGUSTUS parameters <a href="${createLink(uri:'/predictiontutorial')}">here (click)</a>.</p>
                      <p>Functionalities of the AUGUSTUS training web server application are (with a single run):</p>
                      <p>
                      <ul>
@@ -29,7 +29,7 @@
                         <li>Prediction of genes in a supplied genome file with the newly optimized AUGUSTUS parameters. Genes will be predicted <i>ab initio</i> and with <i>hints</i> (the latter only if a cDNA file is provided).</li>
                      </ul>
                      </p>
-                        <p><b>Before submitting a training job</b> for your species of interest, please check whether parameters have already been trained and have been made publicly available for your species at <a href="predictiontutorial.gsp#param_id">our species overview table</a></p>
+                        <p><b>Before submitting a training job</b> for your species of interest, please check whether parameters have already been trained and have been made publicly available for your species at <a href="${createLink(uri:'/predictiontutorial#param_id')}">our species overview table</a></p>
                      <hr>
                      <br>
                      <div id="contents">
@@ -62,8 +62,8 @@
                         <a href="#structure_file_format_gbk">1.3.3.1.1 - Training gene structure file in genbank format</a><br>
                         <a href="#structure_file_format_gff">1.3.3.1.2 - Training gene structure file in gff format</a><br>
                         <a href="#structure_file_purpose">1.3.3.2 - What training gene structure files are used for</a><br>
-                        <a href="#verification">1.4 - Verfification that you are a human</a><br>
-                        <a href="#submitt">1.5 - The submitt button</a><br>
+                        <a href="#verification">1.4 - Verification that you are a human</a><br>
+                        <a href="#submit">1.5 - The submit button</a><br>
                         <a href="#exampledata">1.6 - Example data files</a><br><br>
                         <a href="#job_status">2 - What happens after submission</a><br>
                         <a href="#duplication">2.1 - Submission duplication</a><br>
@@ -124,7 +124,7 @@
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="submitt-link.jpg" alt="image of submission link" /></td>
+                           <td><g:img dir="images" file="submit-link.jpg" alt="image of submission link" /></td>
                         </tr>
                      </table>
                      </p>
@@ -313,7 +313,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                         <h3><a href="#cDNA_format">1.3.1.1 - cDNA file format</a></h3>
                      </div>
                      <p>The cDNA file is a multiple fasta DNA file that contains e.g. ESTs or full-length cDNA sequences. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n U u</b>. Empty lines are not allowed and will be removed from the submitted file by the webserver application. An example for correct cDNA file format is given at <a href="#genome_file_format">1.2.3.1 - Genome file format</a>.</p>
-                     <p>It is currently possible to submitt assembled RNA-seq transcripts instead of or mixed with ESTs as a cDNA/EST file. However, you should be aware that the success of creating training genes with assembled RNA-seq data depends very much on the assembly quality, and that RNA-seq files are often much bigger than EST or cDNA files, which increases runtime of a training job. In order to keep runtime of your training job as low as possible, you should remove all assembled RNA-seq transcripts from your file that do not map to the submitted genome sequence. (In principle, this holds true for EST and cDNA files, too, but there, the problem is not as pronounced due to a smaller number of sequences.)</p>
+                     <p>It is currently possible to submit assembled RNA-seq transcripts instead of or mixed with ESTs as a cDNA/EST file. However, you should be aware that the success of creating training genes with assembled RNA-seq data depends very much on the assembly quality, and that RNA-seq files are often much bigger than EST or cDNA files, which increases runtime of a training job. In order to keep runtime of your training job as low as possible, you should remove all assembled RNA-seq transcripts from your file that do not map to the submitted genome sequence. (In principle, this holds true for EST and cDNA files, too, but there, the problem is not as pronounced due to a smaller number of sequences.)</p>
                      <p>It is currently not allowed to upload RNA-seq raw sequences. (We filter for the average length of cDNA fasta entries and may reject the entire training job in case the sequences are on average too short, i.e. shorter than 400 bp.)</p>
                      <p>Besides plain fasta format, our server accepts <b>gzipped-fasta</b> format for cDNA file upload. You find more information about gzip at the <a href="http://www.gzip.org/">gzip homepage</a>. Gzipped files have the file ending <tt>*.gz</tt>. The maximal supported file size is 1 GB.</p>
                      <div id="cDNA_upload">
@@ -571,7 +571,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         <h4><a href="#structure_file_purpose">1.3.3.2 - What training gene structure files are used for</a></h4>
                      </div>
                      <p>While the cDNA and protein file upload options fulfill the purpose of training gene generation in context with a genome sequence file, the gene structure file upload form provides a flexible interface to users who generated training gene structures externally instead of using our webserver application for this purpose. Supplied training gene structures are directly used for optimizing species-specific AUGUSTUS parameters.</p>
-                     <p>If the training gene structure file is in gff-format, sequence names in the gff file have to match fasta headers in the genome file. If the training gene structure file is in genbank format, no direct dependency between training gene strcuture file and genome file exists, i.e. you could submitt training genes that were generated from a different chromosome than the genome file that you submitt.</p>
+                     <p>If the training gene structure file is in gff-format, sequence names in the gff file have to match fasta headers in the genome file. If the training gene structure file is in genbank format, no direct dependency between training gene structure file and genome file exists, i.e. you could submit training genes that were generated from a different chromosome than the genome file that you submit.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -599,13 +599,13 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </p>
                      <hr>
                      <br>
-                     <div id="submitt">
-                        <h2><a href="#submitt">1.5 - The submitt button</a></h2>
+                     <div id="submit">
+                        <h2><a href="#submit">1.5 - The submit button</a></h2>
                      </div>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="train-submitt.jpg" alt="image of submission button" /></td>
+                           <td><g:img dir="images" file="train-submit.jpg" alt="image of submission button" /></td>
                         </tr>
                      </table>
                      </p>
@@ -673,7 +673,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <div id="duplication">
                         <h2><a href="#duplication">2.1 - Submission duplication</a></h2>
                      </div>
-                     <p>Since training AUGUSTUS is a very resource consuming process, we try to avoid data duplication. In case you or somebody else tries to submitt exactly the same input file combination more than once, the duplicated job will be stopped and the submitter of the redundant job will receive information where to find the previous job status page.</p>
+                     <p>Since training AUGUSTUS is a very resource consuming process, we try to avoid data duplication. In case you or somebody else tries to submit exactly the same input file combination more than once, the duplicated job will be stopped and the submitter of the redundant job will receive information where to find the previous job status page.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -711,7 +711,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>If a cDNA file was submitted, <b>hints_pred.tar.gz</b> should be shown.</p>
                      <p>To save files on your local system, click the file link with the right mouse button and select "Save Link As..." (or similar).</p>
                      <p>Unpack *.tar.gz archives locally on your system by typing <tt>tar -xzvf *.tar.gz</tt> into your shell. (You find more information about the software tar at the <a href="http://www.gnu.org/s/tar/">GNU tar website</a>.)</p>
-                     <p>To view a real training output example, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>!</p>
+                     <!--<p>To view a real training output example, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>!</p>-->
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -744,7 +744,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>One frequently occuring error in the AutoAug.err file is the following:</p>
                      <p>The file with UTR parameters for train****** does not seem to exist. This likely means that the UTR model has not beeen trained yet for train******.</p>
                      <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
-                     <p>Further error messages (that e.g. lead to null results) are explained on <a href="help.gsp#noResults">our Help page</a>.</p>
+                     <p>Further error messages (that e.g. lead to null results) are explained on <a href="${createLink(uri:'/help#noResults')}">our Help page</a>.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -809,7 +809,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         <li>*.gff - gene predictions in gff format</li>
                      </ul>
                      </p>
-                     <p>You find an example for AUGUSTUS prediction gff format at the <a href="help.gsp#results_pred">AUGUSTUS prediction tutorial</a>.</p>
+                     <p>You find an example for AUGUSTUS prediction gff format at the <a href="${createLink(uri:'/help#results_pred')}">AUGUSTUS prediction tutorial</a>.</p>
                      <h4>Files that may optionally be contained in gene prediction archives:</h4>
                      <p>
                      <ul>
