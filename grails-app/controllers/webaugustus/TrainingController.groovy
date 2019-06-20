@@ -1315,7 +1315,7 @@ class TrainingController {
                     (0..id_array.groupCount()).each{oldID = "${id_array[0][it]}"}
                     def oldAccScript = new File(projectDir, "oldAcc.sh")
                     def oldAccResult = "${dirName}/oldAcc.result"
-                    cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[4]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
+                    cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[3]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
                     oldAccScript << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "oldAccScript << \"${cmd2Script}\"")
                     cmdStr = "bash ${dirName}/oldAcc.sh"
@@ -1338,7 +1338,7 @@ class TrainingController {
                             body """${msgStr}${footer}"""
                         }
                     }
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldAccContent}. ${dirName} is deleted.")
+                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}. ${dirName} is deleted.")
                     deleteDir()
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Web output directory is deleted")
                     def cmd = ["rm -r ${web_output_dir}/${trainingInstance.accession_id} &> /dev/null"]

@@ -1342,7 +1342,7 @@ class PredictionController {
                 (0..id_array.groupCount()).each{oldID = "${id_array[0][it]}"}
                 def oldAccScript = new File(projectDir, "oldAcc.sh")
                 def oldAccResult = "${dirName}/oldAcc.result"
-                cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[4]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
+                cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[3]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
                 oldAccScript << "${cmd2Script}"
                 Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "oldAccScript << \"${cmd2Script}\"")
                 cmdStr = "bash ${dirName}/oldAcc.sh"
@@ -1365,7 +1365,7 @@ class PredictionController {
                         text """${msgStr}${footer}"""
                     }
                 }
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldAccContent}.")
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}.")
                 deleteDir()
                 logAbort()
                 predictionInstance.results_urls = null
