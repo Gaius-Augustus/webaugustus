@@ -23,6 +23,8 @@ class Training extends AbstractWebAugustusDomainClass {
      * 2 - waiting for execution
      * 3 - computing
      * 4 - finished
+     * 5 - error
+     * 6 - identical job submitted before
      */
     String job_status // SGE job status will be determined by controller
     /**

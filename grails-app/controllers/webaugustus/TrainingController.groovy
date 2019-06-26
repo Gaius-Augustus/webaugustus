@@ -15,8 +15,6 @@ class TrainingController {
     //def output_dir = "/data/www/test"
     // this log File contains the "process log", what was happening with which job when.
     def logFile = new File("${output_dir}/train.log")
-    // this log File contains the "database" (not identical with the grails database and simply for logging purpose)
-    def dbFile = new File("${output_dir}/augustus-database.log")
     // web-output, root directory to the results that are shown to end users
     def web_output_dir = "/data/www/webaugustus/training-results" // must be writable to webserver application 
     def web_output_url = "http://bioinf.uni-greifswald.de/training-results/"
@@ -751,11 +749,11 @@ class TrainingController {
                 Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "committed trainingInstance.id ${trainingInstance.id}")
                 
                 // generate empty results page
-                def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name}  ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
+                def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
                 Utilities.execute(logFile, verb, trainingInstance.accession_id, "emptyPageScript", cmd)
                 trainingInstance.job_status = 0
                 mailStr = "Details of your job:\n\n${confirmationString}\n"
-                trainingInstance.message = "----------------------------------------\n${logDate} - Message:\n"
+                trainingInstance.message = "----------------------------------------\n${today} - Message:\n"
                 trainingInstance.message = "${trainingInstance.message}----------------------------------------\n\n${mailStr}"
                 Utilities.saveDomainWithTransaction(trainingInstance)
                 
@@ -1297,32 +1295,30 @@ class TrainingController {
 
                 // File formats appear to be ok.
                 // check whether this job was submitted before:
-                def grepScript = new File(projectDir, "grepScript.sh")
-                def grepResult = "${dirName}/grep.result"
-                cmd2Script = "grep \"\\(Genome-Cksum: \\[${trainingInstance.genome_cksum}\\] Genome-Filesize: \\[${trainingInstance.genome_size}\\]\\)\" ${dbFile} | grep \"\\(EST-Cksum: \\[${trainingInstance.est_cksum}\\] EST-Filesize: \\[${trainingInstance.est_size}\\]\\)\" | grep \"\\(Protein-Cksum: \\[${trainingInstance.protein_cksum}\\] Protein-Filesize: \\[${trainingInstance.protein_size}\\]\\)\" | grep \"\\(Struct-Cksum: \\[${trainingInstance.struct_cksum}\\]\\)\" > ${grepResult} 2> /dev/null"
-                grepScript << "${cmd2Script}"
-                Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "grepScript << \"${cmd2Script}\"")
-                cmdStr = "bash ${dirName}/grepScript.sh"
-                def grepJob = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
-                grepJob.waitFor()
-                def grepContent = new File("${grepResult}").text
-                if(grepContent =~ /Struct-Cksum/){
+                def Closure findPrediction = { Training.find { // query returns the first matching result
+                        genome_cksum      == trainingInstance.genome_cksum && 
+                        genome_size       == trainingInstance.genome_size && 
+                        est_cksum         == trainingInstance.est_cksum && 
+                        est_size          == trainingInstance.est_size && 
+                        protein_cksum     == trainingInstance.protein_cksum && 
+                        protein_size      == trainingInstance.protein_size && 
+                        struct_cksum      == trainingInstance.struct_cksum
+                        job_status != '6' && // ignore jobs targeted to an identical job
+                        isNull('old_url') && // ignore jobs targeted to an identical job
+                        job_status != '0' && // ignore jobs in prepare state
+                        accession_id != trainingInstance.accession_id // not itself
+                    }
+                }
+                def identicalPrediction = Utilities.executeWithTransaction(trainingInstance, findPrediction)
+
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "identicalPrediction= ${identicalPrediction}")
+
+                if (identicalPrediction != null) {
                     //job was submitted before. Send E-Mail to user with a link to the results.
-                    def id_array = grepContent =~ /Grails-ID: \[(\w*)\] /
+                    def oldAccContent = identicalPrediction.accession_id
                     // oldID is a parameter that is used for showing redirects (see bottom)
-                    def oldID
-                    (0..id_array.groupCount()).each{oldID = "${id_array[0][it]}"}
-                    def oldAccScript = new File(projectDir, "oldAcc.sh")
-                    def oldAccResult = "${dirName}/oldAcc.result"
-                    cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[3]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
-                    oldAccScript << "${cmd2Script}"
-                    Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "oldAccScript << \"${cmd2Script}\"")
-                    cmdStr = "bash ${dirName}/oldAcc.sh"
-                    def oldAccScriptProc = "${cmdStr}".execute()
-                    Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
-                    oldAccScriptProc.waitFor()
-                    def oldAccContent = new File("${oldAccResult}").text
+                    def oldID = identicalPrediction.id
+                    
                     mailStr = "You submitted job ${trainingInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
                     trainingInstance.old_url = "${war_url}training/show/${oldID}"
                     logDate = new Date()
@@ -1345,45 +1341,44 @@ class TrainingController {
                     Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeWeb_output_dir", cmd)
                     logAbort()
                     trainingInstance.results_urls = null
-                    trainingInstance.job_status = 5
+                    trainingInstance.job_status = 6
                     Utilities.saveDomainWithTransaction(trainingInstance)
                     return
                 } // end of job was submitted before check
-                //Write DB file:
-                dbFile << "Date: [${today}] Grails-ID: [${trainingInstance.id}] Accession-ID: [${trainingInstance.accession_id}] Genome-File: [${trainingInstance.genome_file}] Genome-FTP-Link: [${trainingInstance.genome_ftp_link}] Genome-Cksum: [${trainingInstance.genome_cksum}] Genome-Filesize: [${trainingInstance.genome_size}] EST-File: [${trainingInstance.est_file}] EST-FTP-Link: [${trainingInstance.est_ftp_link}] EST-Cksum: [${trainingInstance.est_cksum}] EST-Filesize: [${trainingInstance.est_size}] Protein-File: [${trainingInstance.protein_file}] Protein-FTP-Link: [${trainingInstance.protein_ftp_link}] Protein-Cksum: [${trainingInstance.protein_cksum}] Protein-Filesize: [${trainingInstance.protein_size}] Training-Structure-File: [${trainingInstance.struct_file}] Struct-Cksum: [${trainingInstance.struct_cksum}] Struct-Filesize: [${trainingInstance.struct_size}]\n"
-                //Create a test sge script:
+                
+                //Create a sge script:
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Writing SGE submission script.")
                 def sgeFile = new File(projectDir, "augtrain.sh")
                 // write command in script (according to uploaded files)
                 sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
                 // this has been checked, works.
                 if( estExistsFlag ==1 && proteinExistsFlag == 0 && structureExistsFlag == 0){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --pasa --useGMAPforPASA -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH}  1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --pasa --useGMAPforPASA -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH}  1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                     // this is currently tested
                 }else if(estExistsFlag == 0 && proteinExistsFlag == 0 && structureExistsFlag == 1){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     // this is currently tested
                 }else if(estExistsFlag == 0 && proteinExistsFlag == 1 && structureExistsFlag == 0){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} > ${dirName}/writeResults.log 1 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} > ${dirName}/writeResults.log 1 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                     // all following commands still need testing
                 }else if(estExistsFlag == 1 && proteinExistsFlag == 1 && structureExistsFlag == 0){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                 }else if(estExistsFlag == 1 && proteinExistsFlag == 0 && structureExistsFlag == 1){
-                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --cdna=${dirName}/est.fa --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                 }else if(estExistsFlag == 0 && proteinExistsFlag == 1 && structureExistsFlag == 1){
-                    sgeFile << "echo 'Simultaneous protein and structure file support are currently not implemented. Using the structure file, only.'\n\n${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    sgeFile << "echo 'Simultaneous protein and structure file support are currently not implemented. Using the structure file, only.'\n\n${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                 }else if(estExistsFlag == 1 && proteinExistsFlag == 1 && structureExistsFlag == 1){
-                    cmd2Script = "echo Simultaneous protein and structure file support are currently not implemented.\n\nUsing the structure file, only.'\n\n${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+                    cmd2Script = "echo Simultaneous protein and structure file support are currently not implemented.\n\nUsing the structure file, only.'\n\n${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
                     sgeFile << "${cmd2Script}"
                     Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmd2Script}\"")
                 }else{
@@ -1393,7 +1388,7 @@ class TrainingController {
                 // write submission script
                 def submissionScript = new File(projectDir, "submit.sh")
                 def fileID = "${dirName}/jobID"
-                cmd2Script = "cd ${dirName}; /usr/bin/qsub augtrain.sh > ${fileID} 2> /dev/null"
+                cmd2Script = "cd ${dirName}; qsub augtrain.sh > ${fileID} 2> /dev/null"
                 submissionScript << "${cmd2Script}"
                 Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "submissionScript << \"${cmd2Script}\"")
                 // submit job
@@ -1403,6 +1398,14 @@ class TrainingController {
                 jobSubmission.waitFor()
                 // get job ID
                 content = new File("${fileID}").text
+                if (content.isEmpty()) {
+                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The augustus training job wasn't started")
+                    trainingInstance.results_urls = null
+                    trainingInstance.job_status = 5
+                    Utilities.saveDomainWithTransaction(trainingInstance)
+                    return
+                }
+
                 def jobID_array = content =~/Your job (\d*)/
                 def jobID
                 (1..jobID_array.groupCount()).each{jobID = "${jobID_array[0][it]}"}

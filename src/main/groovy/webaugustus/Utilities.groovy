@@ -181,6 +181,17 @@ class Utilities {
         return returnValue != null;
     }
     
+    /**
+     * execute the specified query
+     * 
+     * @return 
+     */
+    static Object executeWithTransaction(AbstractWebAugustusDomainClass domainclass, Closure query) {
+        return domainclass.withTransaction {
+            query()
+        }
+    }
+    
     
 }
 

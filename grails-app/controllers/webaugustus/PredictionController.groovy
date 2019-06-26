@@ -15,8 +15,6 @@ class PredictionController {
     //    def output_dir = "/data/www/test"
     // this log File contains the "process log", what was happening with which job when.
     def logFile = new File("${output_dir}/pred.log")
-    // this log File contains the "database" (not identical with the grails database and simply for logging purpose)
-    def dbFile = new File("${output_dir}/augustus-pred-database.log")
     // web-output, root directory to the results that are shown to end users
     def web_output_dir = "/data/www/webaugustus/prediction-results" // must be writable to webserver application
     def web_output_url = "http://bioinf.uni-greifswald.de/prediction-results/"
@@ -927,12 +925,11 @@ class PredictionController {
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "committed predictionInstance.id ${predictionInstance.id}")
             
             // generate empty results page
-            def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
+            def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
             Utilities.execute(logFile, verb, predictionInstance.accession_id, "emptyPageScript", cmd)
             predictionInstance.job_status = 0
-            logDate = new Date()
             mailStr = "Details of your job:\n\n${confirmationString}\n"
-            predictionInstance.message = "----------------------------------------\n${logDate} - Message:\n"
+            predictionInstance.message = "----------------------------------------\n${today} - Message:\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n\n${mailStr}"
             Utilities.saveDomainWithTransaction(predictionInstance)
             
@@ -1324,32 +1321,35 @@ class PredictionController {
 
             // File formats appear to be ok.
             // check whether this job was submitted before:
-            def grepScript = new File(projectDir, "grepScript.sh")
-            def grepResult = "${dirName}/grep.result"
-            cmd2Script = "grep \"\\(Genome-Cksum: \\[${predictionInstance.genome_cksum}\\] Genome-Filesize: \\[${predictionInstance.genome_size}\\]\\)\" ${dbFile} | grep \"\\(EST-Cksum: \\[${predictionInstance.est_cksum}\\] EST-Filesize: \\[${predictionInstance.est_size}\\]\\)\" | grep \"\\(Hint-Cksum: \\[${predictionInstance.hint_cksum}\\] Hint-Filesize: \\[${predictionInstance.hint_size}\\] Parameter-String: \\[${predictionInstance.project_id}\\]\\)\" | grep \"\\(Parameter-Cksum: \\[${predictionInstance.archive_cksum}\\] Parameter-Size: \\[${predictionInstance.archive_size}\\] Server-Set-UTR-Flag: \\[${overRideUtrFlag}\\]\\)\" | grep \"\\(Report-Genes: \\[${predictionInstance.pred_strand}\\] Alternative-Transcripts: \\[${predictionInstance.alt_transcripts}\\] Gene-Structures: \\[${predictionInstance.allowed_structures}\\] Ignore-Conflicts: \\[${predictionInstance.ignore_conflicts}\\]\\)\"  > ${grepResult} 2> /dev/null"
-            cmdStr = "bash ${dirName}/grepScript.sh"
-            grepScript << "${cmd2Script}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "grepScript << \"${cmd2Script}\"")
-            def grepJob = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-            grepJob.waitFor()
-            def grepContent = new File("${grepResult}").text
-            if(grepContent =~ /Genome-Cksum/){
+            def Closure findPrediction = { Prediction.find { // query returns the first matching result
+                    project_id          == predictionInstance.project_id && 
+                    genome_cksum        == predictionInstance.genome_cksum && 
+                    genome_size         == predictionInstance.genome_size && 
+                    est_cksum           == predictionInstance.est_cksum && 
+                    est_size            == predictionInstance.est_size && 
+                    hint_cksum          == predictionInstance.hint_cksum && 
+                    hint_size           == predictionInstance.hint_size && 
+                    archive_cksum       == predictionInstance.archive_cksum && 
+                    archive_size        == predictionInstance.archive_size && 
+                    utr                 == predictionInstance.utr &&  // TODO use overRideUtrFlag - but ensure that this value is always written to database
+                    pred_strand         == predictionInstance.pred_strand && 
+                    alt_transcripts     == predictionInstance.alt_transcripts && 
+                    allowed_structures  == predictionInstance.allowed_structures && 
+                    ignore_conflicts    == predictionInstance.ignore_conflicts
+                    job_status != '6' && // ignore jobs targeted to an identical job
+                    isNull('old_url') && // ignore jobs targeted to an identical job
+                    job_status != '0' && // ignore jobs in prepare state
+                    accession_id != predictionInstance.accession_id // not itself
+                }
+            }
+            def identicalPrediction = Utilities.executeWithTransaction(predictionInstance, findPrediction)
+            
+            if (identicalPrediction != null) {
                 //job was submitted before. Send E-Mail to user with a link to the results.
-                def id_array = grepContent =~ /Grails-ID: \[(\w*)\] /
+                def oldAccContent = identicalPrediction.accession_id
                 // oldID is a parameter that is used for showing redirects (see bottom)
-                def oldID
-                (0..id_array.groupCount()).each{oldID = "${id_array[0][it]}"}
-                def oldAccScript = new File(projectDir, "oldAcc.sh")
-                def oldAccResult = "${dirName}/oldAcc.result"
-                cmd2Script = "grep \"Grails-ID: \\[${oldID}\\]\" ${dbFile} | perl -ne \"@t = split(/\\[/); @t2 = split(/\\]/, \\\$t[3]); print \\\$t2[0];\" > ${oldAccResult} 2> /dev/null"
-                oldAccScript << "${cmd2Script}"
-                Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "oldAccScript << \"${cmd2Script}\"")
-                cmdStr = "bash ${dirName}/oldAcc.sh"
-                def oldAccScriptProc = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-                oldAccScriptProc.waitFor()
-                def oldAccContent = new File("${oldAccResult}").text
+                def oldID = identicalPrediction.id
+                
                 mailStr = "You submitted job ${predictionInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
                 predictionInstance.old_url = "${war_url}prediction/show/${oldID}"
                 logDate = new Date()
@@ -1369,13 +1369,10 @@ class PredictionController {
                 deleteDir()
                 logAbort()
                 predictionInstance.results_urls = null
-                predictionInstance.job_status = 5
+                predictionInstance.job_status = 6
                 Utilities.saveDomainWithTransaction(predictionInstance)
                 return
             } // end of job was submitted before check
-
-            //Write DB file:
-            dbFile << "Date: [${today}] Grails-ID: [${predictionInstance.id}] Accession-ID: [${predictionInstance.accession_id}] Genome-File: [${predictionInstance.genome_file}] Genome-FTP-Link: [${predictionInstance.genome_ftp_link}] Genome-Cksum: [${predictionInstance.genome_cksum}] Genome-Filesize: [${predictionInstance.genome_size}] EST-File: [${predictionInstance.est_file}] EST-FTP-Link: [${predictionInstance.est_ftp_link}] EST-Cksum: [${predictionInstance.est_cksum}] EST-Filesize: [${predictionInstance.est_size}] Hint-File: [${predictionInstance.hint_file}] Hint-Cksum: [${predictionInstance.hint_cksum}] Hint-Filesize: [${predictionInstance.hint_size}] Parameter-String: [${predictionInstance.project_id}] Parameter-File: [${predictionInstance.archive_file}] Parameter-Cksum: [${predictionInstance.archive_cksum}] Parameter-Size: [${predictionInstance.archive_size}] Server-Set-UTR-Flag: [${overRideUtrFlag}] User-Set-UTR-Flag: [${predictionInstance.utr}] Report-Genes: [${predictionInstance.pred_strand}] Alternative-Transcripts: [${predictionInstance.alt_transcripts}] Gene-Structures: [${predictionInstance.allowed_structures}] Ignore-Conflicts: [${predictionInstance.ignore_conflicts}]\n"
 
             //rename and move parameters
             if(!uploadedParamArch.empty){
@@ -1412,7 +1409,7 @@ class PredictionController {
             cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/getAnnoFasta.pl --seqfile=${dirName}/genome.fa ${dirName}/augustus/augustus.gff\n"
             cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | perl -ne 'if(m/\\tAUGUSTUS\\t/){print;}' > ${dirName}/augustus/augustus.gtf\n"
             cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | ${AUGUSTUS_SCRIPTS_PATH}/augustus2gbrowse.pl > ${dirName}/augustus/augustus.gbrowse\n"
-            cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null ${dbFile} ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
+            cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
             sgeFile << "${cmdStr}"
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "sgeFile=${cmdStr}")
             // write submission script

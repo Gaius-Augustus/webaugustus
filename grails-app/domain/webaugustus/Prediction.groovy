@@ -38,6 +38,7 @@ class Prediction extends AbstractWebAugustusDomainClass {
      * 3 - computing
      * 4 - finished
      * 5 - error
+     * 6 - identical job submitted before
      */
     String job_status // SGE job status will be determined by controller
     //generate a random (and unique) string for links to results here
