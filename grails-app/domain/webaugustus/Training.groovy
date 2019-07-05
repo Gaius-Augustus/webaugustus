@@ -58,7 +58,7 @@ class Training extends AbstractWebAugustusDomainClass {
     String results_urls
     String message
     String old_url
-    // flags for emtpy fields in form after redirect
+    // flags for emtpy fields in form after redirect - is merely a flag to indicate that a commit wasn't accepted and user was redirected to submission (=create) page
     Boolean warn
     Boolean has_genome_file
     Boolean has_est_file

@@ -112,6 +112,7 @@ dataSource:
     jmxEnabled: true
     driverClassName: com.mysql.jdbc.Driver
     dialect: org.hibernate.dialect.MySQL5InnoDBDialect
+    # adapt to the actual situation
     username: xxx
     password: 'xxx'
 #    logSql: true
@@ -144,6 +145,7 @@ environments:
 
 grails:            
     mail:
+       # adapt to the actual situation
        host: xxx
        port: 587
        username: xxx      

@@ -1,5 +1,7 @@
 package webaugustus
 
+import javax.annotation.PostConstruct
+
 /**
  * The class PredictionController controls everything that is related to submitting a job for predicting genes with pre-trained parameters on a novel genome
  *    - it handles the file upload (or wget)
@@ -10,42 +12,18 @@ package webaugustus
  */
 class PredictionController {
     
-    // need to adjust the output dir to whatever working dir! This is where uploaded files and results will be saved.
-    def output_dir = "/data/www/webaugustus/webdata/augpred" // "data/www/augpred/webdata" // should be something in home of webserver user and augustus frontend user.
-    //    def output_dir = "/data/www/test"
-    // this log File contains the "process log", what was happening with which job when.
-    def logFile = new File("${output_dir}/pred.log")
-    // web-output, root directory to the results that are shown to end users
-    def web_output_dir = "/data/www/webaugustus/prediction-results" // must be writable to webserver application
-    def web_output_url = "http://bioinf.uni-greifswald.de/prediction-results/"
-    def war_url = "http://bioinf.uni-greifswald.de/webaugustus/"
-    def footer = "\n\n------------------------------------------------------------------------------------\nThis is an automatically generated message.\n\nhttp://bioinf.uni-greifswald.de/webaugustus" // footer of e-mail
-    // AUGUSTUS_CONFIG_PATH
-    def AUGUSTUS_CONFIG_PATH = "/usr/share/augustus/config"
-    def AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts"
-    def BLAT_PATH = "/usr/local/bin/blat"
-    // Admin mail for errors
-    def admin_email = "xxx@email.com"
-    // sgeLen length of SGE queue, when is reached "the server is busy" will be displayed
-    def sgeLen = 20;
+    def predictionService // inject the bean
+    // human verification:
+    def simpleCaptchaService
+    
     // max button filesize
     def long maxButtonFileSize = 104857600 // 100 MB = 104857600 bytes getFile etc. gives size in byte
     // max ftp/http filesize
     def long maxFileSizeByWget = 1073741824 // 1 GB = 1073741824 bytes, curl gives size in bytes
-    // EST sequence properties (length)
-    def int estMinLen = 250
-    def int estMaxLen = 20000
-    // logging verbosity-level
-    def verb = 3 // 1 only basic log messages, 2 all issued commands, 3 also script content
-    def cmd2Script
-    def cmdStr
-    def logDate
-    def maxNSeqs = 250000 // maximal number of scaffolds allowed in genome file
+    
     // other variables
     def prokaryotic = false // flag to determine whether augustus should be run in prokaryotic mode
-    // human verification:
-    def simpleCaptchaService
-    
+
     def show() {
         def instance = Prediction.get(params.id)
         if (instance == null) {
@@ -56,15 +34,21 @@ class PredictionController {
     }
     
     def create() {
-         // check whether the server is busy
+        // check whether the server is busy
+        
+        def logFile = predictionService.getLogFile()
+        // logging verbosity-level
+        def logVerb = predictionService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+            
         def processForLog = "SGE         "
         def cmd = ['qstat -u "*" | grep qw | wc -l']
-        def qstatStatusNumber = Utilities.executeForLong(logFile, verb, processForLog, "qstatScript", cmd)
-        
+        def qstatStatusNumber = Utilities.executeForLong(logFile, logVerb, processForLog, "qstatScript", cmd)
+        def sgeLen = PredictionService.getMaxJobsCount()
+
         if(qstatStatusNumber > sgeLen){
             def logMessage = "Somebody tried to invoke the Prediction webserver but the SGE queue was longer "
             logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
-            Utilities.log(logFile, 1, verb, processForLog, logMessage)
+            Utilities.log(logFile, 1, logVerb, processForLog, logMessage)
 
             def m1 = "You tried to access the AUGUSTUS prediction job submission page."
             def m2 = "Predicting genes with AUGUSTUS is a process that takes a lot of computation time. "
@@ -83,6 +67,19 @@ class PredictionController {
 
     // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Prediction Controller and contains a Thread method that will continue running as a background process after the user is redirected to the job status page.
     def commit() {
+        
+        def logFile = predictionService.getLogFile()
+        // logging verbosity-level
+        def verb = predictionService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+        
+        def output_dir = predictionService.getOutputDir()
+        def web_output_dir = predictionService.getWebOutputDir()
+        def web_output_url = predictionService.getWebOutputURL()
+        def war_url = predictionService.getWarURL()
+        
+        def AUGUSTUS_CONFIG_PATH = PredictionService.getAugustusConfigPath()    
+        def AUGUSTUS_SCRIPTS_PATH = PredictionService.getAugustusScriptPath()
+        
         def predictionInstance = new Prediction(params)
         if(!(predictionInstance.id == null)){
             flash.error = "Internal error 2. Please contact augustus-web@uni-greifswald.de if the problem persists!"
@@ -95,114 +92,40 @@ class PredictionController {
         def uploadedParamArch = request.getFile('ArchiveFile')
         def uploadedEstFile = request.getFile('EstFile')
         def uploadedStructFile = request.getFile('HintFile')
-        if(!(uploadedGenomeFile.empty)){
+        predictionInstance.has_genome_file = !uploadedGenomeFile.empty
+        if (predictionInstance.has_genome_file) {
             predictionInstance.genome_file = uploadedGenomeFile.originalFilename
         }
-        if(!(uploadedParamArch.empty)){
+        predictionInstance.has_param_file = !uploadedParamArch.empty
+        if (predictionInstance.has_param_file) {
             predictionInstance.archive_file = uploadedParamArch.originalFilename
         }
-        if(!(uploadedEstFile.empty)){
+        predictionInstance.has_est_file = !uploadedEstFile.empty
+        if (predictionInstance.has_est_file) {
             predictionInstance.est_file = uploadedEstFile.originalFilename
         }
-        if(!(uploadedStructFile.empty)){
+        predictionInstance.has_hint_file = !uploadedStructFile.empty
+        if (predictionInstance.has_hint_file) {
             predictionInstance.hint_file = uploadedStructFile.originalFilename
         }
         predictionInstance.message = ""
         predictionInstance.dateCreated = new Date();
-        predictionInstance.validate()
-        
-        if (predictionInstance.hasErrors()) {
-            render(view:'create', model:[prediction:predictionInstance])
-            return
-        }
         
         // info string for confirmation E-Mail
-        def confirmationString
-        def mailStr
-        confirmationString = "Prediction job ID: ${predictionInstance.accession_id}\n"
+        String confirmationString = "Prediction job ID: ${predictionInstance.accession_id}\n"
         predictionInstance.job_id = 0
         // define flags for file format check, file removal in case of failure
-        def archiveExistsFlag = 0
-        def speciesNameExistsFlag = 0
         def genomeFastaFlag = 0
         def estFastaFlag = 0
         def estExistsFlag = 0
-        def hintGffFlag = 0
         def hintExistsFlag = 0
         def overRideUtrFlag = 0
         // species name for AUGUSTUS
         def species
-        // delProc is needed at many places
-        def delProc
-        def st
-        def content
-        def int error_code
-        def urlExistsScript
-        def sgeErrSize = 10
-        def writeResultsErrSize = 10
-        def msgStr
+        
         // get date
-        def today = new Date()
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "AUGUSTUS prediction webserver starting on ${today}")
-        // get IP-address
-        // String userIP = request.remoteAddr
-        logDate = new Date()
-        //Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "user IP: ${userIP}")
-
-        // flag for redirect to submission form, display warning in appropriate places
-        predictionInstance.warn = true
-        // parameters for redirecting
-        def redirParams=[:]
-        if(predictionInstance.email_adress != null){
-            redirParams["email_adress"]="${predictionInstance.email_adress}"
-        }
-        if(predictionInstance.genome_ftp_link != null){
-            redirParams["genome_ftp_link"]="${predictionInstance.genome_ftp_link}"
-        }
-        if(predictionInstance.est_ftp_link != null){
-            redirParams["est_ftp_link"]="${predictionInstance.est_ftp_link}"
-        }
-        if(predictionInstance.project_id != null){
-            redirParams["project_id"]="${predictionInstance.project_id}"
-        }
-        if(predictionInstance.genome_file != null){
-            redirParams["has_genome_file"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.est_file != null){
-            redirParams["has_est_file"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.archive_file != null){
-            redirParams["has_param_file"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.hint_file != null){
-            redirParams["has_hint_file"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.species_select != "null"){
-            redirParams["has_select"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.utr == true){
-            redirParams["has_utr"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.pred_strand != 1){
-            redirParams["has_strand"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.alt_transcripts != 1){
-            redirParams["has_transcripts"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.allowed_structures != 1){
-            redirParams["has_structures"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.ignore_conflicts == true){
-            redirParams["has_conflicts"]="${predictionInstance.warn}"
-        }
-        if(predictionInstance.agree_email == true){
-            redirParams["agree_email"] = true
-        }
-        if(predictionInstance.agree_nonhuman == true){
-            redirParams["agree_nonhuman"] = true
-        }
-
-        redirParams["warn"]="${predictionInstance.warn}"
+        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "AUGUSTUS prediction webserver starting on ${predictionInstance.dateCreated}")
+        
         // put redirect procedure into a function
         def cleanRedirect = {
             if(predictionInstance.email_adress == null){
@@ -211,7 +134,13 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
             }
             flash.message = "Info: Please check all fields marked in blue for completeness before starting the prediction job!"
-            redirect(action:'create', controller: 'prediction', params:redirParams)
+            if (predictionInstance.species_select != null) {
+                predictionInstance.project_id = null
+            }
+            // flag for redirect to submission form, display warning in appropriate places
+            predictionInstance.warn = true
+       
+            render(view:'create', model:[prediction:predictionInstance])
         }
         // clean up directory (delete) function
         def String dirName = "${output_dir}/${predictionInstance.accession_id}"
@@ -237,6 +166,13 @@ class PredictionController {
             cleanRedirect()
             return
         }
+        
+        predictionInstance.validate()
+        if (predictionInstance.hasErrors()) {
+            cleanRedirect()
+            return
+        }
+        
         // utr checkbox
         if(predictionInstance.utr == true){
             overRideUtrFlag = 1
@@ -271,8 +207,8 @@ class PredictionController {
             def String paramDirName = "${dirName}/params"
             def paramDir = new File(paramDirName)
             paramDir.mkdirs()
-            cmd2Script = "${AUGUSTUS_SCRIPTS_PATH}/checkParamArchive.pl ${dirName}/parameters.tar.gz ${paramDirName} > ${dirName}/archCheck.log 2> ${dirName}/archCheck.err"
-            cmd = ["${cmd2Script}"]
+            def cmdStr = "${AUGUSTUS_SCRIPTS_PATH}/checkParamArchive.pl ${dirName}/parameters.tar.gz ${paramDirName} > ${dirName}/archCheck.log 2> ${dirName}/archCheck.err"
+            cmd = ["${cmdStr}"]
             Utilities.execute(logFile, 3, predictionInstance.accession_id, "checkParamArch", cmd)
             def archCheckLog = new File(projectDir, "archCheck.log")
             def archCheckErr = new File(projectDir, "archCheck.err")
@@ -290,7 +226,6 @@ class PredictionController {
                 overRideUtrFlag = 0 // UTR predictions are now permanently disabled
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR predictions have been disabled because UTR parameters are missing!")
             }
-            archiveExistsFlag = 1
         }else{predictionInstance.archive_file = "empty"}
         // check whether parameters are available for project_id (previous prediction run)
         Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter ID is ${predictionInstance.project_id}")
@@ -304,7 +239,6 @@ class PredictionController {
                 return
             }else{
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Requested ${spec_conf_dir} exists on our system.")
-                speciesNameExistsFlag = 1
                 species = predictionInstance.project_id
             }
             confirmationString = "${confirmationString}AUGUSTUS parameter project identifier: ${predictionInstance.project_id}\n"
@@ -318,25 +252,25 @@ class PredictionController {
             return
         }else if(predictionInstance.archive_file != "empty" && predictionInstance.project_id != null && predictionInstance.species_select != "null"){
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "user specified more than one option for AUGUSTUS parameters")
-            flash.error = "You specified parameters in three different ways. Please decide for on way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
+            flash.error = "You specified parameters in three different ways. Please decide for one way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
             deleteDir()
             cleanRedirect()
             return
         }else if(predictionInstance.archive_file != "empty" && predictionInstance.project_id != null){
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "user specified more than one option for AUGUSTUS parameters")
-            flash.error = "You specified parameters as archive file and as project ID. Please decide for on way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
+            flash.error = "You specified parameters as archive file and as project ID. Please decide for one way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
             deleteDir()
             cleanRedirect()
             return
         }else if(predictionInstance.project_id != null && predictionInstance.species_select != "null"){
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "user specified more than one option for AUGUSTUS parameters")
-            flash.error = "You specified parameters as project ID and by selecting an organism from the dropdown menu. Please decide for on way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
+            flash.error = "You specified parameters as project ID and by selecting an organism from the dropdown menu. Please decide for one way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
             deleteDir()
             cleanRedirect()
             return
         }else if(predictionInstance.archive_file != "empty" && predictionInstance.species_select != "null"){
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "user specified more than one option for AUGUSTUS parameters")
-            flash.error = "You specified parameters as parameter archive and by selecting an organism from the dropdown menu. Please decide for on way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
+            flash.error = "You specified parameters as parameter archive and by selecting an organism from the dropdown menu. Please decide for one way! You need to specify a parameter archive for upload OR enter a project identifier OR select an organism!"
             deleteDir()
             cleanRedirect()
             return
@@ -522,6 +456,7 @@ class PredictionController {
             // check number of scaffolds
             def cmd = ["grep -c '>' ${dirName}/genome.fa"]
             def nSeqNumber = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "nSeqFile", cmd)
+            int maxNSeqs = PredictionService.getMaxNSeqs()
             if(nSeqNumber > maxNSeqs){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.")
                 deleteDir()
@@ -570,7 +505,7 @@ class PredictionController {
 
             // check whether URL exists
             def cmd = ['curl', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.genome_ftp_link]
-            error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
+            int error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
             if(!(error_code == 200) && !(error_code == 302)){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome URL is not accessible. Response code: ${error_code}.")
                 deleteDir()
@@ -694,7 +629,7 @@ class PredictionController {
 
             // check whether URL exists
             def cmd = ['curl', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.est_ftp_link]
-            error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
+            int error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
             if(!(error_code == 200) && !(error_code == 302)){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST URL is not accessible. Response code: ${error_code}.")
                 deleteDir()
@@ -831,7 +766,6 @@ class PredictionController {
             predictionInstance.hint_size = uploadedStructFile.size
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "hints.gff is ${predictionInstance.hint_size} big and has a cksum of ${predictionInstance.hint_cksum}.")
         }
-        def radioParameterString
         confirmationString = "${confirmationString}User set UTR prediction: ${predictionInstance.utr}\n"
         // utr
         // check whether utr parameters actually exist:
@@ -842,66 +776,49 @@ class PredictionController {
         }
         // enable or disable utr prediction in AUGUSTUS command
         if(overRideUtrFlag==1){
-            if(predictionInstance.allowed_structures == 1 || predictionInstance.allowed_structures == 2){
-                radioParameterString = " --UTR=on"
-            }else{
-                radioParameterString = " --UTR=off"
+            if(predictionInstance.allowed_structures != 1 && predictionInstance.allowed_structures != 2){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR prediction was disabled due to incompatibility with at least one or exactly one gene predcition")
                 overRideUtrFlag = 0;
             }
         }else if(overRideUtrFlag==0 && predictionInstance.utr == true){
             confirmationString = "${confirmationString}Server set UTR prediction: false [UTR parameters missing or conflict with allowed gene structure!]\n"
-            radioParameterString = " --UTR=off"
-        }else{
-            radioParameterString = " --UTR=off"
         }
         // strand prediction radio buttons
         if(predictionInstance.pred_strand == 1){
-            radioParameterString = "${radioParameterString} --strand=both"
             confirmationString = "${confirmationString}Report genes on: both strands\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction on both strands.")
         }else if(predictionInstance.pred_strand == 2){
             confirmationString = "${confirmationString}Report genes on: forward strand only\n"
-            radioParameterString = "${radioParameterString} --strand=forward"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction on forward strand, only.")
         }else{
             confirmationString = "${confirmationString}Report genes on: reverse strand only\n"
-            radioParameterString = "${radioParameterString} --strand=backward"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction on reverse strand, only.")
         }
         // alternative transcript radio buttons
         if(predictionInstance.alt_transcripts == 1){
-            radioParameterString = "${radioParameterString} --sample=100 --keep_viterbi=true --alternatives-from-sampling=false"
             confirmationString = "${confirmationString}Alternative transcripts: none\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User disabled prediction of alternative transcripts.")
         }else if(predictionInstance.alt_transcripts == 2){
-            radioParameterString = "${radioParameterString} --sample=100 --keep_viterbi=true --alternatives-from-sampling=true --minexonintronprob=0.2 --minmeanexonintronprob=0.5 --maxtracks=2"
             confirmationString = "${confirmationString}Alternative transcripts: few\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction of few alternative transcripts.")
         }else if(predictionInstance.alt_transcripts == 3){
-            radioParameterString = "${radioParameterString} --sample=100 --keep_viterbi=true --alternatives-from-sampling=true --minexonintronprob=0.08 --minmeanexonintronprob=0.4 --maxtracks=3"
             confirmationString = "${confirmationString}Alternative transcripts: medium\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction of medium alternative transcripts.")
         }else{
-            radioParameterString = "${radioParameterString} --sample=100 --keep_viterbi=true --alternatives-from-sampling=true --minexonintronprob=0.08 --minmeanexonintronprob=0.3 --maxtracks=20"
             confirmationString = "${confirmationString}Alternative transcripts: many\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled prediction of many alternative transcripts.")
         }
         // gene structure radio buttons
         if(predictionInstance.allowed_structures == 1){
-            radioParameterString = "${radioParameterString} --genemodel=partial"
             confirmationString = "${confirmationString}Allowed gene structure: predict any number of (possibly partial) genes\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled the prediction of any number of genes.")
         }else if(predictionInstance.allowed_structures == 2){
-            radioParameterString = "${radioParameterString} --genemodel=complete"
             confirmationString = "${confirmationString}Allowed gene structure: only predict complete genes\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User disabled the prediction of incomplete genes.")
         }else if(predictionInstance.allowed_structures == 3){
-            radioParameterString = "${radioParameterString} --genemodel=atleastone"
             confirmationString = "${confirmationString}Allowed gene structure: only predict complete genes - at least one\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User disabled the prediction of incomplete genes and insists on at least one predicted gene.")
         }else{
-            radioParameterString = "${radioParameterString} --genemodel=exactlyone"
             confirmationString = "${confirmationString}Allowed gene structure: predict exactly one gene\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled the prediction of exactly one gene.")
         }
@@ -909,7 +826,6 @@ class PredictionController {
         if(predictionInstance.ignore_conflicts == false){
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User did not enable to ignore strand conflicts.")
         }else{
-            radioParameterString = "${radioParameterString} --strand=both"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled to ignore strand conflicts.")
         }
         confirmationString = "${confirmationString}Ignore conflictes with other strand: ${predictionInstance.ignore_conflicts}\n"
@@ -925,690 +841,34 @@ class PredictionController {
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "committed predictionInstance.id ${predictionInstance.id}")
             
             // generate empty results page
-            def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
+            def cmd = ["${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${predictionInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 0 &> /dev/null"]
             Utilities.execute(logFile, verb, predictionInstance.accession_id, "emptyPageScript", cmd)
+            predictionInstance.warn = false
             predictionInstance.job_status = 0
-            mailStr = "Details of your job:\n\n${confirmationString}\n"
-            predictionInstance.message = "----------------------------------------\n${today} - Message:\n"
+            String mailStr = "Details of your job:\n\n${confirmationString}\n"
+            predictionInstance.message = "----------------------------------------\n${predictionInstance.dateCreated} - Message:\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n\n${mailStr}"
             Utilities.saveDomainWithTransaction(predictionInstance)
             
             if(predictionInstance.email_adress != null){
-                msgStr = "Hello!\n\n"
-                msgStr = "${msgStr}Thank you for submitting the AUGUSTUS gene prediction "
+                String msgStr = "Thank you for submitting the AUGUSTUS gene prediction "
                 msgStr = "${msgStr}job ${predictionInstance.accession_id}.\n\n"
                 msgStr = "${msgStr}${mailStr}The status/results page of your job is "
                 msgStr = "${msgStr}${war_url}prediction/show/${predictionInstance.id}.\n\n"
-                msgStr = "${msgStr}You will be notified via email when the job has finished.\n\nBest regards,\n\n"
-                msgStr = "${msgStr}the AUGUSTUS web server team"
-                sendMail {
-                    to "${predictionInstance.email_adress}"
-                    subject "AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                    text """${msgStr}${footer}"""
-                }
+                msgStr = "${msgStr}You will be notified via email when the job has finished.\n\n"
+                predictionService.sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
+                
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Confirmation e-mail sent.")
             }else{
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Did not send confirmation e-mail because user stays anonymous, but everything is ok.")
             }
+            predictionService.startWorkerThread()
             redirect(action:'show', controller: 'prediction', id: predictionInstance.id)
         } else {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "An error occurred in the predictionInstance (e.g. E-Mail missing, see domain restrictions).")
             deleteDir()
             logAbort()
             render(view:'create', model:[prediction:predictionInstance])
-            return
         }
-
-        //---------------------  BACKGROUND PROCESS ----------------------------
-        Thread.start{
-            // retrieve genome file
-            if(!(predictionInstance.genome_ftp_link == null)){
-                projectDir.mkdirs()
-
-                def cmd = ["wget -O ${dirName}/genome.fa ${predictionInstance.genome_ftp_link}  &> /dev/null"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "getGenomeScript", cmd)
-
-                if("${predictionInstance.genome_ftp_link}" =~ /\.gz/){
-                    cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                    Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipGenomeScript", cmd)
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Unpacked genome file.")
-                }
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
-                // check number of scaffolds (to avoid Java heapspace error in the next step)
-                cmd = ["grep -c '>' ${dirName}/genome.fa"]
-                def nSeqNumber = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "nSeqFile", cmd)
-                if(nSeqNumber > maxNSeqs){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
-                    deleteDir()
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds). This is not allowed!\n\n"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}-----------------------------"
-                    predictionInstance.message = "${predictionInstance.message}-----------------\n${logDate}"
-                    predictionInstance.message = "${predictionInstance.message} - Error Message:\n-----------"
-                    predictionInstance.message = "${predictionInstance.message}-----------------------------"
-                    predictionInstance.message = "${predictionInstance.message}------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-                        msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS webserver team"
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-
-                // check for fasta format & get seq names for gff validation:
-                def metacharacterFlag = 0
-                new File(projectDir, "genome.fa").eachLine{line ->
-                    if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = 1
-                    }else{
-                        if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){ genomeFastaFlag = 1 }
-                        if(line =~ /^>/){
-                            def len = line.length()
-                            seqNames << line[1..(len-1)]
-                        }
-                    }
-                }
-                if(metacharacterFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
-                    deleteDir()
-                    logDate = new Date()
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------"
-                    predictionInstance.message = "${predictionInstance.message}------------------\n${logDate}"
-                    predictionInstance.message = "${predictionInstance.message} - Error Message:\n----------"
-                    predictionInstance.message = "${predictionInstance.message}------------------------------"
-                    predictionInstance.message = "------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-                        msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-                if(genomeFastaFlag == 1) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file was not fasta.")
-                    deleteDir()
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided genome file ${predictionInstance.genome_ftp_link} was not in DNA fasta format.\n\n"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress == null){
-                        msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-                // check gff format
-                def gffColErrorFlag = 0
-                def gffNameErrorFlag = 0
-                def gffSourceErrorFlag = 0
-                if((!uploadedStructFile.empty) &&(!(predictionInstance.genome_ftp_link == null))){ // if seqNames already exists
-                    // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
-                    def gffArray
-                    def isElement
-                    metacharacterFlag = 0
-                    new File(projectDir, "hints.gff").eachLine{line ->
-                        if(line =~ /\*/ || line =~ /\?/){
-                            metacharacterFlag = 1
-                        }else{
-
-
-
-                            gffArray = line.split("\t")
-                            if(!(gffArray.size() == 9)){
-                                gffColErrorFlag = 1
-                            }else{
-                                isElement = 0
-                                seqNames.each{ seq ->
-                                    if(seq =~ /${gffArray[0]}/){ isElement = 1 }
-                                    if(isElement == 0){ gffNameErrorFlag = 1 }
-                                    if(!("${gffArray[8]}" =~ /source=M/)){gffSourceErrorFlag = 1}
-                                }
-                            }
-                        }
-                    }
-                    if(metacharacterFlag == 1){
-                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).");
-                        deleteDir()
-                        logDate = new Date()
-                        mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                        logDate = new Date()
-                        predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        if(predictionInstance.email_adress != null){
-                            msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                            sendMail {
-                                to "${predictionInstance.email_adress}"
-                                subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                                text """${msgStr}${footer}"""
-                            }
-                        }
-                        predictionInstance.results_urls = null
-                        predictionInstance.job_status = 5
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        return
-                    }
-                    if(gffColErrorFlag == 1){
-                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file does not always contain 9 columns.")
-                        mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\n${predictionInstance.hint_file}\ndid not contain 9 columns in each line. Please make sure the gff-format complies\nwith the instructions in our 'Help' section before submitting another job!\n\n"
-                        logDate = new Date()
-                        predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        if(predictionInstance.email_adress != null){
-                            msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                            sendMail {
-                                to "${predictionInstance.email_adress}"
-                                subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                                text """${msgStr}${footer}"""
-                            }
-                        }
-                    }
-                    if(gffNameErrorFlag == 1){
-                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file contains entries that do not comply with genome sequence names.")
-                        mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequence names in\nthe provided hints file\n${predictionInstance.hint_file}\ndid not comply with the sequence names in the supplied genome file\n${predictionInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
-                        logDate = new Date()
-                        predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        if(predictionInstance.email_adress != null){
-                            msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                            sendMail {
-                                to "${predictionInstance.email_adress}"
-                                subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                                text """${msgStr}${footer}"""
-                            }
-                        }
-                    }
-                    if(gffSourceErrorFlag ==1){
-                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file contains entries that do not have source=M in the last column.")
-                        mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the last column of your\nhints file\n${predictionInstance.hint_file}\ndoes not contain the content source=M. Please make sure the gff-format complies with\nthe instructions in our 'Help' section before submitting another job!\n\n"
-                        logDate = new Date()
-                        predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        if(predictionInstance.email_adress != null){
-                            msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                            sendMail {
-                                to "${predictionInstance.email_adress}"
-                                subject "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                                text """${msgStr}${footer}"""
-                            }
-                        }
-                    }
-                    if((gffColErrorFlag == 1 || gffNameErrorFlag == 1 || gffSourceErrorFlag ==1)){
-                        deleteDir()
-                        logAbort()
-                        predictionInstance.results_urls = null
-                        predictionInstance.job_status = 5
-                        Utilities.saveDomainWithTransaction(predictionInstance)
-                        return
-                    }
-                }
-
-                cmd = ["cksum ${dirName}/genome.fa"]
-                predictionInstance.genome_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
-                predictionInstance.genome_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome.fa is ${predictionInstance.genome_size} big and has a cksum of ${predictionInstance.genome_cksum}.")
-            } // end of if(!(predictionInstance.genome_ftp_link == null))
-
-            // retrieve EST file
-            if(!(predictionInstance.est_ftp_link == null)){
-
-                def cmd = ["wget -O ${dirName}/est.fa ${predictionInstance.est_ftp_link}  &> /dev/null"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "getEstScript", cmd)
-
-                if("${predictionInstance.est_ftp_link}" =~ /\.gz/){
-                    cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                    Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipEstScript", cmd)
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Unpacked EST file.")
-                }
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
-                // check for fasta format:
-                def metacharacterFlag = 0
-                new File(projectDir, "est.fa").eachLine{line ->
-                    if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = 1
-                    }else{
-                        if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){
-                            estFastaFlag = 1
-                        }
-                    }
-                }
-                if(metacharacterFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
-                    deleteDir()
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-                        msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-                if(estFastaFlag == 1) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
-                    deleteDir()
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-                        msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-
-                cmd = ["cksum ${dirName}/est.fa"]
-                predictionInstance.est_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
-                predictionInstance.est_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
-            } // end of if(!(predictionInstance.est_ftp_link == null))
-
-            // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
-            def int nEntries = 0
-            def int totalLen = 0
-            if(estExistsFlag == 1){
-                new File(projectDir, "est.fa").eachLine{line ->
-                    if(line =~ /^>/){
-                        nEntries = nEntries + 1
-                    }else{
-                        totalLen = totalLen + line.size()
-                    }
-                }
-                def avEstLen = totalLen/nEntries
-                if(avEstLen < estMinLen){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might contain RNAseq\nraw sequences. Currently, our web server application does not support the integration\nof RNAseq raw sequences. Please either assemble your sequences into longer contigs,\nor remove short sequences from your current file, or submit a new job without\nspecifying a cDNA file.\n\n"
-                    def errorStrMsg = "Hello!\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${errorStrMsg}${footer}"""
-                        }
-                    }
-                    deleteDir()
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }else if(avEstLen > estMaxLen){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
-                    logAbort()
-                    mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequence\nfiles with an average sequence length longer than ${estMaxLen} might not contain\nESTs or cDNAs. Please either remove long sequences from your current file, or\nsubmit a new job without specifying a cDNA file.\n\n"
-                    def errorStrMsg = "Hello!\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                    logDate = new Date()
-                    predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    if(predictionInstance.email_adress != null){
-                        sendMail {
-                            to "${predictionInstance.email_adress}"
-                            subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted"
-                            text """${errorStrMsg}${footer}"""
-                        }
-                    }
-                    deleteDir()
-                    predictionInstance.results_urls = null
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                    return
-                }
-            }
-
-            // confirm file upload via e-mail
-            if((!(predictionInstance.genome_ftp_link == null)) || (!(predictionInstance.est_ftp_link == null))){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Retrieved all ftp files successfully.")
-                mailStr = "We have retrieved all files that you specified, successfully. You may delete them\nfrom the public server, now, without affecting the AUGUSTUS prediction job.\n\n"
-                logDate = new Date()
-                predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                if(predictionInstance.email_adress != null){
-                    msgStr = "Hello!\n\n${mailStr}Best regards,\n\nthe AUGUSTUS web server team"
-                    sendMail {
-                        to "${predictionInstance.email_adress}"
-                        subject "File upload has been completed for AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                        text """${msgStr}${footer}"""
-                    }
-                }
-            }
-
-            // File formats appear to be ok.
-            // check whether this job was submitted before:
-            def Closure findPrediction = { Prediction.find { // query returns the first matching result
-                    project_id          == predictionInstance.project_id && 
-                    genome_cksum        == predictionInstance.genome_cksum && 
-                    genome_size         == predictionInstance.genome_size && 
-                    est_cksum           == predictionInstance.est_cksum && 
-                    est_size            == predictionInstance.est_size && 
-                    hint_cksum          == predictionInstance.hint_cksum && 
-                    hint_size           == predictionInstance.hint_size && 
-                    archive_cksum       == predictionInstance.archive_cksum && 
-                    archive_size        == predictionInstance.archive_size && 
-                    utr                 == predictionInstance.utr &&  // TODO use overRideUtrFlag - but ensure that this value is always written to database
-                    pred_strand         == predictionInstance.pred_strand && 
-                    alt_transcripts     == predictionInstance.alt_transcripts && 
-                    allowed_structures  == predictionInstance.allowed_structures && 
-                    ignore_conflicts    == predictionInstance.ignore_conflicts
-                    job_status != '6' && // ignore jobs targeted to an identical job
-                    isNull('old_url') && // ignore jobs targeted to an identical job
-                    job_status != '0' && // ignore jobs in prepare state
-                    accession_id != predictionInstance.accession_id // not itself
-                }
-            }
-            def identicalPrediction = Utilities.executeWithTransaction(predictionInstance, findPrediction)
-            
-            if (identicalPrediction != null) {
-                //job was submitted before. Send E-Mail to user with a link to the results.
-                def oldAccContent = identicalPrediction.accession_id
-                // oldID is a parameter that is used for showing redirects (see bottom)
-                def oldID = identicalPrediction.id
-                
-                mailStr = "You submitted job ${predictionInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
-                predictionInstance.old_url = "${war_url}prediction/show/${oldID}"
-                logDate = new Date()
-                predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                if(predictionInstance.email_adress != null){
-                    msgStr = "Hello!\n\n${mailStr}The old job with identical input files and identical parameters"
-                    msgStr = "${msgStr} is available at\n${war_url}prediction/show/${oldID}.\n\nBest regards,\n\n"
-                    msgStr = "${msgStr}the AUGUSTUS web server team"
-                    sendMail {
-                        to "${predictionInstance.email_adress}"
-                        subject "AUGUSTUS prediction job ${predictionInstance.accession_id} was submitted before as job ${oldAccContent}"
-                        text """${msgStr}${footer}"""
-                    }
-                }
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}.")
-                deleteDir()
-                logAbort()
-                predictionInstance.results_urls = null
-                predictionInstance.job_status = 6
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                return
-            } // end of job was submitted before check
-
-            //rename and move parameters
-            if(!uploadedParamArch.empty){
-                def mvParamsScript = new File(projectDir, "mvParams.sh")
-                cmd2Script = "${AUGUSTUS_SCRIPTS_PATH}/moveParameters.pl ${dirName}/params ${predictionInstance.accession_id} ${AUGUSTUS_CONFIG_PATH}/species 2> /dev/null\n"
-                mvParamsScript << "${cmd2Script}"
-                Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "mvParamsScript << \"${cmd2Script}\"")
-                cmdStr = "bash ${mvParamsScript}"
-                def mvParamsRunning = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-                mvParamsRunning.waitFor()
-                species = "${predictionInstance.accession_id}"
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Moved uploaded parameters and renamed species to ${predictionInstance.accession_id}")
-            }
-            //Create sge script:
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Writing SGE submission script.")
-            def sgeFile = new File(projectDir, "aug-pred.sh")
-            // write command in script (according to uploaded files)
-            sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
-            def cmdStr = "mkdir ${dirName}/augustus\n"
-            if(estExistsFlag == 1){
-                cmdStr = "${cmdStr}${BLAT_PATH} -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
-                cmdStr = "${cmdStr}cat ${dirName}/est.psl | sort -n -k 16,16 | sort -s -k 14,14 > ${dirName}/est.s.psl\n"
-                cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/blat2hints.pl --in=${dirName}/est.s.psl --out=${dirName}/est.hints --source=E\n"
-                cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/blat2gbrowse.pl ${dirName}/est.s.psl ${dirName}/est.gbrowse\n"
-            }
-            if(hintExistsFlag == 1){
-                cmdStr = "${cmdStr}cat ${dirName}/hints.gff >> ${dirName}/est.hints\n"
-            }
-            if((hintExistsFlag == 1) || (estExistsFlag == 1)){
-                radioParameterString = "${radioParameterString} --hintsfile=${dirName}/est.hints --extrinsicCfgFile=${AUGUSTUS_CONFIG_PATH}/extrinsic/extrinsic.ME.cfg"
-            }
-            cmdStr = "${cmdStr}cd ${dirName}/augustus\naugustus --species=${species} ${radioParameterString} ${dirName}/genome.fa --codingseq=on --exonnames=on > ${dirName}/augustus/augustus.gff\n"
-            cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/getAnnoFasta.pl --seqfile=${dirName}/genome.fa ${dirName}/augustus/augustus.gff\n"
-            cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | perl -ne 'if(m/\\tAUGUSTUS\\t/){print;}' > ${dirName}/augustus/augustus.gtf\n"
-            cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | ${AUGUSTUS_SCRIPTS_PATH}/augustus2gbrowse.pl > ${dirName}/augustus/augustus.gbrowse\n"
-            cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${today}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
-            sgeFile << "${cmdStr}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "sgeFile=${cmdStr}")
-            // write submission script
-            def submissionScript = new File(projectDir, "submit.sh")
-            def fileID = "${dirName}/jobID"
-            cmd2Script = "cd ${dirName}; qsub aug-pred.sh > ${fileID} 2> /dev/null"
-            submissionScript << "${cmd2Script}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "submissionScript << \"${cmd2Script}\"")
-            // submit job
-            cmdStr = "bash ${dirName}/submit.sh"
-            def jobSubmission = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-            jobSubmission.waitFor()
-            // get job ID
-            content = new File(fileID).text
-            if (content.isEmpty()) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The augustus job wasn't started")
-                predictionInstance.results_urls = null
-                predictionInstance.job_status = 5
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                return
-            }
-
-            def jobID_array = content =~/Your job (\d*)/
-            def jobID
-            (1..jobID_array.groupCount()).each{jobID = "${jobID_array[0][it]}"}
-            predictionInstance.job_id = jobID
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} submitted.")
-            // check for job status
-            predictionInstance.job_status = 1 // submitted
-            Utilities.saveDomainWithTransaction(predictionInstance)
-            def statusScript = new File(projectDir, "status.sh")
-            def statusFile = "${dirName}/job.status"
-            cmd2Script = "cd ${dirName}; qstat -u \"*\" | grep aug-pred | grep ${jobID} > ${statusFile} 2> /dev/null"
-            statusScript << "${cmd2Script}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "statusScript << \"${cmd2Script}\"")
-            def statusContent
-            def statusCheck
-            def qstat = 1
-            def runFlag = 0;
-
-            while(qstat == 1){
-                sleep(300000) // 300000 = 5 minutes
-                cmdStr = "bash ${dirName}/status.sh"
-                statusCheck = "${cmdStr}".execute()
-                statusCheck.waitFor()
-                sleep(100)
-                statusContent = new File("${statusFile}").text
-                if(statusContent =~ /qw/){
-                    predictionInstance.job_status = 2
-                }else if( statusContent =~ /  r  / ){
-                    predictionInstance.job_status = 3
-                    if(runFlag == 0){
-                        today = new Date()
-                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} begins running at ${today}.")
-                    }
-                    runFlag = 1
-                }else if(!statusContent.empty){
-                    predictionInstance.job_status = 3
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} is neither in qw nor in r status but is still on the grid!")
-                }else{
-                    predictionInstance.job_status = 4
-                    qstat = 0
-                    today = new Date()
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} left SGE at ${today}.")
-                }
-                Utilities.saveDomainWithTransaction(predictionInstance)
-            }
-            // set file rigths to readable by others
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "set file permissions on ${web_output_dir}/${predictionInstance.accession_id}")
-            def webOutputDir = new File(web_output_dir, predictionInstance.accession_id)
-            if (webOutputDir.exists()) {
-                webOutputDir.setReadable(true, false)
-                webOutputDir.setExecutable(true, false);
-                webOutputDir.eachFile { file -> file.setReadable(true, false) } // actually just predictions.tar.gz
-            }
-            // collect results link information
-            if(new File("${web_output_dir}/${predictionInstance.accession_id}/predictions.tar.gz").exists()){
-                predictionInstance.results_urls = "<p><b>Prediction archive</b>&nbsp;&nbsp;<a href=\"${web_output_url}${predictionInstance.accession_id}/predictions.tar.gz\">predictions.tar.gz</a><br></p>"
-                Utilities.saveDomainWithTransaction(predictionInstance)
-            }
-            // check whether errors occured by log-file-sizes
-            if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
-                sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
-            }else{
-                sgeErrSize = 10
-                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
-            }
-            if(new File(projectDir, "writeResults.err").exists()){
-                writeResultsErrSize = new File(projectDir, "writeResults.err").size()
-            }else{
-                writeResultsErrSize = 10
-                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "writeResultsErr was not created. Setting size to default value 10.")
-            }
-            if(sgeErrSize==0 && writeResultsErrSize==0){
-                mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} finished.\n\n"
-                logDate = new Date()
-                predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${logDate} - Message:\n----------------------------------------\n\n${mailStr}"
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                if(predictionInstance.email_adress == null){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail adress was supplied.")
-                }
-                if(predictionInstance.email_adress != null){
-                    msgStr = "Hello!\n\n${mailStr}You find the results at "
-                    msgStr = "${msgStr}${war_url}prediction/show/${predictionInstance.id}.\n\nBest regards,\n\n"
-                    msgStr = "${msgStr}the AUGUSTUS web server team"
-                    sendMail {
-                        to "${predictionInstance.email_adress}"
-                        subject "AUGUSTUS prediction job ${predictionInstance.accession_id} is complete"
-                        text """${msgStr}${footer}"""
-                    }
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
-                }
-                // unpack with 7z x XA2Y5VMJ.tar.7z
-                // tar xvf XA2Y5VMJ.tar
-                def packResults = new File("${output_dir}/pack${predictionInstance.accession_id}.sh")
-                cmd2Script = "cd ${output_dir}; tar -czvf ${predictionInstance.accession_id}.tar.gz ${predictionInstance.accession_id} &> /dev/null"
-                packResults << "${cmd2Script}"
-                Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "packResults << \"${cmd2Script}\"")
-                //packResults << "cd ${output_dir}; tar cf - ${predictionInstance.accession_id} | 7z a -si ${predictionInstance.accession_id}.tar.7z; rm -r ${predictionInstance.accession_id};"
-                cmdStr = "bash ${output_dir}/pack${predictionInstance.accession_id}.sh"
-                def cleanUp = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-                cleanUp.waitFor()
-                cmdStr = "rm ${output_dir}/pack${predictionInstance.accession_id}.sh &> /dev/null"
-                cleanUp = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-                deleteDir()
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "job directory was packed with tar/gz.")
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job completed. Result: ok.")
-            }else{
-                if(sgeErrSize > 0){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "a SGE error occured!");
-                    msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
-                    //msgStr = "${msgStr}IP: ${userIP}\n"
-                    //msgStr = "${msgStr}E-Mail: ${predictionInstance.email_adress}\n"
-                    msgStr = "${msgStr}Link: ${war_url}prediction/show/${predictionInstance.id}\n\n"
-                    msgStr = "${msgStr}An SGE error occured. Please check manually what's wrong. "
-                    if(predictionInstance.email_adress == null){
-                        msgStr = "${msgStr}The user has not been informed."
-                        sendMail {
-                            to "${admin_email}"
-                            subject "Error in AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                            text """${msgStr}${footer}"""
-                        }
-                    }else{
-                        msgStr = "${msgStr}The user has been informed."
-                        sendMail {
-                            to "${admin_email}"
-                            subject "Error in AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                }else{
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "an error occured during writing results!");
-                    msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
-                    //msgStr = "${msgStr}IP: ${userIP}\n"
-                    //msgStr = "${msgStr}E-Mail: ${predictionInstance.email_adress}\n"
-                    msgStr = "${msgStr}Link: ${war_url}prediction/show/${predictionInstance.id}\n\n"
-                    msgStr = "${msgStr}An error occured during writing results.. Please check manually what's wrong. "
-                    if(predictionInstance.email_adress == null){
-                        msgStr = "${msgStr} The user has not been informed."
-                        sendMail {
-                            to "${admin_email}"
-                            subject "Error in AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                            text """${msgStr}${footer}"""
-                        }
-                    }else{
-                        msgStr = "${msgStr} The user has been informed."
-                        sendMail {
-                            to "${admin_email}"
-                            subject "Error in AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                            text """${msgStr}${footer}"""
-                        }
-                    }
-                    predictionInstance.job_status = 5
-                    Utilities.saveDomainWithTransaction(predictionInstance)
-                }
-                mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
-                logDate = new Date()
-                predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${logDate} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact augustus-web@uni-greifswald.de if you want to find out what went wrong.\n\n"
-                Utilities.saveDomainWithTransaction(predictionInstance)
-                if(predictionInstance.email_adress == null){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email adress was supplied.")
-                }else{
-                    msgStr = "Hello!\n\n${mailStr}The administrator of the AUGUSTUS web server has been informed and"
-                    msgStr = "${msgStr} will get back to you as soon as the problem is solved.\n\nBest regards,\n\n"
-                    msgStr = "${msgStr}the AUGUSTUS web server team"
-                    sendMail {
-                        to "${predictionInstance.email_adress}"
-                        subject "An error occured while executing AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                        text """${msgStr}${footer}"""
-                    }
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
-                }
-            }
-        }
-        //------------ END BACKGROUND PROCESS ----------------------------------
     }// end of commit
 } // end of Controller

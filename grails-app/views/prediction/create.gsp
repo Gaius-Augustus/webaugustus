@@ -51,7 +51,7 @@
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'email_adress','errors')}">
                                        <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:prediction,field:'email_adress')}"/> &nbsp;
-                                       <g:checkBox name="agree_email" value="${prediction.agree_email}" />
+                                       <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
                                        &nbsp;If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted. <a href="${createLink(uri:'/help#email')}"><small>Help</small></a>
                                     </td>
                                  </tr>
@@ -103,9 +103,6 @@
                                        <label for="project_id">select an organism:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'species_select','errors')}">
-                                       <g:if test="${prediction?.has_select == true}">
-                                          <div class="prop_warn">
-                                       </g:if>
                                        <g:select name="species_select" from="${[
                                           'Acyrthosiphon pisum (animal)', 
                                           'Aedes aegypti (animal)', 
@@ -173,7 +170,6 @@
                                           ]}" 
                                           value="${fieldValue(bean:prediction,field:'species_select')}" noSelection="${['null':'Select One...']}"/>
                                        <a href="${createLink(uri:'/help#project_id')}"><small>Help</small></a>
-                                       <g:if test="${prediction?.has_select == true}"></div></g:if>
                                     </td>
                                  </tr>
                               </tbody>
@@ -282,11 +278,7 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:if test="${prediction?.has_utr == true}">
-                                          <div class="prop_warn">
-                                       </g:if>
-                                       <g:checkBox name="utr" value="${false}" /> predict UTRs (requires species-specific UTR parameters)
-                                       <g:if test="${prediction?.has_utr == true}"></div></g:if>
+                                       <g:checkBox name="utr" value="${prediction?.utr}" /> predict UTRs (requires species-specific UTR parameters)
                                     </td>
                                  </tr>
                                  <tr class="prop">
@@ -296,11 +288,9 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:if test="${prediction?.has_strand == true}">
-                                          <div class="prop_warn">
-                                       </g:if>
-                                       <g:radio name="pred_strand" value="1" checked="true"/> both strands  &nbsp; &nbsp; <g:radio name="pred_strand" value="2"/> forward strand only &nbsp; &nbsp; <g:radio name="pred_strand" value="3"/> reverse strand only
-                                       <g:if test="${prediction?.has_strand == true}"></div></g:if>
+                                       <g:radio name="pred_strand" value="1" checked="${prediction?.pred_strand == 1}"/> both strands  &nbsp; &nbsp; 
+                                       <g:radio name="pred_strand" value="2" checked="${prediction?.pred_strand == 2}"/> forward strand only &nbsp; &nbsp; 
+                                       <g:radio name="pred_strand" value="3" checked="${prediction?.pred_strand == 3}"/> reverse strand only
                                     </td>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -309,13 +299,13 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:radio name="alt_transcripts" value="1" checked="true"/>
+                                       <g:radio name="alt_transcripts" value="1" checked="${prediction?.alt_transcripts == 1}"/>
                                        none  &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="2"/>
+                                       <g:radio name="alt_transcripts" value="2" checked="${prediction?.alt_transcripts == 2}"/>
                                        few &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="3"/>
+                                       <g:radio name="alt_transcripts" value="3" checked="${prediction?.alt_transcripts == 3}"/>
                                        medium &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="4"/>
+                                       <g:radio name="alt_transcripts" value="4" checked="${prediction?.alt_transcripts == 4}"/>
                                        many 
                                     </td>
                                  </tr>
@@ -326,20 +316,12 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:if test="${prediction?.has_structures == true}">
-                                          <div class="prop_warn">
-                                       </g:if>
-                                       <g:radio name="allowed_structures" value="1" checked="true"/> predict any number of (possibly partial) genes<br>
-                                       <g:radio name="allowed_structures" value="2"/> only predict complete genes<br>
-                                       <g:radio name="allowed_structures" value="3"/> only predict complete genes - at least one<br>
-                                       <g:radio name="allowed_structures" value="4"/>  predict exactly one gene<br><br>
-                                       <g:if test="${prediction?.has_structures == true}">
-                                       </div></g:if>
-                                       <g:if test="${prediction?.has_conflicts == true}">
-                                          <div class="prop_warn">
-                                       </g:if>
-                                       <g:checkBox name="ignore_conflicts" value="${false}" /> ignore conflicts with other strand
-                                       <g:if test="${prediction?.has_conflicts == true}"></div></g:if>
+                                       <g:radio name="allowed_structures" value="1" checked="${prediction?.allowed_structures == 1}"/> predict any number of (possibly partial) genes<br>
+                                       <g:radio name="allowed_structures" value="2" checked="${prediction?.allowed_structures == 2}"/> only predict complete genes<br>
+                                       <g:radio name="allowed_structures" value="3" checked="${prediction?.allowed_structures == 3}"/> only predict complete genes - at least one<br>
+                                       <g:radio name="allowed_structures" value="4" checked="${prediction?.allowed_structures == 4}"/> predict exactly one gene<br><br>
+                                       
+                                       <g:checkBox name="ignore_conflicts" value="${prediction?.ignore_conflicts}" /> ignore conflicts with other strand
                                     </td>
                                  </tr>
                               </tbody>
@@ -347,7 +329,7 @@
                            <br>
                            <p>
                               &nbsp; 
-                              <g:checkBox name="agree_nonhuman" value="${prediction.agree_nonhuman}" />
+                              <g:checkBox name="agree_nonhuman" value="${prediction?.agree_nonhuman}" />
                               &nbsp;<b>I am not submitting personalized human sequence data (mandatory).</b>
                            </p>
                            <p>We use a <b>verification string</b> to figure out whether you are a <b>human</b> person. Please type the text in the image below into the text field next to the image.

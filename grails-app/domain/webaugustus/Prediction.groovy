@@ -60,17 +60,23 @@ class Prediction extends AbstractWebAugustusDomainClass {
     String message
     Boolean ignore_conflicts = false
     String old_url
-    // some flags for empty fields in form
+    // some flags for empty fields in form - is merely a flag to indicate that a commit wasn't accepted and user was redirected to submission (=create) page
     Boolean warn
     Boolean has_genome_file
     Boolean has_est_file
     Boolean has_param_file
     Boolean has_hint_file
+    // has_select is unused - to be removed
     Boolean has_select
+    // has_utr is unused - to be removed
     Boolean has_utr
+    // has_strand is unused - to be removed
     Boolean has_strand
+    // has_transcripts is unused - to be removed
     Boolean has_transcripts
+    // has_structures is unused - to be removed
     Boolean has_structures
+    // has_conflicts is unused - to be removed
     Boolean has_conflicts
     static constraints = {
         //accession_id(unique:true) // may (unlikely) cause problems if the grails database ever gets lost.
