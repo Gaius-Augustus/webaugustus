@@ -3,12 +3,16 @@ package webaugustus
 import javax.annotation.PostConstruct
 
 /**
- * The class PredictionController controls everything that is related to submitting a job for predicting genes with pre-trained parameters on a novel genome
- *    - it handles the file upload (or wget)
+ * The class PredictionController controls everything that is related to preparing a job for predicting genes with pre-trained parameters on a novel genome
+ *    - it handles the file upload
  *    - format check
- *    - SGE job submission and status checks
- *    - rendering of results/job status page
- *    - sending E-Mails concerning the job status (submission, errors, finished)
+ *    - sending E-Mails concerning the job status (submission)
+ *    - start a PredictionService thread - to handle:
+ *      - the file upload by wget
+ *      - format check
+ *      - SGE job submission and status checks
+ *      - rendering of results/job status page
+ *      - sending E-Mails concerning the job status (downloaded files, errors, finished) 
  */
 class PredictionController {
     
@@ -134,7 +138,7 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
             }
             flash.message = "Info: Please check all fields marked in blue for completeness before starting the prediction job!"
-            if (predictionInstance.species_select != null) {
+            if (predictionInstance.species_select != null && !predictionInstance.species_select.equals("null") ) {
                 predictionInstance.project_id = null
             }
             // flag for redirect to submission form, display warning in appropriate places

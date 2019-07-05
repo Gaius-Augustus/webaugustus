@@ -1,12 +1,15 @@
 package webaugustus
 
 /**
- * The class TrainingController controls everything that is related to submitting a job for training AUGUSTUS through the webserver:
- *    - it handles the file upload (or wget)
+ * The class TrainingController controls everything that is related to preparing a job for training AUGUSTUS through the webserver:
+ *    - it handles the file upload
  *    - format check
- *    - SGE job submission and status checks
- *    - rendering of results/job status page
- *    - sending E-Mails concerning the job status (submission, errors, finished)
+ *    - start a TrainingService thread - to handle:
+ *      - the file upload by wget
+ *      - format check
+ *      - SGE job submission and status checks
+ *      - rendering of results/job status page
+ *      - sending E-Mails concerning the job status (downloaded files, errors, finished) 
  */
 class TrainingController {
     

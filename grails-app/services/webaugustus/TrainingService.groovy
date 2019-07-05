@@ -4,6 +4,14 @@ import grails.gorm.transactions.Transactional
 import javax.annotation.PostConstruct
 import webaugustus.AbstractWebAugustusDomainClass
 
+/**
+ * The class TrainingService controls everything that is related to a job for training AUGUSTUS through the webserver:
+ *    - it handles the file upload by wget
+ *    - format check
+ *    - SGE job submission and status checks
+ *    - rendering of results/job status page
+ *    - sending E-Mails concerning the job status (downloaded files, errors, finished)
+ */
 @Transactional
 class TrainingService extends AbstractWebaugustusService {
 
