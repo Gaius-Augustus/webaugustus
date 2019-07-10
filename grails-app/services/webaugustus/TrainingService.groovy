@@ -683,7 +683,9 @@ class TrainingService extends AbstractWebaugustusService {
 
             String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} finished.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
-
+            trainingInstance.job_status = 4
+            trainingInstance.save(flush: true)
+            
             if(trainingInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Computation was successful. Did not send e-mail to user because not e-mail adress was supplied.")
             }
@@ -693,7 +695,7 @@ class TrainingService extends AbstractWebaugustusService {
                 sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} is complete", msgStr)
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
+            
             def packResults = new File("${output_dir}/pack${trainingInstance.accession_id}.sh")
             String cmdStr = "cd ${output_dir}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
             packResults << "${cmdStr}"
@@ -706,12 +708,10 @@ class TrainingService extends AbstractWebaugustusService {
             cmdStr = "rm ${output_dir}/pack${trainingInstance.accession_id}.sh &> /dev/null"
             cleanUp = "${cmdStr}".execute()
             Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
-            deleteDir()
+            cleanUp.waitFor()
+            deleteDir(trainingInstance)
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job completed. Result: ok.")
-            
-            trainingInstance.job_status = 4
-            trainingInstance.save(flush: true)
         }else{
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured somewhere.")
             String msgStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
