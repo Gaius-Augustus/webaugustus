@@ -610,6 +610,8 @@ class PredictionService extends AbstractWebaugustusService {
         if(sgeErrSize==0 && writeResultsErrSize==0){
             String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} finished.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
+            predictionInstance.job_status = 4
+            predictionInstance.save(flush: true)
             
             if(predictionInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail adress was supplied.")
@@ -636,9 +638,6 @@ class PredictionService extends AbstractWebaugustusService {
             deleteDir(predictionInstance)
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "job directory was packed with tar/gz.")
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job completed. Result: ok.")
-            
-            predictionInstance.job_status = 4
-            predictionInstance.save(flush: true)
         }else{
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${war_url}prediction/show/${predictionInstance.id}\n\n"
