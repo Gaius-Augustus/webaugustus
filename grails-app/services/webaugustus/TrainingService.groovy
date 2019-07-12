@@ -470,7 +470,7 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} SGE-script remains empty! This an error that should not be possible.")
         }
         if (cmdStr != null) {
-            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1> ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
             sgeFile << "${cmdStr}"
             Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmdStr}\"")
         }
