@@ -46,10 +46,10 @@ class PredictionController {
             
         def processForLog = "SGE         "
         def cmd = ['qstat -u "*" | grep qw | wc -l']
-        def qstatStatusNumber = Utilities.executeForLong(logFile, logVerb, processForLog, "qstatScript", cmd)
+        Long qstatStatusNumber = Utilities.executeForLong(logFile, logVerb, processForLog, "qstatScript", cmd)
         def sgeLen = PredictionService.getMaxJobsCount()
 
-        if(qstatStatusNumber > sgeLen){
+        if(qstatStatusNumber != null && qstatStatusNumber > sgeLen){
             def logMessage = "Somebody tried to invoke the Prediction webserver but the SGE queue was longer "
             logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
             Utilities.log(logFile, 1, logVerb, processForLog, logMessage)
@@ -62,7 +62,22 @@ class PredictionController {
             return
         }
         
-        respond new Prediction(params)
+        Prediction predictionInstance = new Prediction(params)
+        
+        int count = 0
+        while (count++ < 100) {
+            // try 100 time to get a new predictionInstance with an accession_id not yet used in database
+            if (Prediction.withTransaction { 
+                    Prediction.findAll({ accession_id == predictionInstance.accession_id }) 
+                }.isEmpty()) {
+                
+                break
+            }
+            Utilities.log(logFile, 1, logVerb, "Prediction creation", "create a new predictionInstance as currently selected accession_id ${predictionInstance.accession_id} is already used")
+            predictionInstance = new Prediction(params)
+        }        
+        
+        respond predictionInstance
     }
     
     def fillSample() {
@@ -459,9 +474,9 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "uploaded genome file ${uploadedGenomeFile.originalFilename} was renamed to genome.fa and moved to ${dirName}")
             // check number of scaffolds
             def cmd = ["grep -c '>' ${dirName}/genome.fa"]
-            def nSeqNumber = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "nSeqFile", cmd)
+            Long nSeqNumber = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "nSeqFile", cmd)
             int maxNSeqs = PredictionService.getMaxNSeqs()
-            if(nSeqNumber > maxNSeqs){
+            if(nSeqNumber == null || nSeqNumber > maxNSeqs){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.")
                 deleteDir()
                 flash.error = "Genome file contains more than ${maxNSeqs} scaffolds (${nSeqNumber}), which is the maximal number of scaffolds that we permit for submission with WebAUGUSTUS. Please remove all short scaffolds from your genome file!"
@@ -508,9 +523,9 @@ class PredictionController {
             projectDir.mkdirs()
 
             // check whether URL exists
-            def cmd = ['curl', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.genome_ftp_link]
-            int error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
-            if(!(error_code == 200) && !(error_code == 302)){
+            def cmd = ['curl', '-IL', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.genome_ftp_link]
+            Integer error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
+            if(error_code == null || (error_code != 200 && error_code != 302)){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome URL is not accessible. Response code: ${error_code}.")
                 deleteDir()
                 flash.error = "Cannot retrieve genome file from HTTP/FTP link ${predictionInstance.genome_ftp_link}."
@@ -523,8 +538,8 @@ class PredictionController {
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${predictionInstance.genome_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).* "
-            def genome_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
-            if(genome_size > maxFileSizeByWget){//1 GB
+            Integer genome_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
+            if(genome_size == null || genome_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Genome file size exceeds permitted ${maxFileSizeByWget} bytes by ${genome_size} bytes.")
                 deleteDir()
                 flash.error = "Genome file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
@@ -632,9 +647,9 @@ class PredictionController {
             estExistsFlag = 1
 
             // check whether URL exists
-            def cmd = ['curl', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.est_ftp_link]
-            int error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
-            if(!(error_code == 200) && !(error_code == 302)){
+            def cmd = ['curl', '-IL', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.est_ftp_link]
+            Integer error_code = Utilities.executeForInteger(logFile, 3, predictionInstance.accession_id, "urlExistsScript", cmd)
+            if(error_code == null || (error_code != 200 && error_code != 302)){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST URL is not accessible. Response code: ${error_code}.")
                 deleteDir()
                 flash.error = "Cannot retrieve cDNA file from HTTP/FTP link ${predictionInstance.est_ftp_link}."
@@ -647,8 +662,8 @@ class PredictionController {
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${predictionInstance.est_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).* "
-            def est_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
-            if(est_size > maxFileSizeByWget){//1 GB
+            Long est_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
+            if(est_size == null || est_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST file size exceeds permitted ${maxFileSizeByWget} bytes by ${est_size} bytes.")
                 deleteDir()
                 flash.error = "cDNA file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
@@ -691,8 +706,8 @@ class PredictionController {
         // def uploadedStructFile = request.getFile('HintFile')
         if(!uploadedStructFile.empty){
             // check file size
-            def long preUploadSize = uploadedStructFile.getSize()
-            def long allowedHintsSize = maxButtonFileSize * 2
+            long preUploadSize = uploadedStructFile.getSize()
+            long allowedHintsSize = maxButtonFileSize * 2
             if(preUploadSize > allowedHintsSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected Hints file was bigger than ${allowedHintsSize}.")
                 deleteDir()

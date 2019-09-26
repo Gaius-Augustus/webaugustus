@@ -18,7 +18,7 @@ class TrainingService extends AbstractWebaugustusService {
     // need to adjust the output dir to whatever working dir! This is where uploaded files and results will be saved.
     private static final String output_dir =     "/data/www/webaugustus/webdata/augtrain" // adapt to the actual situation // should be something in home of webserver user and augustus frontend user.
     private static final String web_output_dir = "/data/www/webaugustus/training-results" // adapt to the actual situation // must be writable to webserver application
-    // web-output, root directory to the results that are shown to end users
+    // web-output - directory to the results that are downloadable by end users
     private static final String web_output_url = "http://webaugustus.uni-greifswald.de/training-results/" // adapt to the actual situation
     private static final String war_url =        "http://webaugustus.uni-greifswald.de/webaugustus/"      // adapt to the actual situation
     
@@ -68,22 +68,22 @@ class TrainingService extends AbstractWebaugustusService {
      * Returns all training instances where the user has committed a job, but this job has not yet startet
      */
     protected List<Training> findCommittedJobs() {
-        return Training.withTransaction { Training.findAll({ // query returns all committed jobs
+        return Training.withTransaction { Training.findAll(sort:"dateCreated", order: "asc") { // query returns all committed jobs
             job_status == '0' && 
             job_error == '0'
-        }) }
+        } }
     }
 
     /**
-     * Returns all training instances where the the augustus job is started
+     * Returns all training instances where the job is started
      */
     protected List<Training> findSubmittedJobs() {
-        return Training.withTransaction { Training.findAll({ // query returns all submitted jobs
+        return Training.withTransaction { Training.findAll(sort:"dateCreated", order: "asc") { // query returns all submitted jobs
             (job_status == '1' || 
             job_status == '2' || 
             job_status == '3') &&
             job_error == '0'
-        }) }
+        } }
     }
     
     private void deleteDir(Training trainingInstance) {
@@ -157,9 +157,9 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
             // check number of scaffolds (to avoid Java heapspace error in the next step)
             cmd = ["grep -c '>' ${dirName}/genome.fa"]
-            def nSeqNumber = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "nSeqFile", cmd)
+            Long nSeqNumber = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "nSeqFile", cmd)
             int maxNSeqs = getMaxNSeqs()
-            if(nSeqNumber > maxNSeqs){
+            if(nSeqNumber == null || nSeqNumber > maxNSeqs){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
@@ -313,6 +313,12 @@ class TrainingService extends AbstractWebaugustusService {
                 }else{
                     totalLen = totalLen + line.size()
                 }
+            }
+            if (nEntries == 0) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequence file is not in fasta format. It doesn't contain \">\" characters.")
+                String mailStr = "Your AUGUSTUS training job ${predictionInstance.accession_id} was aborted because your\ncDNA file is not in fasta format. \n\n"
+                abortJob(predictionInstance, mailStr)
+                return
             }
             def avEstLen = totalLen/nEntries
             def estMinLen = getEstMinLen()
@@ -520,7 +526,10 @@ class TrainingService extends AbstractWebaugustusService {
         def cmd = ['qstat -u "*" | grep augtrain | grep ' + "' ${jobID} '"]
         def statusContent = Utilities.executeForString(logFile, verb, trainingInstance.accession_id, "statusScript", cmd)
 
-        if (statusContent =~ /qw/) {
+        if (statusContent == null) {
+            return false
+        }
+        else if (statusContent =~ /qw/) {
             trainingInstance.job_status = 2
         }
         else if ( statusContent =~ /  r  / ) {
