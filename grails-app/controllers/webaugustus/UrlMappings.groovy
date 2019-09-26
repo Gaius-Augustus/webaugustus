@@ -1,8 +1,8 @@
 package webaugustus
 
 class UrlMappings {
-    
-	static mappings = {
+
+    static mappings = {
         "/$controller/$action?/$id?(.$format)?"{
             constraints {
                 // apply constraints here
@@ -26,6 +26,5 @@ class UrlMappings {
         "/prediction"(controller:'Prediction', action:'create' )        
         "/training"(controller:'Training', action:'create' )
 
-	}
-
+    }
 }
