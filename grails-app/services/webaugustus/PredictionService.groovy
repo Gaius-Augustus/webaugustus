@@ -393,7 +393,7 @@ class PredictionService extends AbstractWebaugustusService {
         File paramArchFile = new File(projectDir, "parameters.tar.gz")
         if(paramArchFile.exists()){
             def mvParamsScript = new File(projectDir, "mvParams.sh")
-            cmdStr = "${AUGUSTUS_SCRIPTS_PATH}/moveParameters.pl ${dirName}/params ${predictionInstance.accession_id} ${AUGUSTUS_CONFIG_PATH}/species 2> /dev/null\n"
+            cmdStr = "${AUGUSTUS_SCRIPTS_PATH}/moveParameters.pl ${dirName}/params ${predictionInstance.accession_id} ${AUGUSTUS_SPECIES_PATH} 2> /dev/null\n"
             mvParamsScript << "${cmdStr}"
             Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "mvParamsScript << \"${cmdStr}\"")
             cmdStr = "bash ${mvParamsScript}"
@@ -480,7 +480,7 @@ class PredictionService extends AbstractWebaugustusService {
             }
         }
         if (overRideUtrFlag) {
-            def utrParamContent = new File("${AUGUSTUS_CONFIG_PATH}/species/${species}/${species}_utr_probs.pbl")
+            def utrParamContent = new File("${AUGUSTUS_SPECIES_PATH}/${species}/${species}_utr_probs.pbl")
             if (!utrParamContent.exists()) {
                 overRideUtrFlag = false;
             }

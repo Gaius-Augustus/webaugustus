@@ -7,6 +7,7 @@ import webaugustus.AbstractWebAugustusDomainClass
 abstract class AbstractWebaugustusService {
     
     protected final static String AUGUSTUS_CONFIG_PATH = "/usr/share/augustus/config"   // adapt to the actual situation
+    protected final static String AUGUSTUS_SPECIES_PATH = AUGUSTUS_CONFIG_PATH + "/species"
     protected final static String AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts" // adapt to the actual situation
     // Admin mail for errors
     protected final static String admin_email = "xxx@email.com" // adapt to the actual situation
@@ -23,6 +24,10 @@ abstract class AbstractWebaugustusService {
     
     public static String getAugustusConfigPath() {
         return AUGUSTUS_CONFIG_PATH
+    }
+    
+    public static String getAugustusSpeciesPath() {
+        return AUGUSTUS_SPECIES_PATH
     }
     
     public static String getAugustusScriptPath() {

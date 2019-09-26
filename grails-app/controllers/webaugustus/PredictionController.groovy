@@ -96,7 +96,8 @@ class PredictionController {
         def web_output_url = predictionService.getWebOutputURL()
         def war_url = predictionService.getWarURL()
         
-        def AUGUSTUS_CONFIG_PATH = PredictionService.getAugustusConfigPath()    
+        def AUGUSTUS_CONFIG_PATH = PredictionService.getAugustusConfigPath()
+        def AUGUSTUS_SPECIES_PATH = PredictionService.getAugustusSpeciesPath()
         def AUGUSTUS_SCRIPTS_PATH = PredictionService.getAugustusScriptPath()
         
         def predictionInstance = new Prediction(params)
@@ -250,7 +251,7 @@ class PredictionController {
         // check whether parameters are available for project_id (previous prediction run)
         Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter ID is ${predictionInstance.project_id}")
         if(!(predictionInstance.project_id == null)){
-            def spec_conf_dir = new File("${AUGUSTUS_CONFIG_PATH}/species/${predictionInstance.project_id}")
+            def spec_conf_dir = new File("${AUGUSTUS_SPECIES_PATH}/${predictionInstance.project_id}")
             if(!spec_conf_dir.exists()){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter-string \"${predictionInstance.project_id}\" does not exist on our system.")
                 deleteDir()
@@ -789,7 +790,7 @@ class PredictionController {
         confirmationString = "${confirmationString}User set UTR prediction: ${predictionInstance.utr}\n"
         // utr
         // check whether utr parameters actually exist:
-        def utrParamContent = new File("${AUGUSTUS_CONFIG_PATH}/species/${species}/${species}_utr_probs.pbl")
+        def utrParamContent = new File("${AUGUSTUS_SPECIES_PATH}/${species}/${species}_utr_probs.pbl")
         if(utrParamContent.exists() == false){
             overRideUtrFlag = 0;
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR prediction was disabled because UTR parameters do not exist for this species!")
