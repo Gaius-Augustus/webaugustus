@@ -18,7 +18,7 @@
         <meta name="DC.Subject" content="Eukaryotic gene finding program">
         <meta name="DC.Description" content="Web interface to AUGUSTUS training">
         <meta name="DC.Type" content="Service">
-        <meta name="DC.Identifier" content="http://bioinf.uni-greifswald.de/webaugustus/">
+        <meta name="DC.Identifier" content="//bioinf.uni-greifswald.de/webaugustus/">
         <meta name="DC.Date" content="2011-05-04">
         <meta charset="utf-8">
         <meta name="robots" content="index, follow">
@@ -55,19 +55,19 @@
                <div class="header__submenu"></div>
                <div class="logo">
                   <a href="https://www.uni-greifswald.de/" title="Universität Greifswald" class="logo-main">
-                  <img src="http://bioinf.uni-greifswald.de/bioinf/img/uni-greifswald_opt.svg" width="400" height="118"   alt="Universität Greifswald" title="Universität Greifswald" >
+                  <img src="//bioinf.uni-greifswald.de/bioinf/img/uni-greifswald_opt.svg" width="400" height="118" alt="Universität Greifswald" title="Universität Greifswald" >
                   </a>
                </div>
                <!-- middle part of header -->
                <div class="organization">
-                  <a href="http://bioinf.uni-greifswald.de/">
+                  <a href="//bioinf.uni-greifswald.de/">
                      <h3>Bioinformatics Web Server</h3>
                   </a>
                </div>
             </div>
             <nav id="nav" class="navigation">
                <ul class="navigation-list navigation-list--table">
-                  <li class="navigation-list__item navigation-list__item--level-1 navigation-list__item--active" data-dropdown="true"><a href="http://bioinf.uni-greifswald.de/">Bioinformatics Group</a></li>
+                  <li class="navigation-list__item navigation-list__item--level-1 navigation-list__item--active" data-dropdown="true"><a href="//bioinf.uni-greifswald.de/">Bioinformatics Group</a></li>
                   <li class="navigation-list__item navigation-list__item--level-1" data-dropdown="true"><a href="https://math-inf.uni-greifswald.de/">Mathematics and Computer Science</a></li>
                   <li class="navigation-list__item navigation-list__item--level-1" data-dropdown="true"><a href="https://mnf.uni-greifswald.de/en/faculty/">Faculty of Math and Natural Sciences</a></li>
                </ul>
@@ -90,24 +90,24 @@
                         <li class="navigation-sub__item"><g:link controller="prediction" action="create">Submit Prediction</g:link></li>
                         <li class="navigation-sub__item"><a href="${createLink(uri:'/datasets')}">Datasets for Download</a></li>
                         <li class="navigation-sub__item"><a href="${createLink(uri:'/references')}">Links & References</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/impressum.html">Impressum</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/impressum.html">Impressum</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a></li>
                      </ul>
                   </li>
                   <li class="navigation-sub__item">
                      <span class="navigation-sub__headline">Other AUGUSTUS Resources</span>
                      <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/wiki/pmwiki.php?n=Augustus.Augustus">AUGUSTUS Wiki</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/forum">AUGUSTUS Forum</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/augustus/downloads/index.php">Download AUGUSTUS</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/augustus">Old AUGUSTUS web server</a></li>
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de/bioinf/braker">BRAKER</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/wiki/pmwiki.php?n=Augustus.Augustus">AUGUSTUS Wiki</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/forum">AUGUSTUS Forum</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/augustus/downloads/index.php">Download AUGUSTUS</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/augustus">Old AUGUSTUS web server</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/braker">BRAKER</a></li>
                      </ul>
                   </li>
                   <li class="navigation-sub__item">
                      <span class="navigation-sub__headline">Other Links</span>
                      <ul class="navigation-sub">
-                        <li class="navigation-sub__item"><a href="http://bioinf.uni-greifswald.de">Bioinformatics Greifswald</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de">Bioinformatics Greifswald</a></li>
                      </ul>
                   </li>
                </ul>

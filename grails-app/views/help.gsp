@@ -184,7 +184,7 @@
                         <tt>>gi|123344545|some_protein|some_species</tt><br>
                         <tt>>Drosophila melanogaster scaffold 10000</tt><br>
                      </p>
-                     <p>If you have a fasta file with unsuitable headers and you do not know how to modify them automatically, you may use the Perl script <a href="http://bioinf.uni-greifswald.de/bioinf/downloads/simplifyFastaHeaders.pl">simplifyFastaHeaders.pl</a>. After saving it on your local Unix system, first check whether the location of Perl in the first line of the script is correct for your system (<tt>#!/usr/bin/perl</tt>). If Perl is installed in another location, you need to modify that line! Then, execute the script with the following parameters:<br><br>
+                     <p>If you have a fasta file with unsuitable headers and you do not know how to modify them automatically, you may use the Perl script <a href="//bioinf.uni-greifswald.de/bioinf/downloads/simplifyFastaHeaders.pl">simplifyFastaHeaders.pl</a>. After saving it on your local Unix system, first check whether the location of Perl in the first line of the script is correct for your system (<tt>#!/usr/bin/perl</tt>). If Perl is installed in another location, you need to modify that line! Then, execute the script with the following parameters:<br><br>
                         <tt>perl simplifyFastaHeaders.pl in.fa nameStem out.fa header.map</tt><br><br>
                      <ul>
                         <li><tt>in.fa</tt> is the input fasta file, it must already be in valid fasta format</li>
@@ -667,7 +667,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <div id="privacy">
                         <h2>What about data privacy and security</h2>
                      </div>
-                     <p>Please read our <a href="http://bioinf.uni-greifswald.de/bioinf/datenschutz.html">data privacy protection</a> declaration (German language, only).</p>
+                     <p>Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">data privacy protection</a> declaration (German language, only).</p>
                      <p>The results of your job submission (i.e. in case of the training web server application that means log files, trained parameters, training genes, ab initio gene predictions and gene prediction with hints; or in case of the prediction web server application the augustus prediction archive) are publicly available. The link to your job status contains a long, pseudo-random string (uuid), and one needs to guess the string in order to get access to the results - but this is not particularly secure!</p>
                      <p>Other users who submit exactly the same input files as have been submitted before, will be redirected to the results page of the previously submitted job. They do not need to guess the link.</p>
                      <p>Files that you upload to our server, e.g. sequence files, are not directly made available to anyone. However, if you chose to upload a file via http/ftp link, the link to your file is displayed on the job status page.</p>
@@ -795,7 +795,7 @@ HSACKI10 AUGUSTUS stop_codon  3058  3060  .  +  0  transcript_id "g1.t1"; gene_i
                         <li>*.gbrowse - gene prediction track for the GBrowse genome browser
                      </ul>
                      </p>
-                     <p><a href="http://bioinf.uni-greifswald.de/webaugustus/prediction/show/ff80818136a76dad0136a76fb00b0002">Click here</a> to view a real AUGUSTUS prediction web service output!</p>
+                     <p><a href="/webaugustus/examples/predExample/index.html">Click here</a> to view a real AUGUSTUS prediction web service output!</p>
                      <p>It is important that you check the results of an AUGUSTUS gene prediction run. Do not trust predictions blindly! Prediction accuracy depends on the input sequence quality, on hints quality and on whether a given parameter set fits to the species of the supplied genomic sequence.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
@@ -809,7 +809,7 @@ HSACKI10 AUGUSTUS stop_codon  3058  3060  .  +  0  transcript_id "g1.t1"; gene_i
                         <h2>Training results</h2>
                      </div>
                      <p>You find a detailed description of training results by <a href="${createLink(uri:'/trainingtutorial#results')}">clicking here</a>. 
-                         <!-- To view a sample output, <a href="http://bioinf.uni-greifswald.de/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>! -->
+                         <!-- To view a sample output, <a href="/webaugustus/training/show/ff80818136a76dad0136a76edf560001">click here</a>! -->
                      </p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />

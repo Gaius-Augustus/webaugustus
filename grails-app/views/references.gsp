@@ -20,7 +20,7 @@
                         </div>
                      </div>
                      <h2>Link to the old AUGUSTUS web server</h2>
-                     <p>The old AUGUSTUS web server for predictions with pre-trained models is available at <a href="http://bioinf.uni-greifswald.de/augustus/">http://augustus.gobics.de</a>.</p>
+                     <p>The old AUGUSTUS web server for predictions with pre-trained models is available at <a href="//bioinf.uni-greifswald.de/augustus/">http://augustus.gobics.de</a>.</p>
                      <h2>References</h2>
                      <p>Please cite the following references when using the AUGUSTUS training web server results in your publication:</p>
                      <ul>
@@ -29,7 +29,7 @@
                            Nucleic Acids Res, doi:10.1093/nar/gkt418
                         </li>
                         <li>K. J. Hoff and M. Stanke (2012)<br>
-                           <a href="http://bioinf.uni-greifswald.de/trainaugustus/references/PAG2012.pdf">TrainAUGUSTUS - a Webserver Application for Parameter Training and Gene Prediction in Eukaryoties</a><br>
+                           <a href="/webaugustus/references/PAG2012.pdf">TrainAUGUSTUS - a Webserver Application for Parameter Training and Gene Prediction in Eukaryoties</a><br>
                            International Plant & Animal XX Conference 2012, U.S.A. (Poster)
                         </li>
                      </ul>

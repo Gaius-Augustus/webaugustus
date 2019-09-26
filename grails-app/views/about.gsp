@@ -21,16 +21,16 @@
                      </div>
                      <p align="center"><a href="${createLink(uri:'/index')}"><g:img dir="images" file="augustus.head.transparent.gif" alt="" width="93" height="100" />
                      </a></p>
-                     <p>AUGUSTUS is a program that predicts genes in eukaryotic genomic sequences. It can be <a href="/webaugustus/prediction/create">run with pre-trained parameters on this web server</a> or be downloaded and <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">run locally</a>. It is open source so you can compile it for your computing platform. You can also run AUGUSTUS on the German <a href="http://www.medigrid.de/anw_bio.html">MediGRID</a>. This enables you to submit larger sequence files and allows to use protein homology information in the prediction. The MediGRID requires an instant easy registration by email for first-time users.</p>
-                     <p>The <a href="/webaugustus/training/create">AUGUSTUS training web server application</a> automatically generates training gene sets from genomic sequence(s) and a set of Proteins or ESTs and subsequently trains AUGUSTUS parameters for a new species, and runs gene predictions with the new parameters and the supplied extrinsic evidence. Alternatively, you can also download the <a href="http://bioinf.uni-greifswald.de/augustus/binaries/">autoAug.pl pipeline</a> and execute our training and prediction pipeline locally.</p>
+                     <p>AUGUSTUS is a program that predicts genes in eukaryotic genomic sequences. It can be <a href="/webaugustus/prediction/create">run with pre-trained parameters on this web server</a> or be downloaded and <a href="//bioinf.uni-greifswald.de/augustus/binaries/">run locally</a>. It is open source so you can compile it for your computing platform. You can also run AUGUSTUS on the German <a href="http://www.medigrid.de/anw_bio.html">MediGRID</a>. This enables you to submit larger sequence files and allows to use protein homology information in the prediction. The MediGRID requires an instant easy registration by email for first-time users.</p>
+                     <p>The <a href="/webaugustus/training/create">AUGUSTUS training web server application</a> automatically generates training gene sets from genomic sequence(s) and a set of Proteins or ESTs and subsequently trains AUGUSTUS parameters for a new species, and runs gene predictions with the new parameters and the supplied extrinsic evidence. Alternatively, you can also download the <a href="//bioinf.uni-greifswald.de/augustus/binaries/">autoAug.pl pipeline</a> and execute our training and prediction pipeline locally.</p>
                      <br>
                      <h2>Features</h2>
                      <br>
                      <h3>Gene prediction with AUGUSTUS</h3>
                      <ul>
-                        <li>AUGUSTUS now has a protein profile extension (PPX) which allows to use protein family specific conservation in order to identify members and their exon-intron structure of a protein family given by a block profile. The block profile can be constructed with accompanying scripts from a multiple protein sequence alignment. For more details please refer to the <a href="http://bioinf.uni-greifswald.de/augustus/binaries/README.md">README.md</a>.</li>
-                        <li>The download version of AUGUSTUS can incorporate data from RNA-Seq (short cDNA reads, single or paired-end, e.g. from Illumina or SOLiD) as documented <a href="http://bioinf.uni-greifswald.de/augustus/binaries/readme.rnaseq.html">here</a> (January 8, 2012).</li>
-                        <li>If you use the <a href="http://bioinf.uni-greifswald.de/augustus">old AUGUSTUS web server application</a>, the results can be displayed automatically in the genome browser Gbrowse. You can browse the gene predictions together with the input sequence, the constraints and the cDNA alignments. Gbrowse also enables you to simultaneously display your own annotation and to export the image in scalable vector graphics format</li>
+                        <li>AUGUSTUS now has a protein profile extension (PPX) which allows to use protein family specific conservation in order to identify members and their exon-intron structure of a protein family given by a block profile. The block profile can be constructed with accompanying scripts from a multiple protein sequence alignment. For more details please refer to the <a href="//bioinf.uni-greifswald.de/augustus/binaries/README.md">README.md</a>.</li>
+                        <li>The download version of AUGUSTUS can incorporate data from RNA-Seq (short cDNA reads, single or paired-end, e.g. from Illumina or SOLiD) as documented <a href="//bioinf.uni-greifswald.de/augustus/binaries/readme.rnaseq.html">here</a> (January 8, 2012).</li>
+                        <li>If you use the <a href="//bioinf.uni-greifswald.de/augustus">old AUGUSTUS web server application</a>, the results can be displayed automatically in the genome browser Gbrowse. You can browse the gene predictions together with the input sequence, the constraints and the cDNA alignments. Gbrowse also enables you to simultaneously display your own annotation and to export the image in scalable vector graphics format</li>
                         <li>
                            You can upload cDNA sequences together with the genomic DNA. Your ESTs or mRNA will be used to improve the gene prediction.
                            <p align="center"><a href="${resource( dir:'images', file:'AUG.cDNA.gif' )}"><g:img dir="images" file="AUG.cDNA.gif"  alt="with cDNA" width="70%" /></a><br><i>Click on image to enlarge!</i></p>
@@ -72,7 +72,8 @@
                      <br>
                      <h3>Training AUGUSTUS</h3>
                      <ul>
-                        <li> AUGUSTUS is retrainable. It comes with a <a href="http://bioinf.uni-greifswald.de/augustus/binaries">training program</a> that estimates the parameters given a training set of known genes. It also comes with an optimization script that tries to find values for the meta parameters, like splice window sizes, that optimize the prediction accuracy. The training program is also available through a <a href="http://bioinf.uni-greifswald.de/webaugustus/training/create">web interface</a>.
+                        <li> AUGUSTUS is retrainable. It comes with a <a href="//bioinf.uni-greifswald.de/augustus/binaries">training program</a> that estimates the parameters given a training set of known genes. It also comes with an optimization script that tries to find values for the meta parameters, like splice window sizes, that optimize the prediction accuracy. The training program is also available through a <a href="/webaugustus/training/create">web interface</a>.
+                        </li>
                      </ul>
                      <br>
                      <h3>Parameters are already available for the following species:</h3>
@@ -164,7 +165,7 @@
                      <a href="http://www.wormbase.org/db/seq/gbrowse/b_malayi"><i>Brugia malayi</i></a>
                      <br>
                      Phytozome: <a href="http://www.phytozome.net/"><i>Chlamydomonas reinhardtii</i></a><br>
-                     Flybase: <a href="http://flybase.bio.indiana.edu/cgi-bin/gbrowse/dmel"><i>Drosphila melanogaster</a><br>
+                     Flybase: <a href="http://flybase.bio.indiana.edu/cgi-bin/gbrowse/dmel"><i>Drosphila melanogaster</i></a><br>
                      Genboree Browser: <a href="http://www.genboree.org"><i>Tribolium castaneum</i></a>
                      <div class="csc-default">
                         <div class="divider">

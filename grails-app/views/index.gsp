@@ -23,7 +23,7 @@
     <p>AUGUSTUS usually belongs to the most accurate programs for the species it is trained for. Often it is the most accurate ab initio program. For example, at the independent gene finder assessment (EGASP) on the human ENCODE regions AUGUSTUS was the most accurate gene finder among the tested ab initio programs. At the more recent nGASP (worm), it was among the best in the ab initio and transcript-based categories. See <a href="${createLink(uri:'/accuracy')}">accuracy statistics</a> for further details.</p>
     <p>Please be aware that gene prediction accuracy of AUGUSTUS always depends on the quality of the training gene set that was used for training species specific parameters. You should not expect the greatest accuracy from fully automated training gene generation as provided by this web server application. Instead, you should manually inspect (and maybe interatively improve) the training gene set.</p>
 <p>AUGUSTUS is already trained for a number of genomes and you find the according parameter sets at <a href="${createLink(uri:'/predictiontutorial#param_id')}">the prediction tutorial</a>. <b>Please check whether AUGUSTUS was already trained for your species before submitting a new training job.</b></p>
-    <p><a href="http://bioinf.uni-greifswald.de/augustus/">The Old AUGUSTUS web server</a> offers similar gene prediction services but no parameter training service.</p>
+    <p><a href="//bioinf.uni-greifswald.de/augustus/">The Old AUGUSTUS web server</a> offers similar gene prediction services but no parameter training service.</p>
 <br><br>
 <h2>OK, I got it! Take me straight to...</h2>
 <p>
