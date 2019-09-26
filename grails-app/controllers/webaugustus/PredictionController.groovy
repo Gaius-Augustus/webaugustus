@@ -93,8 +93,7 @@ class PredictionController {
         
         def output_dir = predictionService.getOutputDir()
         def web_output_dir = predictionService.getWebOutputDir()
-        def web_output_url = predictionService.getWebOutputURL()
-        def war_url = predictionService.getWarURL()
+        def http_base_url = predictionService.getHttpBaseURL()
         
         def AUGUSTUS_CONFIG_PATH = PredictionService.getAugustusConfigPath()
         def AUGUSTUS_SPECIES_PATH = PredictionService.getAugustusSpeciesPath()
@@ -875,7 +874,7 @@ class PredictionController {
                 String msgStr = "Thank you for submitting the AUGUSTUS gene prediction "
                 msgStr = "${msgStr}job ${predictionInstance.accession_id}.\n\n"
                 msgStr = "${msgStr}${mailStr}The status/results page of your job is "
-                msgStr = "${msgStr}${war_url}prediction/show/${predictionInstance.id}.\n\n"
+                msgStr = "${msgStr}${http_base_url}show/${predictionInstance.id}.\n\n"
                 msgStr = "${msgStr}You will be notified via email when the job has finished.\n\n"
                 predictionService.sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
                 

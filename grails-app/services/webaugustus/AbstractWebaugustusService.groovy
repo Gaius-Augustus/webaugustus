@@ -14,6 +14,10 @@ abstract class AbstractWebaugustusService {
     protected final static String WEBAUGUSTUS_EMAIL_ADDRESS = "yyy@email.com" // should be the same assert in application.yml: grails - mail - default.from
     protected final static String emailFooter = "\n\n------------------------------------------------------------------------------------\nThis is an automatically generated message.\n\nhttp://bioinf.uni-greifswald.de/webaugustus" // footer of e-mail
     
+    protected static final String web_output_base_url = "/webaugustus/"
+    protected static final String http_base_url = "https://bioinf.uni-greifswald.de${web_output_base_url}" // adapt to the actual situation
+    
+    
     // max length of the job queue, when is reached "the server is busy" will be displayed
     protected final static int maxJobsCount = 20;
     
@@ -84,7 +88,7 @@ abstract class AbstractWebaugustusService {
     
     public abstract String getWebOutputURL()
     
-    public abstract String getWarURL()
+    public abstract String getHttpBaseURL()
     
     public abstract File getLogFile()
     

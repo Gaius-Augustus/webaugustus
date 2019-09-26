@@ -91,10 +91,9 @@ class TrainingController {
         
         def output_dir = trainingService.getOutputDir()
         def web_output_dir = trainingService.getWebOutputDir()
-        def web_output_url = trainingService.getWebOutputURL()
-        def war_url = trainingService.getWarURL()
+        def http_base_url = trainingService.getHttpBaseURL()
         
-        def AUGUSTUS_CONFIG_PATH = TrainingService.getAugustusConfigPath()    
+        def AUGUSTUS_CONFIG_PATH = TrainingService.getAugustusConfigPath()
         def AUGUSTUS_SCRIPTS_PATH = TrainingService.getAugustusScriptPath()
         
         
@@ -732,7 +731,7 @@ class TrainingController {
 
             if(trainingInstance.email_adress != null){
                 String msgStr = "Thank you for submitting a job to train AUGUSTUS parameters for species ${trainingInstance.project_name}.\n\n"
-                msgStr += "${mailStr}The status/results page of your job is ${war_url}training/show/${trainingInstance.id}.\n\n"
+                msgStr += "${mailStr}The status/results page of your job is ${http_base_url}show/${trainingInstance.id}.\n\n"
                 msgStr += "You will be notified by e-mail after computations of your job have finished.\n\n"
                 trainingService.sendMailToUser(trainingInstance, "Your AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                 

@@ -19,8 +19,8 @@ class TrainingService extends AbstractWebaugustusService {
     private static final String output_dir =     "/data/www/webaugustus/webdata/augtrain" // adapt to the actual situation // should be something in home of webserver user and augustus frontend user.
     private static final String web_output_dir = "/data/www/webaugustus/training-results" // adapt to the actual situation // must be writable to webserver application
     // web-output - directory to the results that are downloadable by end users
-    private static final String web_output_url = "http://webaugustus.uni-greifswald.de/training-results/" // adapt to the actual situation
-    private static final String war_url =        "http://webaugustus.uni-greifswald.de/webaugustus/"      // adapt to the actual situation
+    private static final String web_output_url = "${web_output_base_url}training-results/" //"http://bioinf.uni-greifswald.de/trainaugustus/training-results/" // adapt to the actual situation
+    private static final String training_url_part = "training/"
     
     // this log File contains the "process log", what was happening with which job when.
     private static final File logFile = new File("${output_dir}/train.log")
@@ -48,8 +48,8 @@ class TrainingService extends AbstractWebaugustusService {
         return TrainingService.web_output_url
     }
     
-    public String getWarURL() {
-        return TrainingService.war_url
+    public String getHttpBaseURL() {
+        return AbstractWebaugustusService.http_base_url + training_url_part
     }
     
     public File getLogFile() {
@@ -430,11 +430,11 @@ class TrainingService extends AbstractWebaugustusService {
 
             String mailStr = "You submitted job ${trainingInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-            trainingInstance.old_url = "${war_url}training/show/${oldID}"
+            trainingInstance.old_url = "${web_output_base_url}training/show/${oldID}"
             trainingInstance.save(flush: true)
             
             mailStr += "The old job with identical input files and identical parameters "
-            mailStr += "is available at\n${war_url}training/show/${oldID}.\n\n"
+            mailStr += "is available at\n${getHttpBaseURL()}show/${oldID}.\n\n"
             
             sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} was submitted before as job ${oldAccContent}", mailStr)
             
@@ -700,7 +700,7 @@ class TrainingService extends AbstractWebaugustusService {
             }
             else {
                 def msgStr = "${mailStr}You find the results at "
-                msgStr += "${war_url}training/show/${trainingInstance.id}.\n\n"
+                msgStr += "${getHttpBaseURL()}show/${trainingInstance.id}.\n\n"
                 sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} is complete", msgStr)
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
@@ -727,7 +727,7 @@ class TrainingService extends AbstractWebaugustusService {
             if (trainingInstance.email_adress != null) {
                 msgStr += "E-Mail: ${trainingInstance.email_adress}\n"
             }
-            msgStr += "Link: ${war_url}training/show/${trainingInstance.id}\n\n"
+            msgStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
             if (autoAugErrSize != 0) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!");
                 msgStr += "An error occured in the autoAug pipeline. "
@@ -790,7 +790,7 @@ class TrainingService extends AbstractWebaugustusService {
             if(trainingInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email adress was supplied.")
             }else{
-                msgStr = "${mailStr}You find the results of your job at ${war_url}training/show/${trainingInstance.id}.\n\n"
+                msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"
                 msgStr += "The administrator of the AUGUSTUS web server has been informed and "
                 msgStr += "will get back to you as soon as the problem is solved.\n\n"
                 sendMailToUser(trainingInstance, "An error occured while executing AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)

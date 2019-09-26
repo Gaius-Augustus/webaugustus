@@ -19,8 +19,8 @@ class PredictionService extends AbstractWebaugustusService {
     private static final String output_dir =     "/data/www/webaugustus/webdata/augpred"    // adapt to the actual situation // should be something in home of webserver user and augustus frontend user
     private static final String web_output_dir = "/data/www/webaugustus/prediction-results" // adapt to the actual situation // must be writable to webserver application
     // web-output - directory to the results that are downloadable by end users
-    private static final String web_output_url = "http://webaugustus.uni-greifswald.de/prediction-results/" // adapt to the actual situation
-    private static final String war_url =        "http://webaugustus.uni-greifswald.de/webaugustus/"        // adapt to the actual situation
+    private static final String web_output_url = "${web_output_base_url}prediction-results/" // "http://bioinf.uni-greifswald.de/trainaugustus/prediction-results/" // adapt to the actual situation
+    private static final String prediction_url_part = "prediction/"
     
     // this log File contains the "process log", what was happening with which job when.
     private static final File logFile = new File("${output_dir}/pred.log")
@@ -48,8 +48,8 @@ class PredictionService extends AbstractWebaugustusService {
         return PredictionService.web_output_url
     }
     
-    public String getWarURL() {
-        return PredictionService.war_url
+    public String getHttpBaseURL() {
+        return AbstractWebaugustusService.http_base_url + prediction_url_part
     }
     
     public File getLogFile() {
@@ -368,11 +368,11 @@ class PredictionService extends AbstractWebaugustusService {
 
             String mailStr = "You submitted job ${predictionInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-            predictionInstance.old_url = "${war_url}prediction/show/${oldID}"
+            predictionInstance.old_url = "${web_output_base_url}prediction/show/${oldID}"
             predictionInstance.save(flush: true)
             
             mailStr += "The old job with identical input files and identical parameters "
-            mailStr += "is available at\n${war_url}prediction/show/${oldID}.\n\n"
+            mailStr += "is available at\n${getHttpBaseURL()}show/${oldID}.\n\n"
             
             sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id} was submitted before as job ${oldAccContent}", mailStr)
             
@@ -627,7 +627,7 @@ class PredictionService extends AbstractWebaugustusService {
             }
             else {
                 String msgStr = "${mailStr}You find the results at "
-                msgStr += "${war_url}prediction/show/${predictionInstance.id}.\n\n"
+                msgStr += "${getHttpBaseURL()}show/${predictionInstance.id}.\n\n"
                 sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id} is complete", msgStr)
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
@@ -648,7 +648,7 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job completed. Result: ok.")
         }else{
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
-            msgStr += "Link: ${war_url}prediction/show/${predictionInstance.id}\n\n"
+            msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if(sgeErrSize > 0){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "a SGE error occured!");
                 msgStr += "An SGE error occured. Please check manually what's wrong.\n"
