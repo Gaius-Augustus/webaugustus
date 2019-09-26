@@ -40,9 +40,8 @@
                            <p>Use this form to submit data for training AUGUSTUS parameters for novel species/new genomic data.</p>
                            <p><b>Before submitting a training job</b> for your species of interest, please check whether parameters have already been trained and have been made publicly available for your species at <a href="${createLink(uri:'/predictiontutorial#param_id')}">our species overview table</a></p>
                            <p>Please read the <a href="${createLink(uri:'/trainingtutorial')}">training tutorial</a> before submitting a job for the first time. Example data for this form is available <a href="${createLink(uri:'/trainingtutorial#exampledata')}">here</a>. You may also use the button below to insert sample data. Please note that you will always need to enter the verification string at the bottom of the page, yourself, in order to submit a job!</p>
-                           <g:actionSubmit action="fillSample" value="Fill in Sample Data" />
+                           <p><g:actionSubmit action="fillSample" value="Fill in Sample Data" /></p>
                            <p>We strongly recommend that you specify an <b>E-mail address</b>! Please read the <a href="${createLink(uri:'/help#email')}"><small>Help</small></a> page before submitting a job without e-mail address! You have to give a <b>species name</b>, and a <b>genome file</b>!</p>
-                           <p><b>Current problem:</b> Regrettably, our server is currently connected to the internet via a rather unreliable connection. This may cause connection timeouts (caused by server side) when uploading big files. Please use the web link upload option, instead, if you experience such problems. We apologize for the inconvenience!</p>
                            <table>
                               <tbody>
                                  <tr class="prop">
@@ -51,14 +50,26 @@
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:training,field:'email_adress','errors')}">
                                        <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:training,field:'email_adress')}"/> 
-                                       &nbsp; <a href="${createLink(uri:'/help#email')}"><small>Help</small></a><br>
+                                       &nbsp;<a href="${createLink(uri:'/help#email')}"><small>Help</small></a><br>
+                                    </td>
+                                 </tr>
+                                 <tr>
+                                    <td class="prop" colspan="2">
                                        <%--<g:if test="${training.agree_email == true}"><div class="prop_warn"></g:if>--%>
-                                       &nbsp; 
-                                       <g:checkBox name="agree_email" value="${training.agree_email}" />
-                                       &nbsp;If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                       <table><tr><td class="prop">
+                                          <g:checkBox name="agree_email" value="${training.agree_email}" />
+                                       </td><td class="prop">
+                                          If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished.<br>
+                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                       </td></tr></table>
                                        <%--<g:if test="${training.agree_email == true}"></div></g:if>--%>
                                     </td>
                                  </tr>
+                              </tbody>
+                           </table>
+                           
+                           <table>
+                              <tbody>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="project_name">Species name <font color="#FF0000">*</font></label>
@@ -67,12 +78,17 @@
                                        <input type="text" maxlength="30" id="project_name" name="project_name" value="${fieldValue(bean:training,field:'project_name')}"/> &nbsp; <a href="${createLink(uri:'/help#species_name')}"><small>Help</small></a>
                                     </td>
                                  </tr>
-                              </tbody>
-                           </table>
-                           <p>There are two options for sequence file (fasta format) transfer:<br>You may <b>either</b> upload data files from your computer <b>or</b> specify web links. &nbsp; <a href="${createLink(uri:'/help#upload_link')}"><small>Help</small></a><br><br><font color="#FF0000">Please read our <a href="${createLink(uri:'/help#most_common_problem')}">instructions about fasta headers</a> before using this web service!</font> Most problems with this web service are caused by a wrong fasta header format!</p>
-                           <br>
-                           <table>
-                              <tbody>
+                                 <tr class="prop">
+                                    <td valign="top" colspan="2" style="padding-left: 0px">
+                                       <br>
+                                       There are two options for sequence file (fasta format) transfer:
+                                       <br>You may <b>either</b> upload data files from your computer <b>or</b> specify web links. &nbsp; 
+                                       <a href="${createLink(uri:'/help#upload_link')}"><small>Help</small></a><br><br>
+                                       <font color="#FF0000">Please read our <a href="${createLink(uri:'/help#most_common_problem')}">instructions about fasta headers</a>
+                                       before using this web service!</font>
+                                       Most problems with this web service are caused by a wrong fasta header format!
+                                    </td>
+                                 </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="GenomeFile"><b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a></label>
@@ -92,8 +108,8 @@
                                        </g:if>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td><td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -103,12 +119,12 @@
                                        <input type="text" id="genome_ftp_link" name="genome_ftp_link" value="${fieldValue(bean:training,field:'genome_ftp_link')}"/> 
                                     </td>
                                  </tr>
-                              </tbody>
-                           </table>
-                           <br>
-                           You need to specify <b>at least one</b> of the following files: <font color="#FF0000">*</font> <a href="${createLink(uri:'/help#which_files')}"><small>Help</small></a><br><br>
-                           <table>
-                              <tbody>
+                                 <tr class="prop">
+                                    <td valign="top" colspan="2" style="padding-left: 0px">
+                                       <br>
+                                       You need to specify <b>at least one</b> of the following files: <font color="#FF0000">*</font> <a href="${createLink(uri:'/help#which_files')}"><small>Help</small></a><br><br>
+                                    </td>
+                                 </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="EstFile"><b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a></label>
@@ -126,9 +142,8 @@
                                        <g:if test="${training?.has_est_file == true}"></div></g:if>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -159,9 +174,8 @@
                                        <g:if test="${training?.has_protein_file == true}"></div></g:if>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -216,12 +230,13 @@
                            </div>
                            <script language="javascript">toggle(getObject('exp_file_options_link'), 'exp_file_options');</script>
                            <!-- end of javascript content on click -->
-                           <br>
-                           <p>
-                              &nbsp; 
+                           <br><br>
+                           <p> 
                               <g:checkBox name="agree_nonhuman" value="${training.agree_nonhuman}" />
-                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).</b> <a href="${createLink(uri:'/help#nonhuman')}"><small>Help</small></a>
+                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).&nbsp;<font color="#FF0000">*</font></b> 
+                              &nbsp;<a href="${createLink(uri:'/help#nonhuman')}"><small>Help</small></a>
                            </p>
+                           <br>
                            <p>We use a <b>verification string</b> to figure out whether you are a <b>human</b>. Please type the text in the image below into the text field next to the image.
                            <table>
                               <tbody>

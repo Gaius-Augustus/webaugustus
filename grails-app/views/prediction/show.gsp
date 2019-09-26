@@ -52,7 +52,7 @@
                     </g:if>
                 </g:if>
                 <g:if test = "${prediction.old_url != null}">
-                    <b><font color="#FF0000">Data duplication!</font></b> A job with identical data was submitted before. You find the old job at <a href="${prediction.old_url}">${prediction.old_url}</a>.
+                    <b><font color="#FF0000">Data duplication!</font></b> A job with identical data was submitted before. You find the old job <a href="${prediction.old_url}">here</a>.
                 </g:if>
             </p>
 

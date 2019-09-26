@@ -600,7 +600,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="training-genome.jpg" alt="image of genome submission field" /></td>
+                           <td><g:img dir="images" file="prediction-genome.jpg" alt="image of genome submission field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -644,7 +644,7 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
-                           <td><g:img dir="images" file="training-cDNA.jpg" alt="image of cDNA submission field" /></td>
+                           <td><g:img dir="images" file="prediction-cDNA.jpg" alt="image of cDNA submission field" /></td>
                         </tr>
                      </table>
                      </p>
@@ -958,8 +958,8 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                         </tr>
                      </table>
                      </p>
-                     <p>This page should contain the file <b>augustus.tar.gz</b>. Please make a "right click" on the link and select "Save As" (or similar) to save the file on your local harddrive.</p>
-                     <p><b>augustus.tar.gz</b> is a gene prediction archive and its content depends on the input file combination. You can unpack the archive by typing <tt>tar -xzvf *.tar.gz</tt> into your shell. (You find more information about the software tar at the <a href="http://www.gnu.org/s/tar/">GNU tar website</a>.)</p>
+                     <p>This page should contain the file <b>predictions.tar.gz</b>. Please make a "right click" on the link and select "Save As" (or similar) to save the file on your local harddrive.</p>
+                     <p><b>predictions.tar.gz</b> is a gene prediction archive and its content depends on the input file combination. You can unpack the archive by typing <tt>tar -xzvf *.tar.gz</tt> into your shell. (You find more information about the software tar at the <a href="http://www.gnu.org/s/tar/">GNU tar website</a>.)</p>
                      <h4>Files that are always contained in gene prediction archives:</h4>
                      <p>
                      <ul>

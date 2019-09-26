@@ -100,6 +100,19 @@ font-family: monospace;
     padding: 5px;
 }
 
+td.prop_or,
+tr.prop_or {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+input[type=text],
+select {
+    width: 300px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
 
 
 .light-blue-background{
@@ -2504,7 +2517,7 @@ table tr.tr-even td{
     text-align:left;
 }
 table tr td{
-    padding:15px;
+    padding:5px 15px;
     color:#5d5d5c;
 }
 @media (max-width:1023px){

@@ -52,7 +52,7 @@
             </p>
             <g:if test = "${training.old_url != null}">
                 <p>
-                    <b><font color="#FF0000">Data duplication!</font></b> A job with identical data was submitted before. You find the old job at <a href="${training.old_url}">${training.old_url}</a>.
+                    <b><font color="#FF0000">Data duplication!</font></b> A job with identical data was submitted before. You find the old job <a href="${training.old_url}">here</a>.
                 </p>
             </g:if>
             <g:if test = "${(fieldValue(bean:training, field:'job_error') == '5' || fieldValue(bean:training, field:'job_status') == '5') && training.old_url == null }">

@@ -40,8 +40,7 @@
                         <div class="dialog">
                            <p>Use this form to submit your data for running AUGUSTUS on new genomic data with already available pre-trained parameters.</p>
                            <p>Please read the <a href="${createLink(uri:'/predictiontutorial')}">prediction tutorial</a> before submitting a job for the first time. Example data for this form is available <a href="${createLink(uri:'/predictiontutorial#exampledata')}">here</a>. You may also use the button below to insert sample data. Please note that you will always need to enter the verification string at the bottom of the page, yourself, in order to submit a job!</p>
-                           <p><b>Current problem:</b> Regrettably, our server is currently connected to the internet via a rather unreliable connection. This may cause connection timeouts (caused by server side) when uploading big files. Please use the web link upload option, instead, if you experience such problems. We apologize for the inconvenience!</p>
-                           <g:actionSubmit action="fillSample" value="Fill in Sample Data" />
+                           <p><g:actionSubmit action="fillSample" value="Fill in Sample Data" /></p>
                            <p>We recommend that you specify an <b>E-mail address</b>.</p>
                            <table>
                               <tbody>
@@ -50,30 +49,42 @@
                                        <label for="email_adress">E-mail</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'email_adress','errors')}">
-                                       <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:prediction,field:'email_adress')}"/> &nbsp;
-                                       <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
-                                       &nbsp;If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted. <a href="${createLink(uri:'/help#email')}"><small>Help</small></a>
+                                       <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:prediction,field:'email_adress')}"/>
+                                        &nbsp;<a href="${createLink(uri:'/help#email')}"><small>Help</small></a><br>
+                                    </td>
+                                 </tr>
+                                 <tr>
+                                    <td class="prop" colspan="2">
+                                       <table><tr><td class="prop">
+                                          <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
+                                       </td><td class="prop">
+                                          If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished.<br>
+                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                       </td></tr></table>
                                     </td>
                                  </tr>
                               </tbody>
                            </table>
-                           <br>
-                           You must <b>either</b> upload a *.tar.gz archive with AUGUSTUS species parameters from your computer <b>or</b> specify a project identifier: &nbsp; <a href="${createLink(uri:'/help#which_files_pred')}"><small>Help</small></a>
-                           <br>
-                           <br>
                            <table>
                               <tbody>
+                                 <tr class="prop">
+                                    <td valign="top" colspan="2" style="padding-left: 0px">
+                                       <br>
+                                       You must <b>either</b> upload a *.tar.gz archive with AUGUSTUS species parameters from your computer 
+                                       <br><b>or</b> specify a project identifier: &nbsp; <a href="${createLink(uri:'/help#which_files_pred')}"><small>Help</small></a>
+                                    </td>
+                                 </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="ArchiveFile"><b>AUGUSTUS species parameters</b> <font color="#FF0000">*</font></label>
                                     </td>
-                                    <td valitn="top">
+                                    <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valitn="top">Upload an archive file  <font size="1">(max. 100 MB)</font>: &nbsp; <a href="${createLink(uri:'/help#archive')}"><small>Help</small></a>
+                                    <td valign="top">Upload an archive file  <font size="1">(max. 100 MB)</font>: &nbsp; <a href="${createLink(uri:'/help#archive')}"><small>Help</small></a>
                                     </td>
-                                    <td valitn="top">
+                                    <td valign="top">
                                        <g:if test="${prediction?.has_param_file == true}">
                                           <div class="prop_warn">
                                        </g:if>
@@ -82,9 +93,8 @@
                                           
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -94,9 +104,8 @@
                                        <input type="text" id="project_id" name="project_id" value="${fieldValue(bean:prediction,field:'project_id')}"/> <a href="${createLink(uri:'/help#project_id')}"><small>Help</small></a>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -172,14 +181,13 @@
                                        <a href="${createLink(uri:'/help#project_id')}"><small>Help</small></a>
                                     </td>
                                  </tr>
-                              </tbody>
-                           </table>
-                           <br>
-                           You must <b>either</b> upload a genome file from your computer <b>or</b> specify a web link to a genome file: &nbsp; <a href="${createLink(uri:'/help#upload_link')}"><small>Help</small></a>
-                           <br>
-                           <br>
-                           <table>
-                              <tbody>
+                                 <tr class="prop">
+                                    <td valign="top" colspan="2" style="padding-left: 0px; padding-bottom: 0px;">
+                                       <br>
+                                       You must <b>either</b> upload a genome file from your computer  <b>or</b> 
+                                       specify a web link to a genome file: &nbsp; <a href="${createLink(uri:'/help#upload_link')}"><small>Help</small></a>
+                                    </td>
+                                 </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="GenomeFile"><b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a></label>
@@ -197,9 +205,8 @@
                                        <g:if test="${prediction?.has_genome_file == true}"></div></g:if>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -209,12 +216,13 @@
                                        <input type="text" id="genome_ftp_link" name="genome_ftp_link" value="${fieldValue(bean:prediction,field:'genome_ftp_link')}"/>
                                     </td>
                                  </tr>
-                              </tbody>
-                           </table>
-                           <br>
-                           You may (optionally) also specify one or several of the following files that contain external evidence for protein coding genes: <a href="${createLink(uri:'/help#which_files_pred')}"><small>Help</small></a><br><br>
-                           <table>
-                              <tbody>
+                                 <tr class="prop">
+                                    <td valign="top" colspan="2" style="padding-left: 0px; padding-bottom: 0px">
+                                       <br>
+                                       You may (optionally) also specify one or several of the following files that contain external evidence for protein coding genes: 
+                                       <a href="${createLink(uri:'/help#which_files_pred')}"><small>Help</small></a>
+                                    </td>
+                                 </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
                                        <label for="EstFile"><b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp;<a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a></label>
@@ -232,9 +240,8 @@
                                        <g:if test="${prediction?.has_est_file == true}"></div></g:if>
                                     </td>
                                  </tr>
-                                 <tr class="prop">
-                                    <td>&nbsp;<b>or</b>&nbsp;</td>
-                                    <td></td>
+                                 <tr>
+                                    <td class="prop_or" colspan="2">&nbsp;<b>or</b>&nbsp;</td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
@@ -326,12 +333,13 @@
                                  </tr>
                               </tbody>
                            </table>
-                           <br>
+                           <br><br>
                            <p>
-                              &nbsp; 
                               <g:checkBox name="agree_nonhuman" value="${prediction?.agree_nonhuman}" />
-                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).</b>
+                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).&nbsp;<font color="#FF0000">*</font></b>
+                              &nbsp;<a href="${createLink(uri:'/help#nonhuman')}"><small>Help</small></a>
                            </p>
+                           <br>
                            <p>We use a <b>verification string</b> to figure out whether you are a <b>human</b> person. Please type the text in the image below into the text field next to the image.
                            <table>
                               <tbody>
