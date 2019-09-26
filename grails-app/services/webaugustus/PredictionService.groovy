@@ -670,7 +670,8 @@ class PredictionService extends AbstractWebaugustusService {
             
             String mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
             
-            predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact augustus-web@uni-greifswald.de if you want to find out what went wrong.\n\n"
+            String senderAdress = PredictionService.getWebaugustusEmailAdress()
+            predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
             if(predictionInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email adress was supplied.")
             }else{

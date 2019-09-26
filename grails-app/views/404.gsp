@@ -9,7 +9,7 @@
         <h1>Not Found</h1>
         <p>The requested URL ${request.forwardURI} was not found on this server.</p>
         <p>Please send an e-mail to 
-            <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a>
+            <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a>
             if a link on our server is broken.
         </p>
         <hr>

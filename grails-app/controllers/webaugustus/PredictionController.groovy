@@ -101,7 +101,8 @@ class PredictionController {
         
         def predictionInstance = new Prediction(params)
         if(!(predictionInstance.id == null)){
-            flash.error = "Internal error 2. Please contact augustus-web@uni-greifswald.de if the problem persists!"
+            String senderAdress = PredictionService.getWebaugustusEmailAdress()
+            flash.error = "Internal error 2. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'prediction')
             return
         }

@@ -10,6 +10,7 @@ abstract class AbstractWebaugustusService {
     protected final static String AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts" // adapt to the actual situation
     // Admin mail for errors
     protected final static String admin_email = "xxx@email.com" // adapt to the actual situation
+    protected final static String WEBAUGUSTUS_EMAIL_ADDRESS = "yyy@email.com" // should be the same assert in application.yml: grails - mail - default.from
     protected final static String emailFooter = "\n\n------------------------------------------------------------------------------------\nThis is an automatically generated message.\n\nhttp://bioinf.uni-greifswald.de/webaugustus" // footer of e-mail
     
     // max length of the job queue, when is reached "the server is busy" will be displayed
@@ -30,6 +31,10 @@ abstract class AbstractWebaugustusService {
     
     protected static String getAdminEmailAdress() {
         return admin_email
+    }
+    
+    public static String getWebaugustusEmailAdress() {
+        return WEBAUGUSTUS_EMAIL_ADDRESS
     }
     
     protected static String getEmailFooter() {

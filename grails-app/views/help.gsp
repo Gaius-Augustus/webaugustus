@@ -63,7 +63,7 @@
                      <p>
                      <ul>
                         <li>
-                           <b>Did an obvious error occur?</b><br>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> if you are not sure what the error message is telling you.<br>
+                           <b>Did an obvious error occur?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> if you are not sure what the error message is telling you.<br>
                            <p>One frequently occurring error in the AutoAug.err file is the following:</p>
                            <p><b>The file with UTR parameters for train****** does not seem to exist.</b> This likely means that the UTR model has not been trained yet for train******.</p>
                            <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
@@ -74,7 +74,7 @@
                               <li>The files that you supplied had long an complex fasta headers. This causes problems with PASA and Scipio. Take care that the fasta headers in all your files are unique, short, do not contain whitespaces or special characters.</li>
                            </ul>
                         </li>
-                        <li><b>Did you submit your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> to inquire whether your job is really still running.</li>
+                        <li><b>Did you submit your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> to inquire whether your job is really still running.</li>
                         <li><b>Did your job finish but there are just no parameters or predictions?</b><br>The quality of results depends on the quality and combination of your input data. If the input data did e.g. not provide sufficient information for generating training genes, then no AUGUSTUS parameters will be optimized for your species, and no predictions will be made. In case of the gene prediction web server application, it is also possible that your submitted genome sequence does not contain any protein coding genes.</li>
                      </ul>
                      </p>
@@ -88,7 +88,7 @@
                      <hr>
                      <br>
                      <h2 id="busy">Why is the server busy?</h2>
-                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is busy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a>.</p>
+                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is busy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a>.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -673,7 +673,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <p>Files that you upload to our server, e.g. sequence files, are not directly made available to anyone. However, if you chose to upload a file via http/ftp link, the link to your file is displayed on the job status page.</p>
                      <p>We are interested in redistributing high quality parameter sets for novel species with the AUGUSTUS release. We will not do so without your explicit permission. Please contact us if you would like to add your parameters to the AUGUSTUS repository.</p>
                      <p>Our server logs e-mail adresses, IP adresses and all job submission details. We store this data for 60 days in order to be able to trace back errors. By submitting a job, you agree that we log this data.</p>
-                     <p>Please contact <a href="mailto:augustus-web@uni-greifswald.de">augustus-web@uni-greifswald.de</a> if your particular job requires a more secure environment, e.g. as part of a collaboration.</p>
+                     <p>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> if your particular job requires a more secure environment, e.g. as part of a collaboration.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
