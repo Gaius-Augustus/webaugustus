@@ -8,7 +8,7 @@ import webaugustus.AbstractWebAugustusDomainClass
  * The class PredictionService controls everything that is related to a job for predicting genes with pre-trained parameters on a novel genome
  *    - it handles the file upload by wget
  *    - format check
- *    - SGE job submission and status checks
+ *    - job submission and status checks
  *    - rendering of results/job status page
  *    - sending E-Mails concerning the job status (downloaded files, errors, finished)
  */
@@ -70,7 +70,7 @@ class PredictionService extends AbstractWebaugustusService {
     protected List<Prediction> findCommittedJobs() {
         return Prediction.withTransaction { Prediction.findAll(sort:"dateCreated", order: "asc"){ // query returns all committed jobs
             job_status == '0'
-        }) }
+        } }
     }
 
     /**
@@ -403,8 +403,8 @@ class PredictionService extends AbstractWebaugustusService {
             species = "${predictionInstance.accession_id}"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Moved uploaded parameters and renamed species to ${predictionInstance.accession_id}")
         }
-        //Create sge script:
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Writing SGE submission script.")
+        //Create script:
+        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Writing submission script.")
         File sgeFile = new File(projectDir, "aug-pred.sh")
         // write command in script (according to uploaded files)
         sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
@@ -432,20 +432,12 @@ class PredictionService extends AbstractWebaugustusService {
         cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${predictionInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
         sgeFile << "${cmdStr}"
         Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "sgeFile=${cmdStr}")
-        // write submission script
-        File submissionScript = new File(projectDir, "submit.sh")
-        String fileID = "${dirName}/jobID"
-        cmdStr = "cd ${dirName}; qsub aug-pred.sh > ${fileID} 2> /dev/null"
-        submissionScript << "${cmdStr}"
-        Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "submissionScript << \"${cmdStr}\"")
-        // submit job
-        cmdStr = "bash ${dirName}/submit.sh"
-        def jobSubmission = "${cmdStr}".execute()
-        Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
-        jobSubmission.waitFor()
-        // get job ID
-        def content = new File(fileID).text
-        if (content.isEmpty()) {
+        
+        sgeFile.setExecutable(true, false);
+        
+        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, sgeFile.getName(), JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+
+        if (jobID == null) {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The augustus job wasn't started")
             predictionInstance.results_urls = null
             predictionInstance.job_status = 5
@@ -453,9 +445,6 @@ class PredictionService extends AbstractWebaugustusService {
             return
         }
 
-        def jobID_array = content =~/Your job (\d*)/
-        def jobID
-        (1..jobID_array.groupCount()).each{jobID = "${jobID_array[0][it]}"}
         predictionInstance.job_id = jobID
         predictionInstance.job_status = 1 // submitted
         predictionInstance.save(flush: true)
@@ -542,30 +531,23 @@ class PredictionService extends AbstractWebaugustusService {
     @Transactional
     protected boolean checkJobReadyness(AbstractWebAugustusDomainClass instance) {
         Prediction predictionInstance = (Prediction) instance
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "checking job SGE status...")
-        
         String jobID = predictionInstance.job_id
-        def cmd = ['qstat -u "*" | grep aug-pred | grep ' + "' ${jobID} '"]
-        def statusContent = Utilities.executeForString(logFile, verb, predictionInstance.accession_id, "statusScript", cmd)
-
-        if (statusContent == null) {
+        
+        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, logFile, verb, predictionInstance.accession_id)
+        
+        if (status == null) {
             return false
         }
-        else if (statusContent =~ /qw/){
-            predictionInstance.job_status = 2
-        } 
-        else if ( statusContent =~ /  r  / ) {
-            if (predictionInstance.job_status != "3") {
+        else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
+            predictionInstance.job_status = '2'
+        }
+        else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
+            if (!predictionInstance.job_status.equals("3")) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
             }
-            predictionInstance.job_status = 3
-        } 
-        else if (!statusContent.empty) {
-            predictionInstance.job_status = 3
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} is neither in qw nor in r status but is still on the grid!")
-        } 
-        else {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} left SGE at ${new Date()}.")
+            predictionInstance.job_status = '3'
+        }
+        else { // JobExecution.JobStatus.FINISHED
             return true
         }
         predictionInstance.save(flush: true)
@@ -584,6 +566,17 @@ class PredictionService extends AbstractWebaugustusService {
         String dirName = "${output_dir}/${predictionInstance.accession_id}"
         File projectDir = new File(dirName)
         
+        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+        if (exitCode != 0) {
+            // try again - perhaps a ssh connection was cut
+            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
+            sleep(10000)
+            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+            if (exitCode != 0) {
+                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
+            }
+        }
+        
         // set file rigths to readable by others
         Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "set file permissions on ${web_output_dir}/${predictionInstance.accession_id}")
         def webOutputDir = new File(web_output_dir, predictionInstance.accession_id) 
@@ -600,11 +593,17 @@ class PredictionService extends AbstractWebaugustusService {
         // check whether errors occured by log-file-sizes
         def sgeErrSize
         def writeResultsErrSize
-        if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
-            sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
-        }else{
+        if (exitCode != 0) {
             sgeErrSize = 10
-            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
+            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed. Setting size to default value 10.")
+        }
+        else {
+            if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
+                sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
+            }else{
+                sgeErrSize = 10
+                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
+            }
         }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErrSize = new File(projectDir, "writeResults.err").size()
@@ -650,8 +649,9 @@ class PredictionService extends AbstractWebaugustusService {
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if(sgeErrSize > 0){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "a SGE error occured!");
-                msgStr += "An SGE error occured. Please check manually what's wrong.\n"
+                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "a ${computeClusterName} error occured!");
+                msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
             }else{
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "an error occured during writing results!");
                 msgStr += "An error occured during writing results.. Please check manually what's wrong.\n"

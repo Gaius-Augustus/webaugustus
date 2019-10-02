@@ -7,7 +7,7 @@ package webaugustus
  *    - start a TrainingService thread - to handle:
  *      - the file upload by wget
  *      - format check
- *      - SGE job submission and status checks
+ *      - job submission and status checks on Compute Cluster
  *      - rendering of results/job status page
  *      - sending E-Mails concerning the job status (downloaded files, errors, finished) 
  */
@@ -39,15 +39,13 @@ class TrainingController {
         // logging verbosity-level
         def logVerb = trainingService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
             
-        def processForLog = "SGE         "
-        def cmd = ['qstat -u "*" | grep qw | wc -l']
-        Long qstatStatusNumber = Utilities.executeForLong(logFile, logVerb, processForLog, "qstatScript", cmd)
-        def sgeLen = TrainingService.getMaxJobsCount()
+        int jobQueueLength = trainingService.getJobQueueLength()
+        def maxJobQueueLength = trainingService.getMaxJobQueueLength()
 
-        if(qstatStatusNumber == null && qstatStatusNumber > sgeLen){
-            def logMessage = "Somebody tried to invoke the Training webserver but the SGE queue was longer "
+        if(jobQueueLength >= maxJobQueueLength){
+            def logMessage = "Somebody tried to invoke the Training webserver but the job queue was was ${jobQueueLength} longer "
             logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
-            Utilities.log(logFile, 1, logVerb, processForLog, logMessage)
+            Utilities.log(logFile, 1, logVerb, "Training creation", logMessage)
 
             def m1 = "You tried to access the AUGUSTUS training job submission page."
             def m2 = "Training parameters for gene training can be a process that takes a lot of computation time. "

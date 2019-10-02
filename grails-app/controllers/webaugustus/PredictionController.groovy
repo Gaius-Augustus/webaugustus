@@ -10,7 +10,7 @@ import javax.annotation.PostConstruct
  *    - start a PredictionService thread - to handle:
  *      - the file upload by wget
  *      - format check
- *      - SGE job submission and status checks
+ *      - job submission and status checks on Compute Cluster
  *      - rendering of results/job status page
  *      - sending E-Mails concerning the job status (downloaded files, errors, finished) 
  */
@@ -44,15 +44,13 @@ class PredictionController {
         // logging verbosity-level
         def logVerb = predictionService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
             
-        def processForLog = "SGE         "
-        def cmd = ['qstat -u "*" | grep qw | wc -l']
-        Long qstatStatusNumber = Utilities.executeForLong(logFile, logVerb, processForLog, "qstatScript", cmd)
-        def sgeLen = PredictionService.getMaxJobsCount()
-
-        if(qstatStatusNumber != null && qstatStatusNumber > sgeLen){
-            def logMessage = "Somebody tried to invoke the Prediction webserver but the SGE queue was longer "
+        int jobQueueLength = predictionService.getJobQueueLength()
+        def maxJobQueueLength = predictionService.getMaxJobQueueLength()
+        
+        if(jobQueueLength >= maxJobQueueLength){
+            def logMessage = "Somebody tried to invoke the Prediction webserver but the job queue length was ${jobQueueLength} and longer "
             logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
-            Utilities.log(logFile, 1, logVerb, processForLog, logMessage)
+            Utilities.log(logFile, 1, logVerb, "Prediction creation", logMessage)
 
             def m1 = "You tried to access the AUGUSTUS prediction job submission page."
             def m2 = "Predicting genes with AUGUSTUS is a process that takes a lot of computation time. "

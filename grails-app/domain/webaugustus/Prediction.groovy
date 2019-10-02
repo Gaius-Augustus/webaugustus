@@ -29,9 +29,9 @@ class Prediction extends AbstractWebAugustusDomainClass {
     String hint_file
     String hint_cksum = 0
     String hint_size = 0
-    String job_id // SGE Job ID will be determined by controller
+    String job_id // Compute Cluster Job ID will be determined by controller
     /**
-     * SGE job status
+     * Compute Cluster job status
      * 0 - Job preparation
      * 1 - Job submitted
      * 2 - waiting for execution
@@ -40,7 +40,7 @@ class Prediction extends AbstractWebAugustusDomainClass {
      * 5 - error
      * 6 - identical job submitted before
      */
-    String job_status // SGE job status will be determined by controller
+    String job_status // Compute Cluster job status will be determined by controller
     //generate a random (and unique) string for links to results here
     private static String validChars ="ABCDEFGHJKLMNPQRSTUVWXYZ123456789_abcdefghijkmnpqrstuvqxyz"
     private int IDlength=8

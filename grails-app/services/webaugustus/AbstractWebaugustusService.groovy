@@ -18,8 +18,11 @@ abstract class AbstractWebaugustusService {
     protected static final String http_base_url = "https://bioinf.uni-greifswald.de${web_output_base_url}" // adapt to the actual situation
     
     
-    // max length of the job queue, when is reached "the server is busy" will be displayed
-    protected final static int maxJobsCount = 20;
+    // max length of the job queue for a service, when is reached "the server is busy" will be displayed
+    protected final static int maxJobQueueLength = 20;
+    
+    // max amount of jobs for a service started on computing cluster - has to be lower than AbstractWebaugustusService.maxJobQueueLength
+    protected final static int maxStartedJobCount = 2;
     
     protected final static int maxNSeqs = 250000 // maximal number of scaffolds allowed in genome file
     // EST sequence properties (length)
@@ -50,10 +53,6 @@ abstract class AbstractWebaugustusService {
         return emailFooter
     }
     
-    public static int getMaxJobsCount() {
-        return maxJobsCount
-    }
-    
     public static int getMaxNSeqs() {
         return maxNSeqs;
     }
@@ -64,6 +63,14 @@ abstract class AbstractWebaugustusService {
     
     public static int getEstMaxLen() {
         return estMaxLen;
+    }
+    
+    public int getMaxJobQueueLength() {
+        return maxJobQueueLength
+    }
+    
+    public int getMaxRunningJobCount() {
+        return maxStartedJobCount
     }
     
     public void sendMailToUser(String email_adress, String subjectString, String message) {
@@ -131,10 +138,13 @@ abstract class AbstractWebaugustusService {
                 
                 committedJobs = findCommittedJobs()
                 committedJobs.each { instance ->
-                    loadDataAndStartJob(instance)
-                    sleep(500) // just wait a bit for the job to get startet
-                }                
-                
+                    // if there are jobs to start and the amount of currently runnning jobs is less getMaxRunningJobCount()
+                    if (getRunningJobCount() < getMaxRunningJobCount()) {
+                        loadDataAndStartJob(instance)
+                        sleep(1000) // just wait a bit for the job to get startet
+                    }
+                }
+             
                 submittedJobs = findSubmittedJobs()
                 submittedJobs.each { instance ->
                     boolean jobDone = checkJobReadyness(instance)
@@ -159,6 +169,21 @@ abstract class AbstractWebaugustusService {
                 }
             }
         }
+    }
+    
+    /**
+     * Count all jobs currently submitted to the worker (and there pending or running) and committed (waiting for a free slot
+     * on the worker)
+     */
+    public int getJobQueueLength() {
+        return findCommittedJobs().size() + findSubmittedJobs().size()
+    }
+    
+    /**
+     * Count all jobs currently submitted to the worker (and there pending or running)
+     */ 
+    public int getRunningJobCount() {
+        return findSubmittedJobs().size()
     }
     
     /**

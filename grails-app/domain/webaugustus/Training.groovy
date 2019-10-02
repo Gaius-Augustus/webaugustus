@@ -15,9 +15,9 @@ class Training extends AbstractWebAugustusDomainClass {
     String genome_ftp_link
     String est_file
     String est_ftp_link
-    String job_id // SGE Job ID will be determined by controller
+    String job_id // Compute Cluster Job ID will be determined by controller
     /**
-     * SGE job status
+     * Compute Cluster job status
      * 0 - Job preparation
      * 1 - Job submitted
      * 2 - waiting for execution
@@ -26,7 +26,7 @@ class Training extends AbstractWebAugustusDomainClass {
      * 5 - error
      * 6 - identical job submitted before
      */
-    String job_status // SGE job status will be determined by controller
+    String job_status // Compute Cluster job status will be determined by controller
     /**
      * 0 - OK
      * 5 - error

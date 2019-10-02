@@ -8,7 +8,7 @@ import webaugustus.AbstractWebAugustusDomainClass
  * The class TrainingService controls everything that is related to a job for training AUGUSTUS through the webserver:
  *    - it handles the file upload by wget
  *    - format check
- *    - SGE job submission and status checks
+ *    - job submission and status checks
  *    - rendering of results/job status page
  *    - sending E-Mails concerning the job status (downloaded files, errors, finished)
  */
@@ -449,7 +449,8 @@ class TrainingService extends AbstractWebaugustusService {
         } // end of job was submitted before check
 
         //Create a sge script:
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Writing SGE submission script.")
+        String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Writing ${computeClusterName} submission script.")
         File sgeFile = new File(projectDir, "augtrain.sh")
         // write command in script (according to uploaded files)
         sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
@@ -473,7 +474,7 @@ class TrainingService extends AbstractWebaugustusService {
             cmdStr += "--trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
         }else{
             cmdStr = null
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} SGE-script remains empty! This an error that should not be possible.")
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
         }
         if (cmdStr != null) {
             cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
@@ -481,32 +482,21 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmdStr}\"")
         }
         Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile=${cmdStr}")
-        // write submission script
-        File submissionScript = new File(projectDir, "submit.sh")
-        String fileID = "${dirName}/jobID"
-        cmdStr = "cd ${dirName}; qsub augtrain.sh > ${fileID} 2> /dev/null"
-        submissionScript << "${cmdStr}"
-        Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "submissionScript << \"${cmdStr}\"")
-        // submit job
-        cmdStr = "bash ${dirName}/submit.sh"
-        def jobSubmission = "${cmdStr}".execute()
-        Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
-        jobSubmission.waitFor()
-        // get job ID
-        def content = new File(fileID).text
-        if (content.isEmpty()) {
+
+        sgeFile.setExecutable(true, false);
+        
+        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, sgeFile.getName(), JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+
+        if (jobID == null) {
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The augustus training job wasn't started")
             trainingInstance.results_urls = null
-            trainingInstance.job_status = 5
+            trainingInstance.job_status = '5'
             trainingInstance.save(flush: true)
             return
         }
 
-        def jobID_array = content =~/Your job (\d*)/
-        def jobID
-        (1..jobID_array.groupCount()).each{jobID = "${jobID_array[0][it]}"}
         trainingInstance.job_id = jobID
-        trainingInstance.job_status = 1 // submitted
+        trainingInstance.job_status = '1' // submitted
         trainingInstance.save(flush: true)
         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} submitted.")
     }
@@ -520,30 +510,23 @@ class TrainingService extends AbstractWebaugustusService {
     @Transactional
     protected boolean checkJobReadyness(AbstractWebAugustusDomainClass instance) {
         Training trainingInstance = (Training) instance
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "checking job SGE status...")
-        
         String jobID = trainingInstance.job_id
-        def cmd = ['qstat -u "*" | grep augtrain | grep ' + "' ${jobID} '"]
-        def statusContent = Utilities.executeForString(logFile, verb, trainingInstance.accession_id, "statusScript", cmd)
-
-        if (statusContent == null) {
+        
+        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, logFile, verb, trainingInstance.accession_id)
+        
+        if (status == null) {
             return false
         }
-        else if (statusContent =~ /qw/) {
-            trainingInstance.job_status = 2
+        else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
+            trainingInstance.job_status = '2'
         }
-        else if ( statusContent =~ /  r  / ) {
-            if (trainingInstance.job_status != "3") {
+        else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
+            if (!trainingInstance.job_status.equals("3")) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
             }
-            trainingInstance.job_status = 3
+            trainingInstance.job_status = '3'
         }
-        else if (!statusContent.empty) {
-            trainingInstance.job_status = 3
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} is neither in qw nor in r status but is still on the grid!")
-        }
-        else {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} left SGE at ${new Date()}.")
+        else { // JobExecution.JobStatus.FINISHED
             return true
         }
         trainingInstance.save(flush: true)
@@ -562,6 +545,16 @@ class TrainingService extends AbstractWebaugustusService {
         String dirName = "${output_dir}/${trainingInstance.accession_id}"
         File projectDir = new File(dirName)
         
+        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+        if (exitCode != 0) {
+            // try again - perhaps a ssh connection was cut
+            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
+            sleep(10000)
+            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+            if (exitCode != 0) {
+                Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
+            }
+        }
         // set file rigths to readable by others
         Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "set file permissions on ${web_output_dir}/${trainingInstance.accession_id}")
         def webOutputDir = new File(web_output_dir, trainingInstance.accession_id)
@@ -668,13 +661,19 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "autoAugError file was not created. Default size value is set to 10.")
             autoAugErrSize = 10
         }
-        if(new File(projectDir, "augtrain.sh.e${jobID}").exists()){
-            sgeErrSize = new File(projectDir, "augtrain.sh.e${jobID}").size()
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "sgeErrSize is ${sgeErrSize}.")
-
-        }else{
-            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "sgeErr file was not created. Default size value is set to 10.")
+        if (exitCode != 0) {
             sgeErrSize = 10
+            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed. Default size to default value 10.")
+        }
+        else {
+            if(new File(projectDir, "augtrain.sh.e${jobID}").exists()){
+                sgeErrSize = new File(projectDir, "augtrain.sh.e${jobID}").size()
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "sgeErrSize is ${sgeErrSize}.")
+
+            }else{
+                Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "sgeErr file was not created. Default size value is set to 10.")
+                sgeErrSize = 10
+            }
         }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErrSize = new File(projectDir, "writeResults.err").size()
@@ -733,8 +732,9 @@ class TrainingService extends AbstractWebaugustusService {
                 msgStr += "An error occured in the autoAug pipeline. "
             }
             if (sgeErrSize != 0) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "a SGE error occured!");
-                msgStr += "An SGE error occured. "
+                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "a ${computeClusterName} error occured!");
+                msgStr += "A ${computeClusterName} error occured. "
             }
             if (writeResultsErrSize != 0) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured during writing results!");
@@ -777,7 +777,8 @@ class TrainingService extends AbstractWebaugustusService {
                 trainingInstance.job_error = 5
                 trainingInstance.job_status = 4
                 
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when SGE error occured.")
+                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when ${computeClusterName} error occured.")
             }
             if (writeResultsErrSize != 0) {
                 trainingInstance.job_status = 4
