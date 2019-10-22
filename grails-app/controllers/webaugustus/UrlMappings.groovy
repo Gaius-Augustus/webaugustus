@@ -18,7 +18,6 @@ class UrlMappings {
         "/datasets"(view: '/datasets')
         "/help"(view: '/help')
         "/index"(view: '/index')
-        "/predictions_for_download"(view: '/predictions_for_download')
         "/predictiontutorial"(view: '/predictiontutorial')
         "/references"(view: '/references')
         "/trainingtutorial"(view: '/trainingtutorial')
