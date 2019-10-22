@@ -6,9 +6,9 @@ import webaugustus.AbstractWebAugustusDomainClass
 @Transactional
 abstract class AbstractWebaugustusService {
     
-    protected final static String AUGUSTUS_CONFIG_PATH = "/usr/share/augustus/config"   // adapt to the actual situation
+    protected final static String AUGUSTUS_CONFIG_PATH = "/usr/share/augustus/config" // adapt to the actual situation - if using SlurmJobExecution see restrictions in class doc there
     protected final static String AUGUSTUS_SPECIES_PATH = AUGUSTUS_CONFIG_PATH + "/species"
-    protected final static String AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts" // adapt to the actual situation
+    protected final static String AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts" // adapt to the actual situation - if using SlurmJobExecution see restrictions in class doc there
     // Admin mail for errors
     protected final static String admin_email = "xxx@email.com" // adapt to the actual situation
     protected final static String WEBAUGUSTUS_EMAIL_ADDRESS = "yyy@email.com" // should be the same assert in application.yml: grails - mail - default.from

@@ -19,7 +19,7 @@ class PredictionService extends AbstractWebaugustusService {
     private static final String output_dir =     "/data/www/webaugustus/webdata/augpred"    // adapt to the actual situation // should be something in home of webserver user and augustus frontend user
     private static final String web_output_dir = "/data/www/webaugustus/prediction-results" // adapt to the actual situation // must be writable to webserver application
     // web-output - directory to the results that are downloadable by end users
-    private static final String web_output_url = "${web_output_base_url}prediction-results/" // "http://bioinf.uni-greifswald.de/trainaugustus/prediction-results/" // adapt to the actual situation
+    private static final String web_output_url = "${web_output_base_url}prediction-results/" // adapt to the actual situation
     private static final String prediction_url_part = "prediction/"
     
     // this log File contains the "process log", what was happening with which job when.

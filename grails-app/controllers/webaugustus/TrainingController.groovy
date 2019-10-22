@@ -77,7 +77,7 @@ class TrainingController {
 
     // fill in sample data
     def fillSample() {
-        redirect(action:'create', controller: 'training', params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/chr1to6.fa", protein_ftp_link:"http://bioinf.uni-greifswald.de/trainaugustus/examples/rattusProteinsChr1to6.fa", project_name:"Mus_musculus"])
+        redirect(action:'create', controller: 'training', params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/webaugustus/examples/chr1to6.fa", protein_ftp_link:"http://bioinf.uni-greifswald.de/webaugustus/examples/rattusProteinsChr1to6.fa", project_name:"Mus_musculus"])
     }
 
     // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Training Controller and contains a Thread method that will continue running as a background process after the user is redirected to the job status page.
