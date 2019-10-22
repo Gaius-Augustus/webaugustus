@@ -153,22 +153,31 @@ select {
 }
 @font-face{
     font-family:'Roboto Condensed';
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Regular.eot');
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Regular.eot?#iefix') format('embedded-opentype'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Regular.woff') format('woff'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Regular.ttf') format('truetype'),url('http://bioinf.uni-greifswald.de/bioinf/css/img/RobotoCondensed-Regular.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Regular.eot');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Regular.eot?#iefix') format('embedded-opentype'),
+        url('/bioinf/css/fonts/RobotoCondensed-Regular.woff') format('woff'),
+        url('/bioinf/css/fonts/RobotoCondensed-Regular.ttf') format('truetype'),
+        url('/bioinf/css/img/RobotoCondensed-Regular.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
     font-style:normal;
     font-weight:400;
 }
 @font-face{
     font-family:'Roboto Condensed';
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Light.eot');
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Light.eot?#iefix') format('embedded-opentype'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Light.woff') format('woff'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Light.ttf') format('truetype'),url('http://bioinf.uni-greifswald.de/bioinf/css/img/RobotoCondensed-Light.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Light.eot');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Light.eot?#iefix') format('embedded-opentype'),
+        url('/bioinf/css/fonts/RobotoCondensed-Light.woff') format('woff'),
+        url('/bioinf/css/fonts/RobotoCondensed-Light.ttf') format('truetype'),
+        url('/bioinf/css/img/RobotoCondensed-Light.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
     font-style:normal;
     font-weight:300;
 }
 @font-face{
     font-family:'Roboto Condensed';
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Bold.eot');
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Bold.eot?#iefix') format('embedded-opentype'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Bold.woff') format('woff'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/RobotoCondensed-Bold.ttf') format('truetype'),url('http://bioinf.uni-greifswald.de/bioinf/css/img/RobotoCondensed-Bold.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Bold.eot');
+    src:url('/bioinf/css/fonts/RobotoCondensed-Bold.eot?#iefix') format('embedded-opentype'),
+        url('/bioinf/css/fonts/RobotoCondensed-Bold.woff') format('woff'),
+        url('/bioinf/css/fonts/RobotoCondensed-Bold.ttf') format('truetype'),
+        url('/bioinf/css/img/RobotoCondensed-Bold.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
     font-style:normal;
     font-weight:700;
 }
@@ -2215,9 +2224,11 @@ html.ie .grid--stretch .grid__column > .csc-default > .csc-textpic{
 
 @font-face{
     font-family:'Icons';
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/hsmv-icons.eot');
-    src:url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/hsmv-icons.eot?#iefix') format('embedded-opentype'),url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/hsmv-icons.woff') format('woff'),
-    url('http://bioinf.uni-greifswald.de/bioinf/css/fonts/hsmv-icons.ttf') format('truetype'),url('http://bioinf.uni-greifswald.de/bioinf/css/img/hsmv-icons.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
+    src:url('/bioinf/css/fonts/hsmv-icons.eot');
+    src:url('/bioinf/css/fonts/hsmv-icons.eot?#iefix') format('embedded-opentype'),
+        url('/bioinf/css/fonts/hsmv-icons.woff') format('woff'),
+        url('/bioinf/css/fonts/hsmv-icons.ttf') format('truetype'),
+        url('/bioinf/css/img/hsmv-icons.svg#f4ba68a9596ca53347cecdb9c6e48d01') format('svg');
     font-style:normal;
     font-weight:400;
 }

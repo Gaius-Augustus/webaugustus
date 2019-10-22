@@ -55,7 +55,7 @@
                <div class="header__submenu"></div>
                <div class="logo">
                   <a href="https://www.uni-greifswald.de/" title="Universität Greifswald" class="logo-main">
-                  <img src="//bioinf.uni-greifswald.de/bioinf/img/uni-greifswald_opt.svg" width="400" height="118" alt="Universität Greifswald" title="Universität Greifswald" >
+                  <img src="/bioinf/images/uni-greifswald_opt.svg" width="400" height="118" alt="Universität Greifswald" title="Universität Greifswald" >
                   </a>
                </div>
                <!-- middle part of header -->
