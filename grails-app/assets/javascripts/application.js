@@ -8,6 +8,7 @@
 //= require jquery-3.3.1.min
 //= require popper.min
 //= require_self
+//= require mobile.js
 //= require webaugustus.js
 
 if (typeof jQuery !== 'undefined') {

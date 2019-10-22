@@ -8268,11 +8268,12 @@ html:not(.mobile) .teaserbox-round.teaserbox-round--scale:hover{
     -webkit-transform:rotate(90deg);
     transform:rotate(90deg);
     font-family:"Icons";
-    content:"";
+    content:"\f054";
     font-weight:normal;
     position:absolute;
     top:8px;
     left:10px;
+    display:none;
 }
 @media (max-width:768px){
     .navigation-sub .navigation-sub__headline{
@@ -8290,6 +8291,9 @@ html:not(.mobile) .teaserbox-round.teaserbox-round--scale:hover{
         font-weight:bold;
         top:4px;
         left:7px;
+    }
+    .navigation-sub .navigation-sub__headline:before{
+        display:block;
     }
 }
 .navigation-sub .navigation-sub__headline.navigation-sub__headline--backlink:before{
