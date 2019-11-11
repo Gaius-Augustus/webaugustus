@@ -1,6 +1,7 @@
 package webaugustus
 
 import grails.gorm.transactions.Transactional
+import grails.util.Holders
 import javax.annotation.PostConstruct
 import webaugustus.AbstractWebAugustusDomainClass
 
@@ -15,49 +16,48 @@ import webaugustus.AbstractWebAugustusDomainClass
 @Transactional
 class PredictionService extends AbstractWebaugustusService {
 
-    // need to adjust the output dir to whatever working dir! This is where uploaded files and results will be saved.
-    private static final String output_dir =     "/data/www/webaugustus/webdata/augpred"    // adapt to the actual situation // should be something in home of webserver user and augustus frontend user
-    private static final String web_output_dir = "/data/www/webaugustus/prediction-results" // adapt to the actual situation // must be writable to webserver application
-    // web-output - directory to the results that are downloadable by end users
-    private static final String web_output_url = "${web_output_base_url}prediction-results/" // adapt to the actual situation
-    private static final String prediction_url_part = "prediction/"
-    
-    // this log File contains the "process log", what was happening with which job when.
-    private static final File logFile = new File("${output_dir}/pred.log")
-    private static final int verb = 3 // 1 only basic log messages, 2 all issued commands, 3 also script content
-    
     public void sendMailToUser(Prediction predictionInstance, String subjectString, String message) {
         sendMailToUser(predictionInstance.email_adress, subjectString, message)
     }
     
     @PostConstruct
     def init() {
-        Utilities.log(logFile, 1, verb, "startup     ", "PredictionService")
+        Utilities.log(getLogFile(), 1, 1, "startup     ", "PredictionService")
         startWorkerThread()
     }
     
+    // This is where uploaded files and results will be saved.
     public String getOutputDir() {
-        return PredictionService.output_dir
+        return Holders.getConfig().getProperty('data.path.prediction.dir', String)
     }
     
-    public String getWebOutputDir() {
-        return PredictionService.web_output_dir
+    // directory to the results that are downloadable by end users
+    // must be writable to webserver application
+    public String getWebOutputDir() {        
+        return Holders.getConfig().getProperty('data.path.prediction.web', String)
     }
     
     public String getWebOutputURL() {
-        return PredictionService.web_output_url
+        return Holders.getConfig().getProperty('url.prediction.result.rel', String)
     }
     
     public String getHttpBaseURL() {
-        return AbstractWebaugustusService.http_base_url + prediction_url_part
+        return Holders.getConfig().getProperty('url.prediction.abs', String)
     }
     
+    // this log File contains the "process log", what was happening with which job when.
+    private static File logFile = null
+    
     public File getLogFile() {
+        if (PredictionService.logFile == null) {
+            PredictionService.logFile = new File("${getOutputDir()}/pred.log")
+        }
         return PredictionService.logFile
     }
     
-    public int getVerboseLevel() {
-        return PredictionService.verb
+    // 1 only basic log messages, 2 all issued commands, 3 also script content
+    public int getLogLevel() {
+        return Holders.getConfig().getProperty('log.level.prediction', Integer)
     }
     
     public String getServiceName() {
@@ -85,10 +85,10 @@ class PredictionService extends AbstractWebaugustusService {
     }
     
     private void deleteDir(Prediction predictionInstance) {
-        String dirName = "${output_dir}/${predictionInstance.accession_id}"
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Project directory ${dirName} is deleted")
+        String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Project directory ${dirName} is deleted")
         def cmd = ["rm -r ${dirName} &> /dev/null"]
-        Utilities.execute(logFile, 2, predictionInstance.accession_id, "removeProjectDir", cmd)
+        Utilities.execute(getLogFile(), 2, predictionInstance.accession_id, "removeProjectDir", cmd)
     }
     
     private void abortJob(Prediction predictionInstance) {
@@ -103,10 +103,10 @@ class PredictionService extends AbstractWebaugustusService {
         deleteDir(predictionInstance)
         
         if(predictionInstance.email_adress == null) {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous user is aborted!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous user is aborted!")
         }
         else {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
         }
         
         if (message != null) {
@@ -129,10 +129,15 @@ class PredictionService extends AbstractWebaugustusService {
      */
     @Transactional
     protected void loadDataAndStartJob(AbstractWebAugustusDomainClass instance) {
-        Prediction predictionInstance = (Prediction) instance
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "load and start job ")
         
-        String dirName = "${output_dir}/${predictionInstance.accession_id}"
+        String AUGUSTUS_CONFIG_PATH = getAugustusConfigPath()
+        String AUGUSTUS_SPECIES_PATH = getAugustusSpeciesPath()
+        String AUGUSTUS_SCRIPTS_PATH = getAugustusScriptPath()
+        
+        Prediction predictionInstance = (Prediction) instance
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "load and start job ")
+        
+        String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
         File projectDir = new File(dirName)
             
         // retrieve genome file
@@ -140,20 +145,20 @@ class PredictionService extends AbstractWebaugustusService {
             projectDir.mkdirs()
 
             def cmd = ["wget -O ${dirName}/genome.fa ${predictionInstance.genome_ftp_link}  &> /dev/null"]
-            Utilities.execute(logFile, verb, predictionInstance.accession_id, "getGenomeScript", cmd)
+            Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "getGenomeScript", cmd)
 
             if("${predictionInstance.genome_ftp_link}" =~ /\.gz/){
                 cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipGenomeScript", cmd)
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Unpacked genome file.")
+                Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "gunzipGenomeScript", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Unpacked genome file.")
             }
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
             // check number of scaffolds (to avoid Java heapspace error in the next step)
             cmd = ["grep -c '>' ${dirName}/genome.fa"]
-            Long nSeqNumber = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "nSeqFile", cmd)
+            Long nSeqNumber = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "nSeqFile", cmd)
             int maxNSeqs = getMaxNSeqs()
             if(nSeqNumber == null || nSeqNumber > maxNSeqs){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds). This is not allowed!\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
@@ -175,13 +180,13 @@ class PredictionService extends AbstractWebaugustusService {
                 }
             }
             if(metacharacterFlag == 1){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
             if(genomeFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file was not fasta.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
@@ -194,7 +199,7 @@ class PredictionService extends AbstractWebaugustusService {
             File structFile = new File(projectDir, "hints.gff")
             if (structFile.exists() && predictionInstance.genome_ftp_link != null) { // if seqNames already exists
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
-                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, "Checking hints.gff file format")
+                Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, "Checking hints.gff file format")
                 def gffArray
                 def isElement
                 metacharacterFlag = 0
@@ -216,25 +221,25 @@ class PredictionService extends AbstractWebaugustusService {
                     }
                 }
                 if(metacharacterFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).");
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).");
                     String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
                 }
                 if(gffColErrorFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file does not always contain 9 columns.")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file does not always contain 9 columns.")
                     String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\n${predictionInstance.hint_file}\ndid not contain 9 columns in each line. Please make sure the gff-format complies\nwith the instructions in our 'Help' section before submitting another job!\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
                 }
                 if(gffNameErrorFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file contains entries that do not comply with genome sequence names.")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file contains entries that do not comply with genome sequence names.")
                     String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequence names in\nthe provided hints file\n${predictionInstance.hint_file}\ndid not comply with the sequence names in the supplied genome file\n${predictionInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
                 }
                 if(gffSourceErrorFlag ==1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hints file contains entries that do not have source=M in the last column.")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file contains entries that do not have source=M in the last column.")
                     String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the last column of your\nhints file\n${predictionInstance.hint_file}\ndoes not contain the content source=M. Please make sure the gff-format complies with\nthe instructions in our 'Help' section before submitting another job!\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
@@ -242,23 +247,23 @@ class PredictionService extends AbstractWebaugustusService {
             }
 
             cmd = ["cksum ${dirName}/genome.fa"]
-            predictionInstance.genome_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
-            predictionInstance.genome_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome.fa is ${predictionInstance.genome_size} big and has a cksum of ${predictionInstance.genome_cksum}.")
+            predictionInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
+            predictionInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "genome.fa is ${predictionInstance.genome_size} big and has a cksum of ${predictionInstance.genome_cksum}.")
         } // end of if(!(predictionInstance.genome_ftp_link == null))
 
         // retrieve EST file
         if(!(predictionInstance.est_ftp_link == null)){
 
             def cmd = ["wget -O ${dirName}/est.fa ${predictionInstance.est_ftp_link}  &> /dev/null"]
-            Utilities.execute(logFile, verb, predictionInstance.accession_id, "getEstScript", cmd)
+            Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "getEstScript", cmd)
 
             if("${predictionInstance.est_ftp_link}" =~ /\.gz/){
                 cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipEstScript", cmd)
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Unpacked EST file.")
+                Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "gunzipEstScript", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Unpacked EST file.")
             }
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
             def metacharacterFlag = 0
             def estFastaFlag = 0
@@ -272,22 +277,22 @@ class PredictionService extends AbstractWebaugustusService {
                 }
             }
             if(metacharacterFlag == 1){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
             if(estFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
 
             cmd = ["cksum ${dirName}/est.fa"]
-            predictionInstance.est_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
-            predictionInstance.est_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
+            predictionInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
+            predictionInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
         } // end of if(!(predictionInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -304,7 +309,7 @@ class PredictionService extends AbstractWebaugustusService {
                 }
             }
             if (nEntries == 0) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequence file is not in fasta format. It doesn't contain \">\" characters.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST sequence file is not in fasta format. It doesn't contain \">\" characters.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because your\ncDNA file is not in fasta format. \n\n"
                 abortJob(predictionInstance, mailStr)
                 return
@@ -313,12 +318,12 @@ class PredictionService extends AbstractWebaugustusService {
             int estMinLen = getEstMinLen()
             int estMaxLen = getEstMaxLen()
             if(avEstLen < estMinLen){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might contain RNAseq\nraw sequences. Currently, our web server application does not support the integration\nof RNAseq raw sequences. Please either assemble your sequences into longer contigs,\nor remove short sequences from your current file, or submit a new job without\nspecifying a cDNA file.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }else if(avEstLen > estMaxLen){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequence\nfiles with an average sequence length longer than ${estMaxLen} might not contain\nESTs or cDNAs. Please either remove long sequences from your current file, or\nsubmit a new job without specifying a cDNA file.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
@@ -327,7 +332,7 @@ class PredictionService extends AbstractWebaugustusService {
 
         // confirm file upload via e-mail
         if (predictionInstance.genome_ftp_link != null || predictionInstance.est_ftp_link != null) {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Retrieved all ftp files successfully.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete them\nfrom the public server, now, without affecting the AUGUSTUS prediction job.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
             predictionInstance.save(flush: true)
@@ -368,7 +373,7 @@ class PredictionService extends AbstractWebaugustusService {
 
             String mailStr = "You submitted job ${predictionInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-            predictionInstance.old_url = "${web_output_base_url}prediction/show/${oldID}"
+            predictionInstance.old_url = "${getRelativeURL()}prediction/show/${oldID}"
             predictionInstance.save(flush: true)
             
             mailStr += "The old job with identical input files and identical parameters "
@@ -376,16 +381,16 @@ class PredictionService extends AbstractWebaugustusService {
             
             sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id} was submitted before as job ${oldAccContent}", mailStr)
             
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}.")
             abortJob(predictionInstance, null, "6")
             
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Web output directory is deleted")
-            def cmd = ["rm -r ${web_output_dir}/${predictionInstance.accession_id} &> /dev/null"]
-            Utilities.execute(logFile, 2, predictionInstance.accession_id, "removeWeb_output_dir", cmd)
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Web output directory is deleted")
+            def cmd = ["rm -r ${getWebOutputDir()}/${predictionInstance.accession_id} &> /dev/null"]
+            Utilities.execute(getLogFile(), 2, predictionInstance.accession_id, "removeWeb_output_dir", cmd)
             
             return
         } // end of job was submitted before check
-
+        
         //rename and move parameters
         // species name for AUGUSTUS
         String species = predictionInstance.project_id
@@ -395,19 +400,19 @@ class PredictionService extends AbstractWebaugustusService {
             def mvParamsScript = new File(projectDir, "mvParams.sh")
             cmdStr = "${AUGUSTUS_SCRIPTS_PATH}/moveParameters.pl ${dirName}/params ${predictionInstance.accession_id} ${AUGUSTUS_SPECIES_PATH} 2> /dev/null\n"
             mvParamsScript << "${cmdStr}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "mvParamsScript << \"${cmdStr}\"")
+            Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "mvParamsScript << \"${cmdStr}\"")
             cmdStr = "bash ${mvParamsScript}"
             def mvParamsRunning = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
+            Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, cmdStr)
             mvParamsRunning.waitFor()
             species = "${predictionInstance.accession_id}"
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Moved uploaded parameters and renamed species to ${predictionInstance.accession_id}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Moved uploaded parameters and renamed species to ${predictionInstance.accession_id}")
         }
         //Create script:
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Writing submission script.")
-        File sgeFile = new File(projectDir, "aug-pred.sh")
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Writing submission script.")
+        File jobFile = new File(projectDir, "aug-pred.sh")
         // write command in script (according to uploaded files)
-        sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
+        jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         cmdStr = "mkdir ${dirName}/augustus\n"
         if(estExistsFlag){
             cmdStr = "${cmdStr}blat -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
@@ -429,16 +434,16 @@ class PredictionService extends AbstractWebaugustusService {
         cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/getAnnoFasta.pl --seqfile=${dirName}/genome.fa ${dirName}/augustus/augustus.gff\n"
         cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | perl -ne 'if(m/\\tAUGUSTUS\\t/){print;}' > ${dirName}/augustus/augustus.gtf\n"
         cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | ${AUGUSTUS_SCRIPTS_PATH}/augustus2gbrowse.pl > ${dirName}/augustus/augustus.gbrowse\n"
-        cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${predictionInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
-        sgeFile << "${cmdStr}"
-        Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "sgeFile=${cmdStr}")
+        cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${predictionInstance.accession_id} null '${predictionInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 2> ${dirName}/writeResults.err"
+        jobFile << "${cmdStr}"
+        Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "jobFile=${cmdStr}")
         
-        sgeFile.setExecutable(true, false);
+        jobFile.setExecutable(true, false);
         
-        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, sgeFile.getName(), JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
 
         if (jobID == null) {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The augustus job wasn't started")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The augustus job wasn't started")
             predictionInstance.results_urls = null
             predictionInstance.job_status = 5
             predictionInstance.save(flush: true)
@@ -448,11 +453,11 @@ class PredictionService extends AbstractWebaugustusService {
         predictionInstance.job_id = jobID
         predictionInstance.job_status = 1 // submitted
         predictionInstance.save(flush: true)
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} submitted.")
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${jobID} submitted.")
     }
     
     private String getParameterString(Prediction predictionInstance) {
-        String dirName = "${output_dir}/${predictionInstance.accession_id}"
+        String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
         File projectDir = new File(dirName)
         
         
@@ -469,6 +474,7 @@ class PredictionService extends AbstractWebaugustusService {
             }
         }
         if (overRideUtrFlag) {
+            String AUGUSTUS_SPECIES_PATH = getAugustusSpeciesPath()
             def utrParamContent = new File("${AUGUSTUS_SPECIES_PATH}/${species}/${species}_utr_probs.pbl")
             if (!utrParamContent.exists()) {
                 overRideUtrFlag = false;
@@ -533,7 +539,7 @@ class PredictionService extends AbstractWebaugustusService {
         Prediction predictionInstance = (Prediction) instance
         String jobID = predictionInstance.job_id
         
-        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, logFile, verb, predictionInstance.accession_id)
+        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, getLogFile(), getLogLevel(), predictionInstance.accession_id)
         
         if (status == null) {
             return false
@@ -543,7 +549,7 @@ class PredictionService extends AbstractWebaugustusService {
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!predictionInstance.job_status.equals("3")) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
             }
             predictionInstance.job_status = '3'
         }
@@ -560,34 +566,34 @@ class PredictionService extends AbstractWebaugustusService {
     @Transactional
     protected void finishJob(AbstractWebAugustusDomainClass instance) {
         Prediction predictionInstance = (Prediction) instance
-        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "finishJob")
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "finishJob")
         
         String jobID = predictionInstance.job_id
-        String dirName = "${output_dir}/${predictionInstance.accession_id}"
+        String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
         File projectDir = new File(dirName)
         
-        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
         if (exitCode != 0) {
             // try again - perhaps a ssh connection was cut
-            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
             sleep(10000)
-            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, logFile, verb, predictionInstance.accession_id)
+            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
             if (exitCode != 0) {
-                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
             }
         }
         
         // set file rigths to readable by others
-        Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "set file permissions on ${web_output_dir}/${predictionInstance.accession_id}")
-        def webOutputDir = new File(web_output_dir, predictionInstance.accession_id) 
+        Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${predictionInstance.accession_id}")
+        def webOutputDir = new File(getWebOutputDir(), predictionInstance.accession_id) 
         if (webOutputDir.exists()) {
             webOutputDir.setReadable(true, false)
             webOutputDir.setExecutable(true, false);
             webOutputDir.eachFile { file -> file.setReadable(true, false) } // actually just predictions.tar.gz
         }
         // collect results link information
-        if(new File("${web_output_dir}/${predictionInstance.accession_id}/predictions.tar.gz").exists()){
-            predictionInstance.results_urls = "<p><b>Prediction archive</b>&nbsp;&nbsp;<a href=\"${web_output_url}${predictionInstance.accession_id}/predictions.tar.gz\">predictions.tar.gz</a><br></p>"
+        if(new File("${getWebOutputDir()}/${predictionInstance.accession_id}/predictions.tar.gz").exists()){
+            predictionInstance.results_urls = "<p><b>Prediction archive</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${predictionInstance.accession_id}/predictions.tar.gz\">predictions.tar.gz</a><br></p>"
             predictionInstance.save(flush: true)
         }
         // check whether errors occured by log-file-sizes
@@ -595,24 +601,24 @@ class PredictionService extends AbstractWebaugustusService {
         def writeResultsErrSize
         if (exitCode != 0) {
             sgeErrSize = 10
-            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "cleanupJob failed. Setting size to default value 10.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. Setting size to default value 10.")
         }
         else {
             if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
                 sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
             }else{
                 sgeErrSize = 10
-                Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
             }
         }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErrSize = new File(projectDir, "writeResults.err").size()
         }else{
             writeResultsErrSize = 10
-            Utilities.log(logFile, 1, verb, "SEVERE", predictionInstance.accession_id, "writeResultsErr was not created. Setting size to default value 10.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "writeResultsErr was not created. Setting size to default value 10.")
         }
 
-        String admin_email = getAdminEmailAdress()
+        String admin_email = getAdminEmailAddress()
         String footer = getEmailFooter()
         
         if(sgeErrSize==0 && writeResultsErrSize==0){
@@ -622,38 +628,38 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.save(flush: true)
             
             if(predictionInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail adress was supplied.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail address was supplied.")
             }
             else {
                 String msgStr = "${mailStr}You find the results at "
                 msgStr += "${getHttpBaseURL()}show/${predictionInstance.id}.\n\n"
                 sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id} is complete", msgStr)
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
             
-            def packResults = new File("${output_dir}/pack${predictionInstance.accession_id}.sh")
-            String cmdStr = "cd ${output_dir}; tar -czvf ${predictionInstance.accession_id}.tar.gz ${predictionInstance.accession_id} &> /dev/null"
+            def packResults = new File("${getOutputDir()}/pack${predictionInstance.accession_id}.sh")
+            String cmdStr = "cd ${getOutputDir()}; tar -czvf ${predictionInstance.accession_id}.tar.gz ${predictionInstance.accession_id} &> /dev/null"
             packResults << "${cmdStr}"
-            Utilities.log(logFile, 3, verb, predictionInstance.accession_id, "packResults << \"${cmdStr}\"")
-            cmdStr = "bash ${output_dir}/pack${predictionInstance.accession_id}.sh"
+            Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "packResults << \"${cmdStr}\"")
+            cmdStr = "bash ${getOutputDir()}/pack${predictionInstance.accession_id}.sh"
             def cleanUp = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
+            Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, cmdStr)
             cleanUp.waitFor()
-            cmdStr = "rm ${output_dir}/pack${predictionInstance.accession_id}.sh &> /dev/null"
+            cmdStr = "rm ${getOutputDir()}/pack${predictionInstance.accession_id}.sh &> /dev/null"
             cleanUp = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, predictionInstance.accession_id, cmdStr)
+            Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, cmdStr)
             deleteDir(predictionInstance)
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "job directory was packed with tar/gz.")
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job completed. Result: ok.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "job directory was packed with tar/gz.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job completed. Result: ok.")
         }else{
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if(sgeErrSize > 0){
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "a ${computeClusterName} error occured!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "a ${computeClusterName} error occured!");
                 msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
             }else{
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "an error occured during writing results!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured during writing results!");
                 msgStr += "An error occured during writing results.. Please check manually what's wrong.\n"
             }
             msgStr += "The user has "
@@ -670,19 +676,33 @@ class PredictionService extends AbstractWebaugustusService {
             
             String mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
             
-            String senderAdress = PredictionService.getWebaugustusEmailAdress()
+            String senderAdress = PredictionService.getWebaugustusEmailAddress()
             predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
             if(predictionInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email adress was supplied.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
             }else{
                 msgStr = "${mailStr}The administrator of the AUGUSTUS web server has been informed and"
                 msgStr += " will get back to you as soon as the problem is solved.\n\n"
                 sendMailToUser(predictionInstance, "An error occured while executing AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
             predictionInstance.job_status = 5
             predictionInstance.save(flush: true)
         }
     }
     
+    /**
+     * delete the email address after the job is done or aborted
+     */
+    @Transactional
+    protected void deleteEmailAddress(AbstractWebAugustusDomainClass instance) {
+        Prediction predictionInstance = (Prediction) instance
+        if (predictionInstance.email_adress != null && 
+            ("4".equals(predictionInstance.job_status) || "5".equals(predictionInstance.job_status) || "6".equals(predictionInstance.job_status))) {
+
+            predictionInstance.email_adress = null
+            predictionInstance.save(flush: true)
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "delete email address of user")
+        }
+    }
 }

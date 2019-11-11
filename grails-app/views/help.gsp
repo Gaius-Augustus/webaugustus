@@ -63,7 +63,7 @@
                      <p>
                      <ul>
                         <li>
-                           <b>Did an obvious error occur?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> if you are not sure what the error message is telling you.<br>
+                           <b>Did an obvious error occur?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> if you are not sure what the error message is telling you.<br>
                            <p>One frequently occurring error in the AutoAug.err file is the following:</p>
                            <p><b>The file with UTR parameters for train****** does not seem to exist.</b> This likely means that the UTR model has not been trained yet for train******.</p>
                            <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
@@ -74,7 +74,7 @@
                               <li>The files that you supplied had long an complex fasta headers. This causes problems with PASA and Scipio. Take care that the fasta headers in all your files are unique, short, do not contain whitespaces or special characters.</li>
                            </ul>
                         </li>
-                        <li><b>Did you submit your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> to inquire whether your job is really still running.</li>
+                        <li><b>Did you submit your job a long time ago and it seems to be "stuck" at the status of "computing"?</b><br>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> to inquire whether your job is really still running.</li>
                         <li><b>Did your job finish but there are just no parameters or predictions?</b><br>The quality of results depends on the quality and combination of your input data. If the input data did e.g. not provide sufficient information for generating training genes, then no AUGUSTUS parameters will be optimized for your species, and no predictions will be made. In case of the gene prediction web server application, it is also possible that your submitted genome sequence does not contain any protein coding genes.</li>
                      </ul>
                      </p>
@@ -88,7 +88,7 @@
                      <hr>
                      <br>
                      <h2 id="busy">Why is the server busy?</h2>
-                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is busy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a>.</p>
+                     <p>Training AUGUSTUS is a very resource and time consuming process. We use a grid engine queuing system with a limited number of waiting slots. If we estimate that the time from job submission to computation start might be very long, our web server might display a message that our server is busy. The submission of new jobs is then disabled (prediction and training submission will both be disabled). Please wait one or two weeks before you try a new submission. If the problem persists longer than a month, or if your job is urgent, please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a>.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -116,7 +116,7 @@
                      </div>
                      <p>Unlike many other bioinformatics web services, the AUGUSTUS web server application is not an implementation of a fail-safe procedure. Particularly the assembly of a training gene set from extrinsic data (ESTs and protein sequences) and a genome sequence may not always work perfectly. Our pipeline may issue warnings or errors, and sometimes, we need to get some feedback from you via e-mail in order to figure out what is the problem with your particular input data set.</p>
                      <p>In addition, training and running AUGUSTUS are rather time consuming processes that may take up to several weeks (depending on the input data). It may be more convenient to receive an e-mail notification about your job having finished, than checking the status page over and over, again.</p>
-                     <p> Therefore, we strongly recommend that you enter an e-mail adress.</p>
+                     <p> Therefore, we strongly recommend that you enter an e-mail address.</p>
                      <p> If supplied, we use your e-mail address for the following purposes:</p>
                      <p>
                      <ul>
@@ -124,12 +124,13 @@
                         <li>Confirming successful file upload (for large files via ftp/http)</li>
                         <li>Notifying you about your job having finished</li>
                         <li>Informing you about any problems that might occur during your particular job and asking questions about that job in order to solve those problems</li>
-                        <li>Asking you whether we should include your species parameters into the next AUGUSTUS release (applies to training, only)</li>
                      </ul>
                      </p>
-                     <p>We do <b>not</b> use your e-mail address to send you any <i>spam</i>, i.e. about web service updates. We do <b>not</b> share your e-mail address with any third parties.</p>
-                     <p>Job submission without giving an email adress is possible but discouraged.</p>
-                     <p>If you provide an e-mail adress, we kindly ask to check the confirmation checkbox that you agree to the following terms:<br>
+                     <p>We do <b>not</b> use your e-mail address to send you any <i>spam</i>, i.e. about web service updates. 
+                         We do <b>not</b> share your e-mail address with any third parties.
+                         Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.</p>
+                     <p>Job submission without giving an email address is possible but discouraged.</p>
+                     <p>If you provide an e-mail address, we kindly ask to check the confirmation checkbox that you agree to the following terms:<br>
                         "If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted."
                      </p>
                      <p><a href="#seitenanfang">
@@ -143,7 +144,7 @@
                      <div id="upload_link">
                         <h2>File upload versus web link</h2>
                      </div>
-                     <p> The AUGUSTUS training and prediction web server application offers in some cases two possiblities for transferring files to the server: <i>Upload a file</i> and <i>specify a web link to file</i>.</p>
+                     <p> The AUGUSTUS training and prediction web server application offers in some cases two possibilities for transferring files to the server: <i>Upload a file</i> and <i>specify a web link to file</i>.</p>
                      <p>
                      <ul>
                         <li>For <b>small files</b>, please click on the Browse-button and select a file on your harddrive.<br>If you experience a <i>Connection timeout</i> (because your file was too large for this type of upload), please use the option for large files!</li>
@@ -574,7 +575,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <p>
                         In the beginning, the status page will display that your job has been submitted. This means, the web server application is currently uploading your files and validating file formats. After a while, the status will change to waiting for execution. This means that all file formats have been confirmed and an AUGUSTUS training job has been submitted to our grid engine, but the job is still pending. Depending on waiting queue length, this status may persist for a while. Please contact us in case you job is pending for more than one month. Later, the job status will change to computing. This means the job is currently computing. When the page displays finished, all computations have been finished and a website with your job's results has been generated.
                      </p>
-                     <p>You will receive an e-mail with the link to the results of your job when computations are finished if you specified an email adress.</p>
+                     <p>You will receive an e-mail with the link to the results of your job when computations are finished if you specified an email address.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -672,8 +673,8 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <p>Other users who submit exactly the same input files as have been submitted before, will be redirected to the results page of the previously submitted job. They do not need to guess the link.</p>
                      <p>Files that you upload to our server, e.g. sequence files, are not directly made available to anyone. However, if you chose to upload a file via http/ftp link, the link to your file is displayed on the job status page.</p>
                      <p>We are interested in redistributing high quality parameter sets for novel species with the AUGUSTUS release. We will not do so without your explicit permission. Please contact us if you would like to add your parameters to the AUGUSTUS repository.</p>
-                     <p>Our server logs e-mail adresses, IP adresses and all job submission details. We store this data for 60 days in order to be able to trace back errors. By submitting a job, you agree that we log this data.</p>
-                     <p>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> if your particular job requires a more secure environment, e.g. as part of a collaboration.</p>
+                     <p>Our server logs e-mail addresses, IP addresses and all job submission details. We store this data for up to 180 days in order to be able to trace back errors. By submitting a job, you agree that we log this data.</p>
+                     <p>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> if your particular job requires a more secure environment, e.g. as part of a collaboration.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -685,7 +686,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <div id="results_pred">
                         <h2>Prediction results</h2>
                      </div>
-                     <p>After job computations have finished, you will receive an e-mail (if you supplied an e-mail adress). The job status web page may at this point in time look similar to this:</p>
+                     <p>After job computations have finished, you will receive an e-mail (if you supplied an e-mail address). The job status web page may at this point in time look similar to this:</p>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>

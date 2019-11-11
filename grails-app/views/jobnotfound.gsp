@@ -24,7 +24,7 @@
                     If the job you are looking for was submitted a long time ago, 
                     it has likely been deleted from our system. 
                     Otherwise, please contact 
-                    <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a> 
+                    <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> 
                     and tell us the link and job-ID that you failed to access.
               </p>
                   <div class="csc-default">

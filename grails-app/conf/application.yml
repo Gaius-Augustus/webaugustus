@@ -151,11 +151,68 @@ grails:
        username: xxx      
        password: 'xxx'
        default.from: xxx@email.com
+       admin: xxx@email.com
        props:
             mail.smtp.auth: true
             mail.smtp.starttls.enable: true
             mail.smtp.port: 587
 
+augustus:
+    path:
+        config:  /usr/share/augustus/config
+        species: /usr/share/augustus/config/species
+        scripts: /usr/share/augustus/scripts
+        
+url:
+    abs: https://bioinf.uni-greifswald.de/webaugustus/
+    rel: /webaugustus/
+    prediction:
+        abs: https://bioinf.uni-greifswald.de/webaugustus/prediction/
+        result: 
+            # web-output - directory to the results that are downloadable by end users
+            rel: /webaugustus/prediction-results/
+    training:
+        abs: https://bioinf.uni-greifswald.de/webaugustus/training/
+        result:
+            # web-output - directory to the results that are downloadable by end users
+            rel: /webaugustus/training-results/
+
+data:
+    path:
+        prediction:
+            dir: /data/www/webaugustus/webdata/augpred
+            web: /data/www/webaugustus/prediction-results
+        training:
+            dir: /data/www/webaugustus/webdata/augtrain
+            web: /data/www/webaugustus/training-results
+            
+            
+slurm:
+    # adapt to the actual situation
+    enabled: true
+    username: xxx
+    host: xxx
+    path:
+        species: webaugustus/species
+        sshkey: xxx/id_xxx
+        prediction:
+            submitScriptTemplate: webaugustus/augpred_slurm_submit_script_template.sh
+            submitScript: augpred_slurm_submit_script.sh
+        training:
+            submitScriptTemplate: webaugustus/augtrain_slurm_submit_script_template.sh
+            submitScript: augtrain_slurm_submit_script.sh
+
+log:
+    level:
+        prediction: 3
+        training: 3
+        
+job: 
+    queue:
+        maxSize: 20
+    submit:
+        maxSize: 2
+        
 simpleCaptcha:
     # font size used in CAPTCHA images
     fontSize: 30

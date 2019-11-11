@@ -10,7 +10,7 @@
 
             <p>
                 Ooops... this looks ugly! Our apologies! Please send an e-mail to 
-                <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a>. 
+                <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a>. 
                 Please tell us date and time and any actions from your side that 
                 may have caused this problem. Please also attach a copy of the below 
                 shown error log to your e-mail. Thanks for you help!
@@ -37,7 +37,7 @@
 			</ul>
             <p>
                 Ooops... this looks ugly! Our apologies! Please send an e-mail to 
-                <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAdress()}</a>. 
+                <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a>. 
                 Please tell us date and time and any actions from your side that 
                 may have caused this problem.
             </p>

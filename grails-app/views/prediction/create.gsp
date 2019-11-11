@@ -59,7 +59,8 @@
                                           <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
                                        </td><td class="prop">
                                           If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished.<br>
-                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted. 
+                                          Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.
                                        </td></tr></table>
                                     </td>
                                  </tr>

@@ -1,5 +1,7 @@
 package webaugustus
 
+import grails.util.Holders
+
 /**
  * Interface to start a job on a worker queue and return status messages
  */
@@ -16,8 +18,17 @@ abstract class JobExecution {
         TRAINING
     }
     
+    private static boolean useSlurm() {
+        return Holders.getConfig().getProperty('slurm.enabled', Boolean, false)
+    }
+    
     public static JobExecution getDefaultJobExecution() {
-        return new SlurmJobExecution();
+        if (useSlurm()) {
+            return new SlurmJobExecution();
+        }
+        else {
+            return new SunGridEngineJobExecution();
+        }
     }
 
     /**

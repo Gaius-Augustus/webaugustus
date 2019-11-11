@@ -85,13 +85,45 @@ class Utilities {
         def execute = cmd.size == 1 ? ['bash', '-c', cmd2Script].execute() : cmd.execute()
         execute.waitFor()
         
-        if (execute.exitValue()) {
-            log(logFile, 1, maxLogLevel, process, "Exception status code=${execute.exitValue()} (${execute.err.text})  outputValue=${execute.text.trim()}")
-        }
-        def outputValue = execute.text.trim()
-        log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\"")
+        def exitCode = execute.exitValue()
         
-        return execute.exitValue()
+        if (exitCode) {
+            def errorValue = "Null"
+            
+            try {
+                errorValue = execute.err.text
+            }
+            catch (IOException e) {
+                errorValue = "IOException: " + e.getMessage()
+            }
+            
+            def outputValue = "Null"
+
+            try {
+                outputValue = execute.text.trim()
+            }
+            catch (IOException e) {
+                outputValue = "IOException: " + e.getMessage()
+            }
+            
+            log(logFile, 1, maxLogLevel, process, "Exception status code=${exitCode} (${errorValue})  outputValue=${outputValue}")
+        }
+        else {
+            def outputValue = "Null"
+
+            try {
+                outputValue = execute.text.trim()
+            }
+            catch (IOException e) {
+                outputValue = "IOException: " + e.getMessage()
+            }
+
+            
+            log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\"")
+        }
+        
+        
+        return exitCode
     }
     
     /**

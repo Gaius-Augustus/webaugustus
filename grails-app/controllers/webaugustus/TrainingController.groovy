@@ -37,7 +37,7 @@ class TrainingController {
         
         def logFile = trainingService.getLogFile()
         // logging verbosity-level
-        def logVerb = trainingService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+        def logVerb = trainingService.getLogLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
             
         int jobQueueLength = trainingService.getJobQueueLength()
         def maxJobQueueLength = trainingService.getMaxJobQueueLength()
@@ -85,7 +85,7 @@ class TrainingController {
         
         def logFile = trainingService.getLogFile()
         // logging verbosity-level
-        def verb = trainingService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+        def verb = trainingService.getLogLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
         
         def output_dir = trainingService.getOutputDir()
         def web_output_dir = trainingService.getWebOutputDir()
@@ -97,7 +97,7 @@ class TrainingController {
         
         def trainingInstance = new Training(params)
         if(!(trainingInstance.id == null)){
-            String senderAdress = PredictionService.getWebaugustusEmailAdress()
+            String senderAdress = TrainingService.getWebaugustusEmailAddress()
             flash.error = "Internal error 2. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'training')
             return

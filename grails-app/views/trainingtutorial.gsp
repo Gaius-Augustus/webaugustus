@@ -139,7 +139,7 @@
                      <div id="general_data">
                         <h2><a href="#general_data">1.2 - Filling in general job data</a></h2>
                      </div>
-                     <p>This section describes fields that should be filled in for every job submission, i.e. fields that are obligatory (except for the email adress, which is optional but strongly recommended).</p>
+                     <p>This section describes fields that should be filled in for every job submission, i.e. fields that are obligatory (except for the email address, which is optional but strongly recommended).</p>
                      <div id="email">
                         <h3><a href="#email">1.2.1 - E-mail address</a></h3>
                      </div>
@@ -151,10 +151,10 @@
                         </tr>
                      </table>
                      </p>
-                     <p>It is possible to run AUGUSTUS without giving an e-mail adress but here are some reasons why we recommend supplying an e-mail adress:
+                     <p>It is possible to run AUGUSTUS without giving an e-mail address but here are some reasons why we recommend supplying an e-mail address:
                      <ul>
                         <li>Unlike many other bioinformatics web services, the AUGUSTUS web server application is not an implementation of a fail-safe procedure. Particularly the assembly of a training gene set from extrinsic data (ESTs and protein sequences) and a genome sequence may not always work perfectly. Our pipeline may issue warnings or errors, and sometimes, we need to get some feedback from you via e-mail in order to figure out what is the problem with your particular input data set.</li>
-                        <li>In addition, training AUGUSTUS is rather time consuming processe that may take up to several weeks (depending on the input data). It may be more convenient to receive an e-mail notification about your job having finished, than checking the status page over and over, again</li>
+                        <li>In addition, training AUGUSTUS is rather time consuming process that may take up to several weeks (depending on the input data). It may be more convenient to receive an e-mail notification about your job having finished, than checking the status page over and over, again</li>
                      </ul>
                      </p>
                      <div id="email_purpose">
@@ -167,10 +167,11 @@
                         <li>Confirming successful file upload (for large files via ftp/http link)</li>
                         <li>Notifying you that your job has finished</li>
                         <li>Informing you about any problems that might occur during your particular AUGUSTUS training job</li>
-                        <li>Asking you for permission to publish parameters with the next AUGUSTUS release</li>
                      </ul>
                      </p>
-                     <p>We do <b>not</b> use your e-mail address to send you any <i>spam</i>, i.e. about web service updates. We do not share your e-mail addresses with any third parties.</p>
+                     <p>We do <b>not</b> use your e-mail address to send you any <i>spam</i>, i.e. about web service updates. 
+                         We do not share your e-mail address with any third parties.
+                         Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -652,7 +653,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         <h1><a href="#job_status">2 - What happens after submission</a></h1>
                      </div>
                      <p>After you click the "Start Training" button, the web server application first validates whether the combination of your input fields is generally correct. If you submitted unsupported input combinations, you will be redirected to the training submission form and an error message will be displayed at the top of the page.</p>
-                     <p>If all fields were filled in correctly, the application is actually initiated. You will receive an e-mail that confirms your job submission and that contains a link to the job status page (if you supplied an e-mail adress), and you will be redirected to the job status page.</p>
+                     <p>If all fields were filled in correctly, the application is actually initiated. You will receive an e-mail that confirms your job submission and that contains a link to the job status page (if you supplied an e-mail address), and you will be redirected to the job status page.</p>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
@@ -661,7 +662,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      </table>
                      </p>
                      <p>In the beginning, the status page will display that your job has been <b>submitted</b>. This means, the web server application is currently uploading your files and validating file formats. After a while, the status will change to <b>waiting for execution</b>. This means that all file formats have been confirmed and an actually AUGUSTUS training job has been submitted to our grid engine, but the job is still pending. Depending on waiting queue length, this status may persist for a while. Please contact us in case you job is pending for more than one month. Later, the job status will change to <b>computing</b>. This means the job is currently computing. When the page displays <b>finished</b>, all computations have been finished and a website with your job's results has been generated.</p>
-                     <p>You will be notified by email when your job has finished - if you supplied an email adress.</p>
+                     <p>You will be notified by email when your job has finished - if you supplied an email address.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -685,7 +686,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <div id="error">
                         <h2><a href="#error">2.2 - Errors during training</a></h2>
                      </div>
-                     <p>You should automatically receive an e-mail in case an error occurs during the AUGUSTUS training process. The admin of this server is also notified by e-mail about errors. We will get in touch with you, again, after we figured out what caused the error. (If you did not supply an email adress, we will probably ignore the error because we cannot communicate with you about the input files.)</p>
+                     <p>You should automatically receive an e-mail in case an error occurs during the AUGUSTUS training process. The admin of this server is also notified by e-mail about errors. We will get in touch with you, again, after we figured out what caused the error. (If you did not supply an email address, we will probably ignore the error because we cannot communicate with you about the input files.)</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
@@ -697,7 +698,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <div id="results">
                         <h1><a href="#results">3 - Training Results</a></h1>
                      </div>
-                     <p>After job computations have finished, you will receive an e-mail (if you supplied an email adress). The job status web page may at this point in time look similar to this:</p>
+                     <p>After job computations have finished, you will receive an e-mail (if you supplied an email address). The job status web page may at this point in time look similar to this:</p>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>

@@ -1,6 +1,7 @@
 package webaugustus
 
 import grails.gorm.transactions.Transactional
+import grails.util.Holders
 import javax.annotation.PostConstruct
 import webaugustus.AbstractWebAugustusDomainClass
 
@@ -14,17 +15,6 @@ import webaugustus.AbstractWebAugustusDomainClass
  */
 @Transactional
 class TrainingService extends AbstractWebaugustusService {
-
-    // need to adjust the output dir to whatever working dir! This is where uploaded files and results will be saved.
-    private static final String output_dir =     "/data/www/webaugustus/webdata/augtrain" // adapt to the actual situation // should be something in home of webserver user and augustus frontend user.
-    private static final String web_output_dir = "/data/www/webaugustus/training-results" // adapt to the actual situation // must be writable to webserver application
-    // web-output - directory to the results that are downloadable by end users
-    private static final String web_output_url = "${web_output_base_url}training-results/" // adapt to the actual situation
-    private static final String training_url_part = "training/"
-    
-    // this log File contains the "process log", what was happening with which job when.
-    private static final File logFile = new File("${output_dir}/train.log")
-    private static final int verb = 3 // 1 only basic log messages, 2 all issued commands, 3 also script content
     
     public void sendMailToUser(Training trainingInstance, String subjectString, String message) {
         sendMailToUser(trainingInstance.email_adress, subjectString, message)
@@ -32,32 +22,42 @@ class TrainingService extends AbstractWebaugustusService {
     
     @PostConstruct
     def init() {
-        Utilities.log(logFile, 1, verb, "startup      ", "TrainingService")
+        Utilities.log(getLogFile(), 1, 1, "startup      ", "TrainingService")
         startWorkerThread()
     }
 
+    // This is where uploaded files and results will be saved.
     public String getOutputDir() {
-        return TrainingService.output_dir
+        return Holders.getConfig().getProperty('data.path.training.dir', String)
     }
     
+    // directory to the results that are downloadable by end users
+    // must be writable to webserver application
     public String getWebOutputDir() {
-        return TrainingService.web_output_dir
+        return Holders.getConfig().getProperty('data.path.training.web', String)
     }
     
     public String getWebOutputURL() {
-        return TrainingService.web_output_url
+        return Holders.getConfig().getProperty('url.training.result.rel', String)
     }
     
     public String getHttpBaseURL() {
-        return AbstractWebaugustusService.http_base_url + training_url_part
+        return Holders.getConfig().getProperty('url.training.abs', String)
     }
     
+    // this log File contains the "process log", what was happening with which job when.
+    private static File logFile = null
+    
     public File getLogFile() {
+        if (TrainingService.logFile == null) {
+            TrainingService.logFile = new File("${getOutputDir()}/train.log")
+        }
         return TrainingService.logFile
     }
     
-    public int getVerboseLevel() {
-        return TrainingService.verb
+    // 1 only basic log messages, 2 all issued commands, 3 also script content
+    public int getLogLevel() {
+        return Holders.getConfig().getProperty('log.level.training', Integer)
     }
     
     public String getServiceName() {
@@ -87,10 +87,10 @@ class TrainingService extends AbstractWebaugustusService {
     }
     
     private void deleteDir(Training trainingInstance) {
-        String dirName = "${output_dir}/${trainingInstance.accession_id}"
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Project directory ${dirName} is deleted")
+        String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Project directory ${dirName} is deleted")
         def cmd = ["rm -r ${dirName} &> /dev/null"]
-        Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeProjectDir", cmd)
+        Utilities.execute(getLogFile(), 2, trainingInstance.accession_id, "removeProjectDir", cmd)
     }
     
     private void abortJob(Training trainingInstance) {
@@ -105,10 +105,10 @@ class TrainingService extends AbstractWebaugustusService {
         deleteDir(trainingInstance)
         
         if(trainingInstance.email_adress == null) {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
         }
         else {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
         }
         
         if (message != null) {
@@ -132,10 +132,14 @@ class TrainingService extends AbstractWebaugustusService {
      */
     @Transactional
     protected void loadDataAndStartJob(AbstractWebAugustusDomainClass instance) {
-        Training trainingInstance = (Training) instance
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "load and start job ")
         
-        String dirName = "${output_dir}/${trainingInstance.accession_id}"
+        String AUGUSTUS_CONFIG_PATH = getAugustusConfigPath()
+        String AUGUSTUS_SCRIPTS_PATH = getAugustusScriptPath()
+        
+        Training trainingInstance = (Training) instance
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "load and start job ")
+        
+        String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
         File projectDir = new File(dirName)
         
         boolean estExistsFlag = false
@@ -147,20 +151,20 @@ class TrainingService extends AbstractWebaugustusService {
             projectDir.mkdirs()
 
             def cmd = ["wget -O ${dirName}/genome.fa ${trainingInstance.genome_ftp_link}  &> /dev/null"]
-            Utilities.execute(logFile, verb, trainingInstance.accession_id, "getGenomeScript", cmd)
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getGenomeScript", cmd)
 
             if("${trainingInstance.genome_ftp_link}" =~ /\.gz/){
                 cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipGenomeScript", cmd)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Unpacked genome file.")
+                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipGenomeScript", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked genome file.")
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
             // check number of scaffolds (to avoid Java heapspace error in the next step)
             cmd = ["grep -c '>' ${dirName}/genome.fa"]
-            Long nSeqNumber = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "nSeqFile", cmd)
+            Long nSeqNumber = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "nSeqFile", cmd)
             int maxNSeqs = getMaxNSeqs()
             if(nSeqNumber == null || nSeqNumber > maxNSeqs){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
@@ -177,13 +181,13 @@ class TrainingService extends AbstractWebaugustusService {
                 }
             }
             if(metacharacterFlag == 1){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
             if(genomeFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file was not fasta. ${dirName} is deleted.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided genome file\n${trainingInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
@@ -197,7 +201,7 @@ class TrainingService extends AbstractWebaugustusService {
             structureExistsFlag = structFile.exists()
             if (structureExistsFlag) {
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
-                Utilities.log(logFile, 2, verb, trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
+                Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
                 metacharacterFlag = 0
                 structFile.eachLine{line ->
                     if(line =~ /\*/ || line =~ /\?/){
@@ -214,7 +218,7 @@ class TrainingService extends AbstractWebaugustusService {
                     def gffChkColsFile = "${dirName}/gffCols.out"
                     checkGffScript << "/usr/bin/perl ${AUGUSTUS_SCRIPTS_PATH}/findGffNamesInFasta.pl --gff=${dirName}/training-gene-structure.gff --genome=${dirName}/genome.fa --out=${gffChkColsFile} &> ${gffChkOutFile}"
                     String cmdStr = "bash ${dirName}/checkGff.sh"
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, cmdStr)
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, cmdStr)
                     def ckStr = "${cmdStr}".execute()
                     ckStr.waitFor()
                     def ckContent = new File("${gffChkOutFile}").text
@@ -234,42 +238,42 @@ class TrainingService extends AbstractWebaugustusService {
                     delProc.waitFor()
                 }
                 if(metacharacterFlag == 1){
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided gene structure file contains metacharacters (e.g. * or ?).\nThis is not allowed.\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
                 if(gffColErrorFlag == 1 && structureGbkFlag == 0){
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Training gene structure file does not always contain 9 columns.")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Training gene structure file does not always contain 9 columns.")
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided training gene structure file\n${trainingInstance.struct_file}\ndid not contain 9 columns in each line.\nPlease make sure the gff-format complies with the instructions in our 'Help' section before\nsubmitting another job!\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
                 if(gffNameErrorFlag == 1 && structureGbkFlag == 0){
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Training gene structure file contains entries that do not comply with genome sequence names.")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Training gene structure file contains entries that do not comply with genome sequence names.")
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the sequence names in the provided training gene structure file\n${trainingInstance.struct_file}\ndid not comply with the sequence names in the supplied genome file\n${trainingInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
             }
             cmd = ["cksum ${dirName}/genome.fa"]
-            trainingInstance.genome_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.genome_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
+            trainingInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
+            trainingInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
         } // end of if(!(trainingInstance.genome_ftp_link == null))
 
         // retrieve EST file
         if (trainingInstance.est_ftp_link != null) {
 
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Retrieving EST/cDNA file ${trainingInstance.est_ftp_link}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieving EST/cDNA file ${trainingInstance.est_ftp_link}")
             def cmd = ["wget -O ${dirName}/est.fa ${trainingInstance.est_ftp_link}  &> /dev/null"]
-            Utilities.execute(logFile, verb, trainingInstance.accession_id, "getEstScript", cmd)
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getEstScript", cmd)
 
             if("${trainingInstance.est_ftp_link}" =~ /\.gz/){
                 cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipEstScript", cmd)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Unpacked EST file.")
+                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipEstScript", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked EST file.")
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
             def metacharacterFlag = 0
             def estFastaFlag = 0
@@ -283,22 +287,22 @@ class TrainingService extends AbstractWebaugustusService {
                 }
             }
             if(metacharacterFlag == 1){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
             if(estFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The EST/cDNA file was not fasta. ${dirName} is deleted.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The EST/cDNA file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
 
             cmd = ["cksum ${dirName}/est.fa"]
-            trainingInstance.est_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.est_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "est.fa is ${trainingInstance.est_size} big and has a cksum of ${trainingInstance.est_cksum}.")
+            trainingInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
+            trainingInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "est.fa is ${trainingInstance.est_size} big and has a cksum of ${trainingInstance.est_cksum}.")
         } // end of if(!(trainingInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -315,21 +319,21 @@ class TrainingService extends AbstractWebaugustusService {
                 }
             }
             if (nEntries == 0) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST sequence file is not in fasta format. It doesn't contain \">\" characters.")
-                String mailStr = "Your AUGUSTUS training job ${predictionInstance.accession_id} was aborted because your\ncDNA file is not in fasta format. \n\n"
-                abortJob(predictionInstance, mailStr)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST sequence file is not in fasta format. It doesn't contain \">\" characters.")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because your\ncDNA file is not in fasta format. \n\n"
+                abortJob(trainingInstance, mailStr)
                 return
             }
             def avEstLen = totalLen/nEntries
             def estMinLen = getEstMinLen()
             def estMaxLen = getEstMaxLen()
             if(avEstLen < estMinLen){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST sequences are on average shorter than ${estMinLen}, suspect RNAseq raw data.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because the sequences in your\ncDNA file have an average length of ${avEstLen}. We suspect that sequences files\nwith an average sequence length shorter than ${estMinLen} might\ncontain RNAseq raw sequences. Currently, our web server application does not support\nthe integration of RNAseq raw sequences. Please either assemble\nyour sequences into longer contigs, or remove short sequences from your current file,\nor submit a new job without specifying a cDNA file.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }else if(avEstLen > estMaxLen){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST sequences are on average longer than ${estMaxLen}, suspect non EST/cDNA data.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted because\nthe sequences in your cDNA file have an average length of ${avEstLen}.\nWe suspect that sequences files with an average sequence length longer than ${estMaxLen}\nmight not contain ESTs or cDNAs. Please either remove long sequences from your\ncurrent file, or submit a new job without specifying a cDNA file.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
@@ -339,16 +343,16 @@ class TrainingService extends AbstractWebaugustusService {
         // retrieve protein file
         if (trainingInstance.protein_ftp_link != null) {
 
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Retrieving protein file ${trainingInstance.protein_ftp_link}")    
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieving protein file ${trainingInstance.protein_ftp_link}")    
             def cmd = ["wget -O ${dirName}/protein.fa ${trainingInstance.protein_ftp_link}  &> /dev/null"]
-            Utilities.execute(logFile, verb, trainingInstance.accession_id, "getProteinScript", cmd)
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getProteinScript", cmd)
 
             if("${trainingInstance.protein_ftp_link}" =~ /\.gz/){
                 cmd = ["mv ${dirName}/protein.fa ${dirName}/protein.fa.gz; gunzip ${dirName}/protein.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipProteinScript", cmd)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Unpacked protein file.")
+                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipProteinScript", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked protein file.")
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "protein file upload finished, file stored as protein.fa at ${dirName}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein file upload finished, file stored as protein.fa at ${dirName}")
 
             // check for fasta protein format:
             def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
@@ -367,7 +371,7 @@ class TrainingService extends AbstractWebaugustusService {
                 }
             }
             if(metacharacterFlag == 1){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
@@ -375,14 +379,14 @@ class TrainingService extends AbstractWebaugustusService {
             if (allAminoAcidsCounter > 0) {
                 def cRatio = cytosinCounter/allAminoAcidsCounter
                 if (cRatio >= 0.05){
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
             }
             if(allAminoAcidsCounter == 0 || proteinFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not protein fasta.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis not in fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
             }
@@ -390,14 +394,14 @@ class TrainingService extends AbstractWebaugustusService {
             proteinExistsFlag = true
 
             cmd = ["cksum ${dirName}/protein.fa"]
-            trainingInstance.protein_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.protein_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
+            trainingInstance.protein_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
+            trainingInstance.protein_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
         } // end of (!(trainingInstance.protein_ftp_link == null))
 
         // confirm file upload via e-mail
         if (trainingInstance.genome_ftp_link != null || trainingInstance.protein_ftp_link != null || trainingInstance.est_ftp_link != null) {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Retrieved all ftp files successfully.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete\nthem from the public server, now, without affecting the AUGUSTUS training job.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
             trainingInstance.save(flush: true)
@@ -430,7 +434,7 @@ class TrainingService extends AbstractWebaugustusService {
 
             String mailStr = "You submitted job ${trainingInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
-            trainingInstance.old_url = "${web_output_base_url}training/show/${oldID}"
+            trainingInstance.old_url = "${getRelativeURL()}training/show/${oldID}"
             trainingInstance.save(flush: true)
             
             mailStr += "The old job with identical input files and identical parameters "
@@ -438,22 +442,22 @@ class TrainingService extends AbstractWebaugustusService {
             
             sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} was submitted before as job ${oldAccContent}", mailStr)
             
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}. ${dirName} is deleted.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Data are identical to old job ${oldAccContent} with Accession-ID ${oldID}. ${dirName} is deleted.")
             abortJob(trainingInstance, null, "6")
             
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Web output directory is deleted")
-            def cmd = ["rm -r ${web_output_dir}/${trainingInstance.accession_id} &> /dev/null"]
-            Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeWeb_output_dir", cmd)
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Web output directory is deleted")
+            def cmd = ["rm -r ${getWebOutputDir()}/${trainingInstance.accession_id} &> /dev/null"]
+            Utilities.execute(getLogFile(), 2, trainingInstance.accession_id, "removeWeb_output_dir", cmd)
             
             return
         } // end of job was submitted before check
 
         //Create a sge script:
         String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Writing ${computeClusterName} submission script.")
-        File sgeFile = new File(projectDir, "augtrain.sh")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Writing ${computeClusterName} submission script.")
+        File jobFile = new File(projectDir, "augtrain.sh")
         // write command in script (according to uploaded files)
-        sgeFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
+        jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         String cmdStr = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} "
         // this has been checked, works.
         if (estExistsFlag && !proteinExistsFlag && !structureExistsFlag) {
@@ -474,21 +478,21 @@ class TrainingService extends AbstractWebaugustusService {
             cmdStr += "--trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
         }else{
             cmdStr = null
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
         }
         if (cmdStr != null) {
-            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${output_dir} ${web_output_dir} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
-            sgeFile << "${cmdStr}"
-            Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile << \"${cmdStr}\"")
+            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+            jobFile << "${cmdStr}"
+            Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile << \"${cmdStr}\"")
         }
-        Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "sgeFile=${cmdStr}")
+        Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile=${cmdStr}")
 
-        sgeFile.setExecutable(true, false);
+        jobFile.setExecutable(true, false);
         
-        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, sgeFile.getName(), JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
 
         if (jobID == null) {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The augustus training job wasn't started")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The augustus training job wasn't started")
             trainingInstance.results_urls = null
             trainingInstance.job_status = '5'
             trainingInstance.save(flush: true)
@@ -498,7 +502,7 @@ class TrainingService extends AbstractWebaugustusService {
         trainingInstance.job_id = jobID
         trainingInstance.job_status = '1' // submitted
         trainingInstance.save(flush: true)
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} submitted.")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${jobID} submitted.")
     }
     
     /**
@@ -512,7 +516,7 @@ class TrainingService extends AbstractWebaugustusService {
         Training trainingInstance = (Training) instance
         String jobID = trainingInstance.job_id
         
-        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, logFile, verb, trainingInstance.accession_id)
+        JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, getLogFile(), getLogLevel(), trainingInstance.accession_id)
         
         if (status == null) {
             return false
@@ -522,7 +526,7 @@ class TrainingService extends AbstractWebaugustusService {
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!trainingInstance.job_status.equals("3")) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
             }
             trainingInstance.job_status = '3'
         }
@@ -538,156 +542,160 @@ class TrainingService extends AbstractWebaugustusService {
      */
     @Transactional
     protected void finishJob(AbstractWebAugustusDomainClass instance) {
+        
+        String AUGUSTUS_CONFIG_PATH = getAugustusConfigPath()
+        String AUGUSTUS_SCRIPTS_PATH = getAugustusScriptPath()
+        
         Training trainingInstance = (Training) instance
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "finishJob")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "finishJob")
         
         String jobID = trainingInstance.job_id
-        String dirName = "${output_dir}/${trainingInstance.accession_id}"
+        String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
         File projectDir = new File(dirName)
         
-        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+        int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
         if (exitCode != 0) {
             // try again - perhaps a ssh connection was cut
-            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
             sleep(10000)
-            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, logFile, verb, trainingInstance.accession_id)
+            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
             if (exitCode != 0) {
-                Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
             }
         }
         // set file rigths to readable by others
-        Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "set file permissions on ${web_output_dir}/${trainingInstance.accession_id}")
-        def webOutputDir = new File(web_output_dir, trainingInstance.accession_id)
+        Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${trainingInstance.accession_id}")
+        def webOutputDir = new File(getWebOutputDir(), trainingInstance.accession_id)
         if (webOutputDir.exists()) {
             webOutputDir.setReadable(true, false)
             webOutputDir.setExecutable(true, false);
             webOutputDir.eachFile { file -> file.setReadable(true, false) }
         }
         // collect results link information
-        String autoAugLogPath = "${web_output_dir}/${trainingInstance.accession_id}/AutoAug.log"
+        String autoAugLogPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/AutoAug.log"
         if(new File(autoAugLogPath).exists()){
-            String autoAugLogURL = "<p><b>Log-file</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/AutoAug.log\">AutoAug.log</a><br></p>"
+            String autoAugLogURL = "<p><b>Log-file</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/AutoAug.log\">AutoAug.log</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = autoAugLogURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${autoAugLogURL}"
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${autoAugLogPath} does exist and is linked.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${autoAugLogPath} does exist and is linked.")
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${autoAugLogPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${autoAugLogPath} is missing!")
         }
-        String autoAugErrPath = "${web_output_dir}/${trainingInstance.accession_id}/AutoAug.err"
+        String autoAugErrPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/AutoAug.err"
         if(new File(autoAugErrPath).exists()){
-            String autoAugErrURL = "<p><b>Error-file</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/AutoAug.err\">AutoAug.err</a><br></p>"
+            String autoAugErrURL = "<p><b>Error-file</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/AutoAug.err\">AutoAug.err</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = autoAugErrURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${autoAugErrURL}"
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${autoAugErrPath} does exist and is linked.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${autoAugErrPath} does exist and is linked.")
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${autoAugErrPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${autoAugErrPath} is missing!")
         }
-        String parameterGzPath = "${web_output_dir}/${trainingInstance.accession_id}/parameters.tar.gz"
+        String parameterGzPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/parameters.tar.gz"
         if(new File(parameterGzPath).exists()){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${parameterGzPath} does exist and is linked.")
-            String parameterGzURL = "<p><b>Species parameter archive</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/parameters.tar.gz\">parameters.tar.gz</a><br></p>"
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${parameterGzPath} does exist and is linked.")
+            String parameterGzURL = "<p><b>Species parameter archive</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/parameters.tar.gz\">parameters.tar.gz</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = parameterGzURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${parameterGzURL}"
             }
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${parameterGzPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${parameterGzPath} is missing!")
         }
-        String trainingGzPath = "${web_output_dir}/${trainingInstance.accession_id}/training.gb.gz"
+        String trainingGzPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/training.gb.gz"
         if(new File(trainingGzPath).exists()){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${trainingGzPath} exists and is linked.")
-            String trainingGzURL = "<p><b>Training genes</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/training.gb.gz\">training.gb.gz</a><br></p>"
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${trainingGzPath} exists and is linked.")
+            String trainingGzURL = "<p><b>Training genes</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/training.gb.gz\">training.gb.gz</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = trainingGzURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${trainingGzURL}"
             }
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${trainingGzPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${trainingGzPath} is missing!")
         }
-        String abInitioGzPath = "${web_output_dir}/${trainingInstance.accession_id}/ab_initio.tar.gz"
+        String abInitioGzPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/ab_initio.tar.gz"
         if(new File(abInitioGzPath).exists()){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${abInitioGzPath} exists and is linked.")
-            String abInitioGzURL = "<p><b>Ab initio predictions</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/ab_initio.tar.gz\">ab_initio.tar.gz</a><br></p>"
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${abInitioGzPath} exists and is linked.")
+            String abInitioGzURL = "<p><b>Ab initio predictions</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/ab_initio.tar.gz\">ab_initio.tar.gz</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = abInitioGzURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${abInitioGzURL}"
             }
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${abInitioGzPath} is missing.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${abInitioGzPath} is missing.")
         }
-        String hintPredGzPath = "${web_output_dir}/${trainingInstance.accession_id}/hints_pred.tar.gz"
+        String hintPredGzPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/hints_pred.tar.gz"
         if(new File(hintPredGzPath).exists()){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${hintPredGzPath} exists and is linked.")
-            String hintPredGzURL = "<p><b>predictions with hints</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/hints_pred.tar.gz\">hints_pred.tar.gz</a><br></p>"
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${hintPredGzPath} exists and is linked.")
+            String hintPredGzURL = "<p><b>predictions with hints</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/hints_pred.tar.gz\">hints_pred.tar.gz</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = hintPredGzURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${hintPredGzURL}"
             }
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${hintPredGzPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${hintPredGzPath} is missing!")
         }
-        String hintUtrPredGzPath = "${web_output_dir}/${trainingInstance.accession_id}/hints_utr_pred.tar.gz"
+        String hintUtrPredGzPath = "${getWebOutputDir()}/${trainingInstance.accession_id}/hints_utr_pred.tar.gz"
         if(new File(hintUtrPredGzPath).exists()){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${hintUtrPredGzPath} exists and is linked.")
-            String hintUtrPredGzURL = "<p><b>predictions with hints and UTRs</b>&nbsp;&nbsp;<a href=\"${web_output_url}${trainingInstance.accession_id}/hints_utr_pred.tar.gz\">hints_utr_pred.tar.gz</a><br></p>"
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${hintUtrPredGzPath} exists and is linked.")
+            String hintUtrPredGzURL = "<p><b>predictions with hints and UTRs</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${trainingInstance.accession_id}/hints_utr_pred.tar.gz\">hints_utr_pred.tar.gz</a><br></p>"
             if(trainingInstance.results_urls == null){
                 trainingInstance.results_urls = hintUtrPredGzURL
             }else{
                 trainingInstance.results_urls = "${trainingInstance.results_urls}${hintUtrPredGzURL}"
             }
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "${hintUtrPredGzPath} is missing!")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "${hintUtrPredGzPath} is missing!")
         }
         
         // check whether errors occured by log-file-sizes
-        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Beginning to look for errors.")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Beginning to look for errors.")
         def autoAugErrSize = 10 // default: error
         def sgeErrSize = 10 // default: error
         def writeResultsErrSize = 10 // default: error
         if(new File(projectDir, "AutoAug.err").exists()){
             autoAugErrSize = new File(projectDir, "AutoAug.err").size()
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "autoAugErrorSize is ${autoAugErrSize}.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAugErrorSize is ${autoAugErrSize}.")
         }else{
-            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "autoAugError file was not created. Default size value is set to 10.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "autoAugError file was not created. Default size value is set to 10.")
             autoAugErrSize = 10
         }
         if (exitCode != 0) {
             sgeErrSize = 10
-            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "cleanupJob failed. Default size to default value 10.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. Default size to default value 10.")
         }
         else {
             if(new File(projectDir, "augtrain.sh.e${jobID}").exists()){
                 sgeErrSize = new File(projectDir, "augtrain.sh.e${jobID}").size()
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "sgeErrSize is ${sgeErrSize}.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "sgeErrSize is ${sgeErrSize}.")
 
             }else{
-                Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "sgeErr file was not created. Default size value is set to 10.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "sgeErr file was not created. Default size value is set to 10.")
                 sgeErrSize = 10
             }
         }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErrSize = new File(projectDir, "writeResults.err").size()
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "writeResultsSize is ${writeResultsErrSize}.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "writeResultsSize is ${writeResultsErrSize}.")
         }else{
-            Utilities.log(logFile, 1, verb, "SEVERE", trainingInstance.accession_id, "writeResultsErr file was not created. Default size value is set to 10.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "writeResultsErr file was not created. Default size value is set to 10.")
             writeResultsErrSize = 10
         }
 
-        String admin_email = getAdminEmailAdress()
+        String admin_email = getAdminEmailAddress()
         String footer = getEmailFooter()
         
         if(autoAugErrSize==0 && sgeErrSize==0 && writeResultsErrSize==0){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "no errors occured (option 1).")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "no errors occured (option 1).")
 
             String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} finished.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
@@ -695,49 +703,49 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.save(flush: true)
             
             if(trainingInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Computation was successful. Did not send e-mail to user because not e-mail adress was supplied.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail address was supplied.")
             }
             else {
                 def msgStr = "${mailStr}You find the results at "
                 msgStr += "${getHttpBaseURL()}show/${trainingInstance.id}.\n\n"
                 sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} is complete", msgStr)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
             
-            def packResults = new File("${output_dir}/pack${trainingInstance.accession_id}.sh")
-            String cmdStr = "cd ${output_dir}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
+            def packResults = new File("${getOutputDir()}/pack${trainingInstance.accession_id}.sh")
+            String cmdStr = "cd ${getOutputDir()}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
             packResults << "${cmdStr}"
-            Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
-            //packResults << "cd ${output_dir}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
-            cmdStr = "bash ${output_dir}/pack${trainingInstance.accession_id}.sh"
+            Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
+            //packResults << "cd ${getOutputDir()}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
+            cmdStr = "bash ${getOutputDir()}/pack${trainingInstance.accession_id}.sh"
             def cleanUp = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
+            Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
             cleanUp.waitFor()
-            cmdStr = "rm ${output_dir}/pack${trainingInstance.accession_id}.sh &> /dev/null"
+            cmdStr = "rm ${getOutputDir()}/pack${trainingInstance.accession_id}.sh &> /dev/null"
             cleanUp = "${cmdStr}".execute()
-            Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
+            Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
             cleanUp.waitFor()
             deleteDir(trainingInstance)
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job completed. Result: ok.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job completed. Result: ok.")
         }else{
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured somewhere.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere.")
             String msgStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
             if (trainingInstance.email_adress != null) {
                 msgStr += "E-Mail: ${trainingInstance.email_adress}\n"
             }
             msgStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
             if (autoAugErrSize != 0) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!");
                 msgStr += "An error occured in the autoAug pipeline. "
             }
             if (sgeErrSize != 0) {
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "a ${computeClusterName} error occured!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "a ${computeClusterName} error occured!");
                 msgStr += "A ${computeClusterName} error occured. "
             }
             if (writeResultsErrSize != 0) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "an error occured during writing results!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured during writing results!");
                 msgStr += "An error occured during writing results. "
             }
             msgStr += "Please check manually what's wrong.\n"
@@ -756,47 +764,62 @@ class TrainingService extends AbstractWebaugustusService {
                 trainingInstance.job_error = 5
                 trainingInstance.job_status = 4
                 
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when autoAug error occured.")
-                def packResults = new File("${output_dir}/pack${trainingInstance.accession_id}.sh")
-                String cmdStr = "cd ${output_dir}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when autoAug error occured.")
+                def packResults = new File("${getOutputDir()}/pack${trainingInstance.accession_id}.sh")
+                String cmdStr = "cd ${getOutputDir()}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
                 packResults << "${cmdStr}"
-                Utilities.log(logFile, 3, verb, trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
-                //packResults << "cd ${output_dir}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
-                cmdStr = "bash ${output_dir}/pack${trainingInstance.accession_id}.sh"
+                Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
+                //packResults << "cd ${getOutputDir()}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
+                cmdStr = "bash ${getOutputDir()}/pack${trainingInstance.accession_id}.sh"
                 def cleanUp = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
+                Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
                 cleanUp.waitFor()
-                cmdStr = "rm ${output_dir}/pack${trainingInstance.accession_id}.sh &> /dev/null"
+                cmdStr = "rm ${getOutputDir()}/pack${trainingInstance.accession_id}.sh &> /dev/null"
                 cleanUp = "${cmdStr}".execute()
-                Utilities.log(logFile, 2, verb, trainingInstance.accession_id, cmdStr)
+                Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
                 cleanUp.waitFor()
                 deleteDir(trainingInstance)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             }
             if (sgeErrSize != 0) {
                 trainingInstance.job_error = 5
                 trainingInstance.job_status = 4
                 
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when ${computeClusterName} error occured.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when ${computeClusterName} error occured.")
             }
             if (writeResultsErrSize != 0) {
                 trainingInstance.job_status = 4
             }
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job error status is ${trainingInstance.job_error} after all errors have been checked.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job error status is ${trainingInstance.job_error} after all errors have been checked.")
             String mailStr = "An error occured while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\nPlease check the log-files carefully before proceeding to work with the produced results.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
             trainingInstance.save(flush: true)
             
             if(trainingInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email adress was supplied.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email address was supplied.")
             }else{
                 msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"
                 msgStr += "The administrator of the AUGUSTUS web server has been informed and "
                 msgStr += "will get back to you as soon as the problem is solved.\n\n"
                 sendMailToUser(trainingInstance, "An error occured while executing AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
+        }
+    }
+    
+    /**
+     * delete the email address after the job is done or aborted
+     */
+    @Transactional
+    protected void deleteEmailAddress(AbstractWebAugustusDomainClass instance) {
+        Training trainingInstance = (Training) instance
+        if (trainingInstance.email_adress != null && 
+            ("4".equals(trainingInstance.job_status) || "5".equals(trainingInstance.job_status) || "6".equals(trainingInstance.job_status))) {
+            
+            trainingInstance.email_adress = null
+            trainingInstance.save(flush: true)
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "delete email address of user")
         }
     }
 }

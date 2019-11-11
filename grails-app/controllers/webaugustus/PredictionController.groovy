@@ -42,7 +42,7 @@ class PredictionController {
         
         def logFile = predictionService.getLogFile()
         // logging verbosity-level
-        def logVerb = predictionService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+        def logVerb = predictionService.getLogLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
             
         int jobQueueLength = predictionService.getJobQueueLength()
         def maxJobQueueLength = predictionService.getMaxJobQueueLength()
@@ -87,7 +87,7 @@ class PredictionController {
         
         def logFile = predictionService.getLogFile()
         // logging verbosity-level
-        def verb = predictionService.getVerboseLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
+        def verb = predictionService.getLogLevel() // 1 only basic log messages, 2 all issued commands, 3 also script content
         
         def output_dir = predictionService.getOutputDir()
         def web_output_dir = predictionService.getWebOutputDir()
@@ -99,7 +99,7 @@ class PredictionController {
         
         def predictionInstance = new Prediction(params)
         if(!(predictionInstance.id == null)){
-            String senderAdress = PredictionService.getWebaugustusEmailAdress()
+            String senderAdress = PredictionService.getWebaugustusEmailAddress()
             flash.error = "Internal error 2. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'prediction')
             return

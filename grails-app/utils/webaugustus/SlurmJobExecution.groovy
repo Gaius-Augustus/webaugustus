@@ -1,12 +1,14 @@
 package webaugustus
 
+import grails.util.Holders
+
 /**
  * Class to start a job and return status messages on a Slurm server.
  * 
  * If slurm isn't run locally there are some restrictions:
  * - the script and config path of the local augustus installation has to be the same as in the singularity image
- *    see AbstractWebaugustusService.AUGUSTUS_CONFIG_PATH
- *    see AbstractWebaugustusService.AUGUSTUS_SCRIPTS_PATH
+ *    see AbstractWebaugustusService.getAugustusConfigPath()
+ *    see AbstractWebaugustusService.getAugustusScriptPath()
  *    actually needed is no complete locally augustus installation but 
  *    - in the config path just a "species" folder containing the species for augustus and
  *    - in the script path just the files 
@@ -15,10 +17,10 @@ package webaugustus
  *      - findGffNamesInFasta.pl
  *      - moveParameters.pl
  * - the paths in 
- *     - PredictionService.output_dir 
- *     - PredictionService.web_output_dir
- *     - TrainingService.output_dir
- *     - TrainingService.web_output_dir
+ *     - PredictionService.getOutputDir() 
+ *     - PredictionService.getWebOutputDir()
+ *     - TrainingService.getOutputDir()
+ *     - TrainingService.getWebOutputDir()
  *   should appear in submit file templates 
  *     - SLURM_SBATCH_PREDICTION_TEMPLATE
  *     - SLURM_SBATCH_TRAINING_TEMPLATE
@@ -27,30 +29,51 @@ package webaugustus
 class SlurmJobExecution extends webaugustus.JobExecution {
     
     /** the user using slurm */
-    protected final static String SLURM_USER_NAME = "xxx" // adapt to the actual situation
-    /** the server running slurm. set to null if it is the same server as the webserver where this application runs */
-    protected final static String SLURM_SERVER_NAME = "xxx.yyy.zzz" // adapt to the actual situation
-    /** the prediction sbatch template */
-    protected final static String SLURM_PREDICTION_SUBMIT_FILE_TEMPLATE_PATH = "webaugustus/augpred_slurm_submit_script_template.sh"
-    /** the training sbatch template */
-    protected final static String SLURM_TRAINING_SUBMIT_FILE_TEMPLATE_PATH = "webaugustus/augtrain_slurm_submit_script_template.sh"
-    
-    protected final static String SLURM_PREDICTION_SUBMIT_FILENAME = "augpred_slurm_submit_script.sh"
-    protected final static String SLURM_TRAINING_SUBMIT_FILENAME = "augtrain_slurm_submit_script.sh"
-    
-    protected final static String SLURM_SPECIES_DIR = "webaugustus/species"
-    
-    private final static String SSH_CONFIGURATION_FILE = "-i /path/to/.ssh/id_rsa"
-
-    private static boolean isSlurmLocal() {
-        return SLURM_SERVER_NAME == null || SLURM_SERVER_NAME.isEmpty()
+    private String getSlurmUserName() {
+        return Holders.getConfig().getProperty('slurm.username', String)
     }
     
-    private static String getAsSSHCommand(String command) {
+    /** the server running slurm. set to null if it is the same server as the webserver where this application runs */
+    private String getSlurmHost() {
+        return Holders.getConfig().getProperty('slurm.host', String)
+    }
+    
+    /** the prediction sbatch template */
+    private String getSlurmPredictionSumbitFilePath() {
+        return Holders.getConfig().getProperty('slurm.path.prediction.submitScriptTemplate', String)
+    }
+    
+    /** the training sbatch template */
+    private String getSlurmTrainingSumbitFilePath() {
+        return Holders.getConfig().getProperty('slurm.path.training.submitScriptTemplate', String)
+    }
+    
+    private String getSlurmPredictionSubmitFileName() {
+        return Holders.getConfig().getProperty('slurm.path.prediction.submitScript', String)
+    }
+    
+    private String getSlurmTrainingSubmitFileName() {
+        return Holders.getConfig().getProperty('slurm.path.training.submitScript', String)
+    }
+    
+    private String getSlurmSpeciesDir() {
+      return Holders.getConfig().getProperty('slurm.path.species', String)  
+    }
+    
+    private String getSlurmSSHParam() {
+        String file = Holders.getConfig().getProperty('slurm.path.sshkey', String);
+        return (file == null || file.trim().length() == 0) ? "" : ("-i " + file)
+    }
+
+    private boolean isSlurmLocal() {
+        return getSlurmHost() == null || getSlurmHost().isEmpty()
+    }
+    
+    private String getAsSSHCommand(String command) {
         if (isSlurmLocal()) {
             return command
         }
-        return "ssh ${SSH_CONFIGURATION_FILE} ${SLURM_USER_NAME}@${SLURM_SERVER_NAME} '${command}'"
+        return "ssh ${getSlurmSSHParam()} ${getSlurmUserName()}@${getSlurmHost()} '${command}'"
     }
     
     /**
@@ -68,8 +91,8 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * @return the job number of queued and running jobs or -1 if an exception occured
      */
     public int countStartedJobs(File logFile, int maxLogLevel) {
-        def processForLog = "SLURM       "
-        def cmd = [getAsSSHCommand("module load slurm; squeue -u ${SLURM_USER_NAME} | wc -l")]
+        def processForLog = getName()
+        def cmd = [getAsSSHCommand("module load slurm; squeue -u ${getSlurmUserName()} | wc -l")]
         Integer count = Utilities.executeForInteger(logFile, maxLogLevel, processForLog, "qstatScript", cmd)
         
         if (count == null) {
@@ -104,27 +127,27 @@ class SlurmJobExecution extends webaugustus.JobExecution {
                 serverDataPath = parentPath.substring(1)
             }
             
-            def cmd = ["rsync -av -e 'ssh ${SSH_CONFIGURATION_FILE}' ${parentPath}/ ${SLURM_USER_NAME}@${SLURM_SERVER_NAME}:${serverDataPath}/"]
+            def cmd = ["rsync -av -e 'ssh ${getSlurmSSHParam()}' ${parentPath}/ ${getSlurmUserName()}@${getSlurmHost()}:${serverDataPath}/"]
             Utilities.execute(logFile, maxLogLevel, processName, "copyDataToSlurmServer", cmd)
-            Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${parentPath} to ${serverDataPath} on ${SLURM_SERVER_NAME}")
+            Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${parentPath} to ${serverDataPath} on ${getSlurmHost()}")
             
             // copy the list of species to slurm server
             String AUGUSTUS_SPECIES_PATH = AbstractWebaugustusService.getAugustusSpeciesPath()
-            cmd = ["rsync -auv -e 'ssh ${SSH_CONFIGURATION_FILE}' ${AUGUSTUS_SPECIES_PATH}/ ${SLURM_USER_NAME}@${SLURM_SERVER_NAME}:${SLURM_SPECIES_DIR}/"]
+            cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${AUGUSTUS_SPECIES_PATH}/ ${getSlurmUserName()}@${getSlurmHost()}:${getSlurmSpeciesDir()}/"]
             Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
-            Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${SLURM_SPECIES_DIR} on ${SLURM_SERVER_NAME}")
+            Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${getSlurmSpeciesDir()} on ${getSlurmHost()}")
         }
         
         // copy the slurm submit file and replace PLACEHOLDER 
         String submitFileTemplatePath
         String submitFileName
         if (JobType.PREDICTION.equals(jobType)) {
-            submitFileTemplatePath = SLURM_PREDICTION_SUBMIT_FILE_TEMPLATE_PATH
-            submitFileName = SLURM_PREDICTION_SUBMIT_FILENAME
+            submitFileTemplatePath = getSlurmPredictionSumbitFilePath()
+            submitFileName = getSlurmPredictionSubmitFileName()
         }
         else if (JobType.TRAINING.equals(jobType)) {
-            submitFileTemplatePath = SLURM_TRAINING_SUBMIT_FILE_TEMPLATE_PATH
-            submitFileName = SLURM_TRAINING_SUBMIT_FILENAME
+            submitFileTemplatePath = getSlurmTrainingSumbitFilePath()
+            submitFileName = getSlurmTrainingSubmitFileName()
         }
         else {
             Utilities.log(logFile, 1, maxLogLevel, processName, "Could not start a job: unrecognized jobType ${jobType}")
@@ -133,7 +156,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
 
         def cmd = [getAsSSHCommand("cat ${submitFileTemplatePath} | sed \"s#PLACEHOLDER#${parentFolderName}#g\" > ${serverDataPath}/${submitFileName}")]
         int exitCode = Utilities.execute(logFile, maxLogLevel, processName, "handleSubmitFile", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied and adpated slurm submit file ${submitFileName} on ${SLURM_SERVER_NAME} exitCode=${exitCode}")
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied and adpated slurm submit file ${submitFileName} on ${getSlurmHost()} exitCode=${exitCode}")
         if (exitCode != 0) {
             return null
         }
@@ -190,7 +213,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
     /**
      * Cleanup after a job is done.
      *
-     * @param parentPath parent path of the executed script wich contains al results
+     * @param parentPath parent path of the executed script wich contains all results
      * @param jobType is it a prediction or training job
      * @return 0 if everything is ok else a status code from the executed command if available else 1
      */
@@ -205,20 +228,22 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         }
         
         // copy results into output_dir
-        def cmd = ["rsync -auv -e 'ssh ${SSH_CONFIGURATION_FILE}' ${SLURM_USER_NAME}@${SLURM_SERVER_NAME}:${serverDataPath}/ ${parentPath}/"]
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copy data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}")
+        def cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverDataPath}/ ${parentPath}/"]
         Integer statusDataCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyDataFromSlurmServer", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverDataPath} on ${SLURM_SERVER_NAME} to ${parentPath}, status=${statusDataCopy}")
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}, status=${statusDataCopy}")
         
         
         // copy results into web_output_dir
-        String localWebPath = serviceInstance.getWebOutputDir()+ "/" + parentFolderName
+        String localWebPath = serviceInstance.getWebOutputDir() + "/" + parentFolderName
         String serverWebPath = localWebPath
         if (localWebPath.startsWith("/")) {
             serverWebPath = localWebPath.substring(1)
         }
-        cmd = ["rsync -auv -e 'ssh ${SSH_CONFIGURATION_FILE}' ${SLURM_USER_NAME}@${SLURM_SERVER_NAME}:${serverWebPath}/ ${localWebPath}/"]
-        int statusWebCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyDataFromSlurmServer", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverWebPath} on ${SLURM_SERVER_NAME} to ${localWebPath}, status=${statusWebCopy}")
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copy web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}")
+        cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverWebPath}/ ${localWebPath}/"]
+        int statusWebCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyWebDataFromSlurmServer", cmd)
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}, status=${statusWebCopy}")
         
         if (statusDataCopy != 0) {
             return statusDataCopy
@@ -229,14 +254,25 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         
         cmd = [getAsSSHCommand("rm -rf ${serverDataPath} ${serverWebPath}")]
         Utilities.execute(logFile, maxLogLevel, processName, "deleteDataFoldersOnSlurmServer", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "delete data on ${SLURM_SERVER_NAME}")
+        Utilities.log(logFile, 1, maxLogLevel, processName, "delete data on ${getSlurmHost()}")
         
         if (JobType.TRAINING.equals(jobType)) {
             // copy the list of species from slurm server
             String AUGUSTUS_SPECIES_PATH = AbstractWebaugustusService.getAugustusSpeciesPath()
-            cmd = ["rsync -auv -e 'ssh ${SSH_CONFIGURATION_FILE}' ${SLURM_USER_NAME}@${SLURM_SERVER_NAME}:${SLURM_SPECIES_DIR}/ ${AUGUSTUS_SPECIES_PATH}/"]
-            Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
-            Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${SLURM_SPECIES_DIR} on ${SLURM_SERVER_NAME} to ${AUGUSTUS_SPECIES_PATH}")
+            
+            if (AUGUSTUS_SPECIES_PATH != null && AUGUSTUS_SPECIES_PATH.trim().length() > 0) { // actually this copy is not needed, as we always use the species on slurm server
+                String localSpeciesPath = AUGUSTUS_SPECIES_PATH + "/"
+                String serverSpeciesPath = getSlurmSpeciesDir() + "/" + parentFolderName
+
+                Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}")
+                cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverSpeciesPath} ${localSpeciesPath}"]
+                int statusSpeciesCopy = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
+                Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}, status=${statusSpeciesCopy}")
+
+                if (statusSpeciesCopy != 0) {
+                    return statusSpeciesCopy
+                }
+            }
         }
         
         return 0

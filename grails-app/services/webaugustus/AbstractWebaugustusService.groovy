@@ -1,56 +1,55 @@
 package webaugustus
 
 import grails.gorm.transactions.Transactional
+import grails.util.Holders
 import webaugustus.AbstractWebAugustusDomainClass
 
 @Transactional
 abstract class AbstractWebaugustusService {
     
-    protected final static String AUGUSTUS_CONFIG_PATH = "/usr/share/augustus/config" // adapt to the actual situation - if using SlurmJobExecution see restrictions in class doc there
-    protected final static String AUGUSTUS_SPECIES_PATH = AUGUSTUS_CONFIG_PATH + "/species"
-    protected final static String AUGUSTUS_SCRIPTS_PATH = "/usr/share/augustus/scripts" // adapt to the actual situation - if using SlurmJobExecution see restrictions in class doc there
-    // Admin mail for errors
-    protected final static String admin_email = "xxx@email.com" // adapt to the actual situation
-    protected final static String WEBAUGUSTUS_EMAIL_ADDRESS = "yyy@email.com" // should be the same assert in application.yml: grails - mail - default.from
-    protected final static String emailFooter = "\n\n------------------------------------------------------------------------------------\nThis is an automatically generated message.\n\nhttp://bioinf.uni-greifswald.de/webaugustus" // footer of e-mail
-    
-    protected static final String web_output_base_url = "/webaugustus/"
-    protected static final String http_base_url = "https://bioinf.uni-greifswald.de${web_output_base_url}" // adapt to the actual situation
-    
-    
     // max length of the job queue for a service, when is reached "the server is busy" will be displayed
-    protected final static int maxJobQueueLength = 20;
+    protected final static int maxJobQueueLength = Holders.getConfig().getProperty('job.queue.maxSize', Integer, 20);
     
     // max amount of jobs for a service started on computing cluster - has to be lower than AbstractWebaugustusService.maxJobQueueLength
-    protected final static int maxStartedJobCount = 2;
-    
+    protected final static int maxStartedJobCount = Holders.getConfig().getProperty('job.submit.maxSize', Integer, 2);
+
     protected final static int maxNSeqs = 250000 // maximal number of scaffolds allowed in genome file
     // EST sequence properties (length)
     protected final static int estMinLen = 250
     protected final static int estMaxLen = 20000
     
+    public static String getAbsoluteURL() {
+        return Holders.getConfig().getProperty('url.abs', String)
+    }
+    
+    public static String getRelativeURL() {
+        return Holders.getConfig().getProperty('url.rel', String)
+    }
+    
     public static String getAugustusConfigPath() {
-        return AUGUSTUS_CONFIG_PATH
+        return Holders.getConfig().getProperty('augustus.path.config', String)
     }
     
     public static String getAugustusSpeciesPath() {
-        return AUGUSTUS_SPECIES_PATH
+        return Holders.getConfig().getProperty('augustus.path.species', String)
     }
     
     public static String getAugustusScriptPath() {
-        return AUGUSTUS_SCRIPTS_PATH
+        return Holders.getConfig().getProperty('augustus.path.scripts', String)
     }
     
-    protected static String getAdminEmailAdress() {
-        return admin_email
+    protected static String getAdminEmailAddress() {
+        return Holders.getConfig().getProperty('grails.mail.admin', String)
     }
     
-    public static String getWebaugustusEmailAdress() {
-        return WEBAUGUSTUS_EMAIL_ADDRESS
+    public static String getWebaugustusEmailAddress() {
+        return Holders.getConfig().getProperty('grails.mail.default.from', String)
     }
+    
+    private final static String EMAIL_FOOTER = "\n\n------------------------------------------------------------------------------------\nThis is an automatically generated message.\n\n${getAbsoluteURL()}" // footer of e-mail
     
     protected static String getEmailFooter() {
-        return emailFooter
+        return EMAIL_FOOTER
     }
     
     public static int getMaxNSeqs() {
@@ -73,12 +72,12 @@ abstract class AbstractWebaugustusService {
         return maxStartedJobCount
     }
     
-    public void sendMailToUser(String email_adress, String subjectString, String message) {
-        if (email_adress != null) {
+    public void sendMailToUser(String email_address, String subjectString, String message) {
+        if (email_address != null) {
             String footer = getEmailFooter()
-            String msgStr = "Hello!\n\n${message}Best regards,\n\nthe AUGUSTUS webserver team${emailFooter}"
+            String msgStr = "Hello!\n\n${message}Best regards,\n\nthe AUGUSTUS webserver team${getEmailFooter()}"
             sendMail {
-                to "${email_adress}"
+                to "${email_address}"
                 subject "${subjectString}"
                 text "${msgStr}"
             }
@@ -99,13 +98,13 @@ abstract class AbstractWebaugustusService {
     
     public abstract File getLogFile()
     
-    public abstract int getVerboseLevel()
+    public abstract int getLogLevel()
     
     public abstract String getServiceName()
     
     public void startWorkerThread() {
         synchronized(LOCK) {
-            Utilities.log(getLogFile(), 1, getVerboseLevel(), getServiceName(), "start worker thread" + (workerThread != null && workerThread.isAlive() ? " - still running" : ""))
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "start worker thread" + (workerThread != null && workerThread.isAlive() ? " - still running" : ""))
 
             if (workerThread == null || !workerThread.isAlive()) {
                 workerThread = Thread.start(getServiceName()+"WorkerThread", getTask())
@@ -118,7 +117,7 @@ abstract class AbstractWebaugustusService {
     
     private void finishWorkerThread() {
         synchronized(LOCK) {
-            Utilities.log(getLogFile(), 1, getVerboseLevel(), getServiceName(), "finish worker thread")
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "finish worker thread")
             workerThread = null
         }
     }
@@ -142,6 +141,7 @@ abstract class AbstractWebaugustusService {
                     if (getRunningJobCount() < getMaxRunningJobCount()) {
                         loadDataAndStartJob(instance)
                         sleep(1000) // just wait a bit for the job to get startet
+                        deleteEmailAddress(instance) // just in case the job was aborted
                     }
                 }
              
@@ -150,6 +150,7 @@ abstract class AbstractWebaugustusService {
                     boolean jobDone = checkJobReadyness(instance)
                     if (jobDone) {
                         finishJob(instance)
+                        deleteEmailAddress(instance)
                     }
                 }
                 
@@ -187,12 +188,12 @@ abstract class AbstractWebaugustusService {
     }
     
     /**
-     * Returns all training instances where the user has committed a job, but this job has not yet startet
+     * Returns all instances where the user has committed a job, but this job has not yet startet
      */
     protected abstract List<AbstractWebAugustusDomainClass> findCommittedJobs() 
 
     /**
-     * Returns all training instances where the the augustus job is started
+     * Returns all instances where the the augustus job is started
      */
     protected abstract List<AbstractWebAugustusDomainClass> findSubmittedJobs()
     
@@ -215,4 +216,10 @@ abstract class AbstractWebaugustusService {
      */
     @Transactional
     protected abstract void finishJob(AbstractWebAugustusDomainClass instance)
+    
+    /**
+     * delete the email address after the job is done or aborted
+     */
+    @Transactional
+    protected abstract void deleteEmailAddress(AbstractWebAugustusDomainClass instance)
 }
