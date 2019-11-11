@@ -275,7 +275,7 @@ class TrainingController {
             }
             cmd = ["cksum ${dirName}/genome.fa"]
             trainingInstance.genome_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.genome_size = uploadedGenomeFile.size
+            trainingInstance.genome_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "genome.fa is ${trainingInstance.genome_size} big and has a cksum of ${trainingInstance.genome_cksum}.")
         } // end of genome file upload
 
@@ -399,7 +399,7 @@ class TrainingController {
 
             def cmd = ["cksum ${dirName}/est.fa"]
             trainingInstance.est_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.est_size = uploadedEstFile.size
+            trainingInstance.est_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "est.fa is ${trainingInstance.est_size} big and has a cksum of ${trainingInstance.est_cksum}.")
         }
 
@@ -630,7 +630,7 @@ class TrainingController {
 
             def cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
-            trainingInstance.protein_size = uploadedProteinFile.size
+            trainingInstance.protein_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
         }
 
