@@ -41,12 +41,12 @@
                            <p>Use this form to submit your data for running AUGUSTUS on new genomic data with already available pre-trained parameters.</p>
                            <p>Please read the <a href="${createLink(uri:'/predictiontutorial')}">prediction tutorial</a> before submitting a job for the first time. Example data for this form is available <a href="${createLink(uri:'/predictiontutorial#exampledata')}">here</a>. You may also use the button below to insert sample data. Please note that you will always need to enter the verification string at the bottom of the page, yourself, in order to submit a job!</p>
                            <p><g:actionSubmit action="fillSample" value="Fill in Sample Data" /></p>
-                           <p>We recommend that you specify an <b>E-mail address</b>.</p>
+                           <p>We recommend that you specify an <b>e-mail address</b>.</p>
                            <table>
                               <tbody>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="email_adress">E-mail</label>
+                                       <label for="email_adress">e-mail</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'email_adress','errors')}">
                                        <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:prediction,field:'email_adress')}"/>
@@ -58,9 +58,8 @@
                                        <table><tr><td class="prop">
                                           <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
                                        </td><td class="prop">
-                                          If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished.<br>
-                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted. 
-                                          Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.
+                                          If I provide an e-mail address, I consent to the processing of my personal data in accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
+                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
                                        </td></tr></table>
                                     </td>
                                  </tr>

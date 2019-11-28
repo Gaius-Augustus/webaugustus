@@ -138,7 +138,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${getSlurmSpeciesDir()} on ${getSlurmHost()}")
         }
         
-        // copy the slurm submit file and replace PLACEHOLDER 
+        // copy the slurm submit file and replace PLACEHOLDER by parentFolderName
         String submitFileTemplatePath
         String submitFileName
         if (JobType.PREDICTION.equals(jobType)) {

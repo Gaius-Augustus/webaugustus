@@ -248,7 +248,8 @@
                      <div id="genome_file">
                         <h2>Genome file</h2>
                      </div>
-                     <p>The genome file is an obligatory file for training AUGUSTUS and for making predictions with pre-trained parameters in a new genome. It must contain the genome sequence in (multiple) fasta format. Every header begins with a <b>></b>. The sequence must be DNA. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n</b>. (Internally, AUGUSTUS will interpret everyting that is not <b>A a T t C c G g</b> as an <b>N</b>!) Empty lines are not allowed. If they occur, they will automatically be removed by the webserver applications.</p>
+                     <p>The genome file is an obligatory file for training AUGUSTUS and for making predictions with pre-trained parameters in a new genome. It must contain the genome sequence in (multiple) fasta format. Every header begins with a <b>></b>. The sequence must be DNA. Allowed sequence characters: <b>A a T t G g C c H h X x R r Y y W w S s M m K k B b V v D d N n</b>. (Internally, AUGUSTUS will interpret everything that is not <b>A a T t C c G g</b> as an <b>N</b>!) Empty lines are not allowed. If they occur, they will automatically be removed by the webserver applications.</p>
+                     <p>WebAUGUSTUS does have a strict limit for character per line for FASTA format files. Disobeying this restriction might cause memory issues on our server. We recommend to format sequences in FASTA files submitted to WebAUGUSTUS with a unix linebreak after 80 characters.</p>
                      <p>Headers must be <b>unique</b> within a file! We recommend that you use <b>short fasta headers</b>. Headers like<br>
                      <pre>
 >gi|382483733|gb|GZ667513.1|GW667513 SSH_BP_47 Some species

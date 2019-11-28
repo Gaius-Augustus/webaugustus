@@ -133,8 +133,6 @@ class PredictionController {
         String confirmationString = "Prediction job ID: ${predictionInstance.accession_id}\n"
         predictionInstance.job_id = 0
         // define flags for file format check, file removal in case of failure
-        def genomeFastaFlag = 0
-        def estFastaFlag = 0
         def estExistsFlag = 0
         def hintExistsFlag = 0
         def overRideUtrFlag = 0
@@ -167,14 +165,6 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Project directory ${dirName} is deleted")
             def cmd = ["rm -r ${dirName} &> /dev/null"]
             Utilities.execute(logFile, 2, predictionInstance.accession_id, "removeProjectDir", cmd)
-        }
-        // log abort function
-        def logAbort = {
-            if(predictionInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous user is aborted!")
-            }else{
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
-            }
         }
         //verify that the submitter is a person
         boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
@@ -484,26 +474,40 @@ class PredictionController {
             }
 
             // check for fasta format & extract fasta headers for gff validation:
-            def metacharacterFlag = 0
+            boolean metacharacterFlag = false
+            boolean genomeFastaFlag = false
             new File(projectDir, "genome.fa").eachLine{line ->
-                if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){ genomeFastaFlag = 1 }
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(line =~ /^>/){
-                        def len = line.length()
-                        seqNames << line[1..(len-1)]
+                    metacharacterFlag = true
+                    return
+                }
+                if (genomeFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
+                    genomeFastaFlag = true
+                    return
+                }
+                if (line.startsWith(">")) {
+                    line = line.substring(1).trim()
+                    if (line.isEmpty()) {
+                        genomeFastaFlag = true 
+                        return
                     }
+                    seqNames << line
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "Genome file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if(genomeFastaFlag == 1) {
+            if (genomeFastaFlag) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file was not fasta.")
                 deleteDir()
                 flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
@@ -551,6 +555,7 @@ class PredictionController {
                 def URL url = new URL("${predictionInstance.genome_ftp_link}");
                 def URLConnection uc = url.openConnection()
                 def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
+                boolean genomeFastaFlag = false
                 try{
                     def String inputLine
                     def char inputChar
@@ -559,14 +564,14 @@ class PredictionController {
                         if(inputChar =~ />/){
                             inputLine = br.readLine();
                         }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            genomeFastaFlag = 1
+                            genomeFastaFlag = true
                         }
                         charCounter = charCounter + 1
                     }
                 }finally{
                     br.close()
                 }
-                if(genomeFastaFlag == 1) {
+                if (genomeFastaFlag) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The first 20 lines in genome file are not fasta.")
                     deleteDir()
                     flash.error = "Genome file ${predictionInstance.genome_ftp_link} is not in DNA fasta format."
@@ -608,24 +613,31 @@ class PredictionController {
             }
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            def metacharacterFlag = 0
+            boolean metacharacterFlag = false
+            boolean estFastaFlag = false
             new File(projectDir, "est.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) && !(line =~ /^$/)){
-                        estFastaFlag = 1
-                    }
+                    metacharacterFlag = true
+                    return
+                }
+                if (estFastaFlag) {
+                    return
+                }
+                if (!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
+                    estFastaFlag = true
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).")
                 deleteDir()
                 flash.error = "cDNA file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if(estFastaFlag == 1) {
+            if (estFastaFlag) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
                 deleteDir()
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
@@ -675,6 +687,7 @@ class PredictionController {
                 def URL url = new URL("${predictionInstance.est_ftp_link}");
                 def URLConnection uc = url.openConnection()                    
                 def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
+                boolean estFastaFlag = false
                 try{
                     def String inputLine
                     def char inputChar
@@ -683,14 +696,14 @@ class PredictionController {
                         if(inputChar =~ />/){
                             inputLine = br.readLine();
                         }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            estFastaFlag = 1
+                            estFastaFlag = true
                         }
                         charCounter = charCounter + 1
                     }
                 }finally{
                     br.close()
                 }
-                if(estFastaFlag == 1) {
+                if (estFastaFlag) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
                     deleteDir()
                     flash.error = "cDNA file ${predictionInstance.est_ftp_link} is not in DNA fasta format."
@@ -727,28 +740,31 @@ class PredictionController {
                 // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
                 def gffArray
                 def isElement
-                def metacharacterFlag = 0
+                boolean metacharacterFlag = false
                 new File(projectDir, "hints.gff").eachLine{line ->
+                    if (metacharacterFlag) {
+                        return
+                    }
                     if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = 1
+                        metacharacterFlag = true
+                        return
+                    }
+                    gffArray = line.split("\t")
+                    if(!(gffArray.size() == 9)){
+                        gffColErrorFlag = 1
                     }else{
-                        gffArray = line.split("\t")
-                        if(!(gffArray.size() == 9)){
-                            gffColErrorFlag = 1
-                        }else{
-                            isElement = 0
-                            seqNames.each{ seq ->
-                                if(seq =~ /${gffArray[0]}/){ isElement = 1 }
-                                if(isElement == 0){ gffNameErrorFlag = 1 }
-                                if(!("${gffArray[8]}" =~ /source=M/)){gffSourceErrorFlag = 1}
-                                if(!("${gffArray[2]}" =~ /start$/) && !("${gffArray[2]}" =~ /stop$/) && !("${gffArray[2]}" =~ /tss$/) && !("${gffArray[2]}" =~ /tts$/) && !("${gffArray[2]}" =~ /ass$/) && !("${gffArray[2]}" =~ /dss$/) && !("${gffArray[2]}" =~ /exonpart$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /intronpart$/) && !("${gffArray[2]}" =~ /intron$/) && !("${gffArray[2]}" =~ /CDSpart$/) && !("${gffArray[2]}" =~ /CDS$/) && !("${gffArray[2]}" =~ /UTRpart$/) && !("${gffArray[2]}" =~ /UTR$/) && !("${gffArray[2]}" =~ /irpart$/) && !("${gffArray[2]}" =~ /nonexonpart$/) && !("${gffArray[2]}" =~ /genicpart$/)){
-                                    gffFeatureErrorFlag = 1
-                                }
+                        isElement = 0
+                        seqNames.each{ seq ->
+                            if(seq =~ /${gffArray[0]}/){ isElement = 1 }
+                            if(isElement == 0){ gffNameErrorFlag = 1 }
+                            if(!("${gffArray[8]}" =~ /source=M/)){gffSourceErrorFlag = 1}
+                            if(!("${gffArray[2]}" =~ /start$/) && !("${gffArray[2]}" =~ /stop$/) && !("${gffArray[2]}" =~ /tss$/) && !("${gffArray[2]}" =~ /tts$/) && !("${gffArray[2]}" =~ /ass$/) && !("${gffArray[2]}" =~ /dss$/) && !("${gffArray[2]}" =~ /exonpart$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /intronpart$/) && !("${gffArray[2]}" =~ /intron$/) && !("${gffArray[2]}" =~ /CDSpart$/) && !("${gffArray[2]}" =~ /CDS$/) && !("${gffArray[2]}" =~ /UTRpart$/) && !("${gffArray[2]}" =~ /UTR$/) && !("${gffArray[2]}" =~ /irpart$/) && !("${gffArray[2]}" =~ /nonexonpart$/) && !("${gffArray[2]}" =~ /genicpart$/)){
+                                gffFeatureErrorFlag = 1
                             }
                         }
                     }
                 }
-                if(metacharacterFlag == 1){
+                if (metacharacterFlag ){
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).")
                     deleteDir()
                     flash.error = "Hints file contains metacharacters (*, ?, ...). This is not allowed."
@@ -885,7 +901,11 @@ class PredictionController {
         } else {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "An error occurred in the predictionInstance (e.g. E-Mail missing, see domain restrictions).")
             deleteDir()
-            logAbort()
+            if(predictionInstance.email_adress == null){
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous user is aborted!")
+            }else{
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
+            }
             render(view:'create', model:[prediction:predictionInstance])
         }
     }// end of commit

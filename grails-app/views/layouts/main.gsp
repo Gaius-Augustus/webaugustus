@@ -122,7 +122,8 @@
             <div class="footer__content-wrapper">
                <div class="footer-bottom">
                   <div class="footer-bottom__copyright">
-                     <p>&copy;&nbsp;2018&nbsp; Universität Greifswald</p>
+                     <div style="float: left;">©&nbsp;2019&nbsp; Universität Greifswald</div>
+                     <div style="text-align: center;"><a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">&nbsp;Data&nbsp;Privacy&nbsp;Protection&nbsp;</a></div>
                   </div>
                </div>
             </div>

@@ -171,22 +171,30 @@ class TrainingService extends AbstractWebaugustusService {
             }
             
             // check for fasta format & get seq names for gff validation:
-            def metacharacterFlag = 0
-            def genomeFastaFlag = 0 
+            boolean metacharacterFlag = false
+            boolean genomeFastaFlag = false
             new File(projectDir, "genome.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){ genomeFastaFlag = 1 }
+                    metacharacterFlag = true
+                    return
+                }
+                if (genomeFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
+                    genomeFastaFlag = true 
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if(genomeFastaFlag == 1) {
+            if (genomeFastaFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided genome file\n${trainingInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
@@ -202,14 +210,13 @@ class TrainingService extends AbstractWebaugustusService {
             if (structureExistsFlag) {
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
                 Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
-                metacharacterFlag = 0
+                metacharacterFlag = false
                 structFile.eachLine{line ->
                     if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = 1
-                    }else{
-                        if(line =~ /^LOCUS/){
-                            structureGbkFlag = 1
-                        }
+                        metacharacterFlag = true
+                    } 
+                    else if (line.startsWith("LOCUS")) {
+                        structureGbkFlag = 1
                     }
                 }
                 if(structureGbkFlag == 0){
@@ -237,7 +244,7 @@ class TrainingService extends AbstractWebaugustusService {
                     delProc = "${cmdStr}".execute()
                     delProc.waitFor()
                 }
-                if(metacharacterFlag == 1){
+                if (metacharacterFlag) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided gene structure file contains metacharacters (e.g. * or ?).\nThis is not allowed.\n\n"
                     abortJob(trainingInstance, mailStr)
@@ -275,24 +282,30 @@ class TrainingService extends AbstractWebaugustusService {
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
-            def metacharacterFlag = 0
-            def estFastaFlag = 0
+            boolean metacharacterFlag = false
+            boolean estFastaFlag = false
             new File(projectDir, "est.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){
-                        estFastaFlag = 1
-                    }
+                    metacharacterFlag = true
+                    return
+                }
+                if (estFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) {
+                    estFastaFlag = true
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if(estFastaFlag == 1) {
+            if (estFastaFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The EST/cDNA file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
@@ -312,7 +325,7 @@ class TrainingService extends AbstractWebaugustusService {
         estExistsFlag = estFile.exists()
         if (estExistsFlag) {
             estFile.eachLine{line ->
-                if(line =~ /^>/){
+                if (line.startsWith(">")) {
                     nEntries = nEntries + 1
                 }else{
                     totalLen = totalLen + line.size()
@@ -357,38 +370,46 @@ class TrainingService extends AbstractWebaugustusService {
             // check for fasta protein format:
             def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
             def allAminoAcidsCounter = 0
-            def metacharacterFlag = 0
-            def proteinFastaFlag = 0
+            boolean metacharacterFlag = false
+            boolean proteinFastaFlag = false
             new File(projectDir, "protein.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) && !(line =~ /^$/)){ proteinFastaFlag = 1 }
-                    if(!(line =~ /^>/)){
-                        line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){ allAminoAcidsCounter = allAminoAcidsCounter + 1 }
-                        line.eachMatch(/[Cc]/){ cytosinCounter = cytosinCounter + 1 }
-                    }
+                    metacharacterFlag = true
+                    return
+                }
+                if (proteinFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) ) { 
+                    proteinFastaFlag = true 
+                    return
+                }
+                if (!line.startsWith(">")) {
+                    line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){ allAminoAcidsCounter = allAminoAcidsCounter + 1 }
+                    line.eachMatch(/[Cc]/){ cytosinCounter = cytosinCounter + 1 }
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (allAminoAcidsCounter > 0) {
-                def cRatio = cytosinCounter/allAminoAcidsCounter
-                if (cRatio >= 0.05){
-                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
-                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
-                    abortJob(trainingInstance, mailStr)
-                    return
-                }
-            }
-            if(allAminoAcidsCounter == 0 || proteinFastaFlag == 1) {
+            if (allAminoAcidsCounter == 0 || proteinFastaFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not protein fasta.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis not in fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
+                return
+            }
+            def cRatio = cytosinCounter/allAminoAcidsCounter
+            if (cRatio >= 0.05){
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
+                abortJob(trainingInstance, mailStr)
+                return
             }
 
             proteinExistsFlag = true

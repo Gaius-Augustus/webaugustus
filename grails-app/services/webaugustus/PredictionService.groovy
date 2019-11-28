@@ -165,27 +165,40 @@ class PredictionService extends AbstractWebaugustusService {
             }
 
             // check for fasta format & get seq names for gff validation:
-            def metacharacterFlag = 0
             def seqNames = []
-            def genomeFastaFlag = 0      
+            boolean metacharacterFlag = 0
+            boolean genomeFastaFlag = 0      
             new File(projectDir, "genome.fa").eachLine{line ->
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){ genomeFastaFlag = 1 }
-                    if(line =~ /^>/){
-                        def len = line.length()
-                        seqNames << line[1..(len-1)]
-                    }
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
                 }
-            }
-            if(metacharacterFlag == 1){
+                if(line =~ /\*/ || line =~ /\?/){
+                    metacharacterFlag = true
+                    return
+                }
+                if (genomeFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ){ 
+                    genomeFastaFlag = true
+                    return
+                }
+                if (line.startsWith(">")) {
+                    line = line.substring(1).trim()
+                    if (line.isEmpty()) {
+                        genomeFastaFlag = true 
+                        return
+                    }
+                    seqNames << line
+                }            
+            }           
+            if (metacharacterFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
-            if(genomeFastaFlag == 1) {
+            if (genomeFastaFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)
@@ -202,10 +215,10 @@ class PredictionService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, "Checking hints.gff file format")
                 def gffArray
                 def isElement
-                metacharacterFlag = 0
+                metacharacterFlag = false
                 structFile.eachLine{line ->
                     if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = 1
+                        metacharacterFlag = true
                     }else{
                         gffArray = line.split("\t")
                         if(!(gffArray.size() == 9)){
@@ -220,7 +233,7 @@ class PredictionService extends AbstractWebaugustusService {
                         }
                     }
                 }
-                if(metacharacterFlag == 1){
+                if (metacharacterFlag) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).");
                     String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                     abortJob(predictionInstance, mailStr)
@@ -265,24 +278,29 @@ class PredictionService extends AbstractWebaugustusService {
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
-            def metacharacterFlag = 0
-            def estFastaFlag = 0
+            boolean metacharacterFlag = false
+            boolean estFastaFlag = false
             new File(projectDir, "est.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){
-                        estFastaFlag = 1
-                    }
+                    metacharacterFlag = true
+                } 
+                if (estFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) {
+                    estFastaFlag = true
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
-            if(estFastaFlag == 1) {
+            if (estFastaFlag) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)
@@ -302,7 +320,7 @@ class PredictionService extends AbstractWebaugustusService {
         boolean estExistsFlag = estFile.exists()
         if (estExistsFlag) {
             estFile.eachLine{line ->
-                if(line =~ /^>/){
+                if (line.startsWith(">")) {
                     nEntries = nEntries + 1
                 }else{
                     totalLen = totalLen + line.size()

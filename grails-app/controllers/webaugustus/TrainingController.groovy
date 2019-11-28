@@ -134,24 +134,19 @@ class TrainingController {
         trainingInstance.job_id = 0
         trainingInstance.job_error = 0
         // define flags for file format check, file removal in case of failure
-        def genomeFastaFlag = 0
-        def estFastaFlag = 0
         def estExistsFlag = 0
         def structureGffFlag = 0
         def structureGbkFlag = 0
         def structureExistsFlag = 0
-        def proteinFastaFlag = 0
         def proteinExistsFlag = 0
         
         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "AUGUSTUS training webserver starting on ${trainingInstance.dateCreated}")
         
         // redirect function
         def cleanRedirect = {
-            def logDate = new Date()
             if(trainingInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
             }else{
-                // logFile << "${logDate} ${trainingInstance.accession_id} v1 - Job ${trainingInstance.accession_id} by user ${trainingInstance.email_adress} is aborted!\n"
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
             }
             flash.message = "Info: Please check all fields marked in blue for completeness before starting the training job!"
@@ -169,18 +164,7 @@ class TrainingController {
             def cmd = ["rm -r ${dirName} &> /dev/null"]
             Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeProjectDir", cmd)
         }
-        // log abort function
-        def logAbort = {
-            def logDate = new Date()
-            if(trainingInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
-            }else{
-                //logFile <<  "${logDate} ${trainingInstance.accession_id} v1 - Job ${trainingInstance.accession_id} by user ${trainingInstance.email_adress} is aborted!\n"
-
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
-            }
-        }
-
+        
         //verify that the submitter is a person
         boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
         if(captchaValid == false){
@@ -200,7 +184,7 @@ class TrainingController {
         // check that species name does not contain spaces
         if(trainingInstance.project_name =~ /\s/){
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The species name contained whitespaces.")
-            flash.error = "Species name  ${trainingInstance.project_name} contains white spaces."
+            flash.error = "Species name ${trainingInstance.project_name} contains white spaces."
             cleanRedirect()
             return
         }
@@ -248,16 +232,24 @@ class TrainingController {
                 return
             }
             // check for fasta format
-            def metacharacterFlag = 0
+            boolean metacharacterFlag = false
+            boolean genomeFastaFlag = false
             new File(projectDir, "genome.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(line =~ /^$/)){ genomeFastaFlag = 1 }
-
+                    metacharacterFlag = true
+                    return
+                }
+                if (genomeFastaFlag) {
+                    return
+                }                
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
+                    genomeFastaFlag = true
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The genome file contains metacharacters (*, ?, ...). This is not allowed."
@@ -266,7 +258,7 @@ class TrainingController {
             }
 
 
-            if(genomeFastaFlag == 1) {
+            if (genomeFastaFlag) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file was not fasta.")
                 deleteDir()
                 flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
@@ -315,6 +307,7 @@ class TrainingController {
                 def URL url = new URL("${trainingInstance.genome_ftp_link}");
                 def URLConnection uc = url.openConnection()
                 def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
+                boolean genomeFastaFlag = false
                 try{
                     def String inputLine
                     def char inputChar
@@ -323,14 +316,14 @@ class TrainingController {
                         if(inputChar =~ />/){
                             inputLine = br.readLine();
                         }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            genomeFastaFlag = 1
+                            genomeFastaFlag = true
                         }
                         charCounter = charCounter + 1
                     }
                 }finally{
                     br.close()
                 }
-                if(genomeFastaFlag == 1) {
+                if (genomeFastaFlag) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The first 20 lines in genome file are not fasta.")
                     deleteDir()
                     flash.error = "Genome file ${trainingInstance.genome_ftp_link} is not in DNA fasta format."
@@ -372,24 +365,31 @@ class TrainingController {
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            def metacharacterFlag = 0
+            boolean metacharacterFlag = false
+            boolean estFastaFlag = false        
             new File(projectDir, "est.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) && !(line =~ /^$/)){
-                        estFastaFlag = 1
-                    }
+                    metacharacterFlag = true
+                    return
+                }
+                if (estFastaFlag) {
+                    return
+                }                
+                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
+                    estFastaFlag = true
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The cDNA file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if(estFastaFlag == 1) {
+            if (estFastaFlag) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
                 deleteDir()
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
@@ -439,6 +439,7 @@ class TrainingController {
                 def URL url = new URL("${trainingInstance.est_ftp_link}");
                 def URLConnection uc = url.openConnection()
                 def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
+                boolean estFastaFlag = false
                 try{
                     def String inputLine
                     def char inputChar
@@ -447,14 +448,14 @@ class TrainingController {
                         if(inputChar =~ />/){
                             inputLine = br.readLine();
                         }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            estFastaFlag = 1
+                            estFastaFlag = true
                         }
                         charCounter = charCounter + 1
                     }
                 }finally{
                     br.close()
                 }
-                if(estFastaFlag == 1) {
+                if (estFastaFlag) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
                     deleteDir()
                     flash.error = "cDNA file ${trainingInstance.est_ftp_link} is not in DNA fasta format."
@@ -479,17 +480,19 @@ class TrainingController {
                 def gffNameErrorFlag = 0
                 if(!uploadedGenomeFile.empty){
                     // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
-                    def metacharacterFlag = 0
+                    boolean metacharacterFlag = false
                     Utilities.log(logFile, 2, verb, trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
                     new File(projectDir, "training-gene-structure.gff").eachLine{line ->
+                        if (metacharacterFlag) {
+                            return
+                        }
                         // check whether weird metacharacters are included
                         if(line =~ /\*/ || line =~ /\?/){
-                            metacharacterFlag = 1
-                        }else{
-                            if(line =~ /^LOCUS/){
-                                structureGbkFlag = 1
-                            }
+                            metacharacterFlag = true
                         }
+                        else if (line.startsWith("LOCUS")) {
+                            structureGbkFlag = 1
+                        }                        
                     }
                     if(structureGbkFlag == 0){
                         def checkGffScript = new File(projectDir, "checkGff.sh")
@@ -518,7 +521,7 @@ class TrainingController {
                         def delProc = "${cmdStr}".execute()
                         delProc.waitFor()
                     }
-                    if(metacharacterFlag == 1){
+                    if (metacharacterFlag) {
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
                         deleteDir()
                         flash.error = "Gene Structure file contains metacharacters (*, ?, ...). This is not allowed."
@@ -592,22 +595,38 @@ class TrainingController {
             // check that file contains protein sequence, here defined as not more than 5 percent C or c
             def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
             def allAminoAcidsCounter = 0
-            def metacharacterFlag = 0
+            boolean metacharacterFlag = false
+            boolean proteinFastaFlag = false
             new File(projectDir, "protein.fa").eachLine{line ->
+                if (metacharacterFlag || line.isEmpty()) {
+                    return
+                }
                 if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = 1
-                }else{
-                    if(!(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) && !(line =~ /^$/)){ proteinFastaFlag = 1 }
-                    if(!(line =~ /^>/)){
-                        line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){allAminoAcidsCounter = allAminoAcidsCounter + 1}
-                        line.eachMatch(/[Cc]/){cytosinCounter = cytosinCounter + 1}
-                    }
+                    metacharacterFlag = true
+                    return
+                }
+                if (proteinFastaFlag) {
+                    return
+                }
+                if ( !(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) ) { 
+                    proteinFastaFlag = true 
+                }
+                else if (!line.startsWith(">")) {
+                    line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){allAminoAcidsCounter = allAminoAcidsCounter + 1}
+                    line.eachMatch(/[Cc]/){cytosinCounter = cytosinCounter + 1}
                 }
             }
-            if(metacharacterFlag == 1){
+            if (metacharacterFlag) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The protein file contains metacharacters (*, ?, ...). This is not allowed."
+                cleanRedirect()
+                return
+            }
+            if (allAminoAcidsCounter == 0 || proteinFastaFlag) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
+                deleteDir()
+                flash.error = "Protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
                 cleanRedirect()
                 return
             }
@@ -616,13 +635,6 @@ class TrainingController {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
                 deleteDir()
                 flash.error = "Your protein file was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
-                cleanRedirect()
-                return
-            }
-            if(proteinFastaFlag == 1) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
-                deleteDir()
-                flash.error = "Protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
                 cleanRedirect()
                 return
             }
@@ -742,7 +754,11 @@ class TrainingController {
         } else {
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "An error occurred in the trainingInstance (e.g. E-Mail missing, see domain restrictions).")
             deleteDir()
-            logAbort()
+            if(trainingInstance.email_adress == null){
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
+            }else{
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
+            }
             render(view:'create', model:[training:trainingInstance])
         }
     }

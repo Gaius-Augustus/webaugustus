@@ -41,12 +41,12 @@
                            <p><b>Before submitting a training job</b> for your species of interest, please check whether parameters have already been trained and have been made publicly available for your species at <a href="${createLink(uri:'/predictiontutorial#param_id')}">our species overview table</a></p>
                            <p>Please read the <a href="${createLink(uri:'/trainingtutorial')}">training tutorial</a> before submitting a job for the first time. Example data for this form is available <a href="${createLink(uri:'/trainingtutorial#exampledata')}">here</a>. You may also use the button below to insert sample data. Please note that you will always need to enter the verification string at the bottom of the page, yourself, in order to submit a job!</p>
                            <p><g:actionSubmit action="fillSample" value="Fill in Sample Data" /></p>
-                           <p>We strongly recommend that you specify an <b>E-mail address</b>! Please read the <a href="${createLink(uri:'/help#email')}"><small>Help</small></a> page before submitting a job without e-mail address! You have to give a <b>species name</b>, and a <b>genome file</b>!</p>
+                           <p>We strongly recommend that you specify an <b>e-mail address</b>! Please read the <a href="${createLink(uri:'/help#email')}"><small>Help</small></a> page before submitting a job without e-mail address! You have to give a <b>species name</b>, and a <b>genome file</b>!</p>
                            <table>
                               <tbody>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="email_adress">E-mail</label>
+                                       <label for="email_adress">e-mail</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:training,field:'email_adress','errors')}">
                                        <input type="text" id="email_adress" name="email_adress" value="${fieldValue(bean:training,field:'email_adress')}"/> 
@@ -59,9 +59,8 @@
                                        <table><tr><td class="prop">
                                           <g:checkBox name="agree_email" value="${training.agree_email}" />
                                        </td><td class="prop">
-                                          If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished.<br>
+                                          If I provide an e-mail address, I consent to the processing of my personal data in accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
                                           I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
-                                          Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.
                                        </td></tr></table>
                                        <%--<g:if test="${training.agree_email == true}"></div></g:if>--%>
                                     </td>
