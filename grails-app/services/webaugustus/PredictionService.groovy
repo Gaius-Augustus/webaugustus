@@ -377,7 +377,8 @@ class PredictionService extends AbstractWebaugustusService {
                 ignore_conflicts    == predictionInstance.ignore_conflicts
                 job_status != '6' && // ignore jobs targeted to an identical job
                 isNull('old_url') && // ignore jobs targeted to an identical job
-                accession_id != predictionInstance.accession_id // not itself
+                accession_id != predictionInstance.accession_id && // not itself
+                dateCreated < predictionInstance.dateCreated // created before
             }
         }
         

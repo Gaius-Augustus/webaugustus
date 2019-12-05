@@ -134,4 +134,8 @@ class Training extends AbstractWebAugustusDomainClass {
         has_protein_file(nullable:true)
         has_struct_file(nullable:true)
      }
+     
+    public String toString() {
+        return "Training " + id + " - " + accession_id
+    }
 }

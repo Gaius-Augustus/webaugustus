@@ -142,10 +142,6 @@ class TrainingService extends AbstractWebaugustusService {
         String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
         File projectDir = new File(dirName)
         
-        boolean estExistsFlag = false
-        boolean proteinExistsFlag = false
-        boolean structureExistsFlag = false
-        
         // retrieve genome file
         if (trainingInstance.genome_ftp_link != null) {
             projectDir.mkdirs()
@@ -206,18 +202,27 @@ class TrainingService extends AbstractWebaugustusService {
             def gffNameErrorFlag = 0
             def structureGbkFlag = 0
             File structFile = new File(projectDir, "training-gene-structure.gff")
-            structureExistsFlag = structFile.exists()
-            if (structureExistsFlag) {
+            if (structFile.exists()) {
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
                 Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
                 metacharacterFlag = false
                 structFile.eachLine{line ->
+                    if (metacharacterFlag) {
+                        return
+                    }
+                    // check whether weird metacharacters are included
                     if(line =~ /\*/ || line =~ /\?/){
                         metacharacterFlag = true
                     } 
                     else if (line.startsWith("LOCUS")) {
                         structureGbkFlag = 1
                     }
+                }
+                if (metacharacterFlag) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
+                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided gene structure file contains metacharacters (e.g. * or ?).\nThis is not allowed.\n\n"
+                    abortJob(trainingInstance, mailStr)
+                    return
                 }
                 if(structureGbkFlag == 0){
                     def checkGffScript = new File(projectDir, "checkGff.sh")
@@ -241,14 +246,8 @@ class TrainingService extends AbstractWebaugustusService {
                         gffColErrorFlag = 1
                     }
                     cmdStr = "rm ${dirName}/checkGff.sh ${gffChkOutFile} ${gffChkColsFile}"
-                    delProc = "${cmdStr}".execute()
+                    def delProc = "${cmdStr}".execute()
                     delProc.waitFor()
-                }
-                if (metacharacterFlag) {
-                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
-                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided gene structure file contains metacharacters (e.g. * or ?).\nThis is not allowed.\n\n"
-                    abortJob(trainingInstance, mailStr)
-                    return
                 }
                 if(gffColErrorFlag == 1 && structureGbkFlag == 0){
                     Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Training gene structure file does not always contain 9 columns.")
@@ -281,10 +280,17 @@ class TrainingService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked EST file.")
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
+            File estFile = new File(projectDir, "est.fa")
+            if (!estFile.exists() || estFile.length() <= 2) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The EST/cDNA file doesn't exists or is empty. ${dirName} is deleted.")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\n does not exist or is empty.\n\n"
+                abortJob(trainingInstance, mailStr)
+                return
+            }
             // check for fasta format:
             boolean metacharacterFlag = false
             boolean estFastaFlag = false
-            new File(projectDir, "est.fa").eachLine{line ->
+            estFile.eachLine{line ->
                 if (metacharacterFlag || line.isEmpty()) {
                     return
                 }
@@ -322,8 +328,7 @@ class TrainingService extends AbstractWebaugustusService {
         int nEntries = 0
         int totalLen = 0
         File estFile = new File(projectDir, "est.fa")
-        estExistsFlag = estFile.exists()
-        if (estExistsFlag) {
+        if (estFile.exists()) {
             estFile.eachLine{line ->
                 if (line.startsWith(">")) {
                     nEntries = nEntries + 1
@@ -412,14 +417,12 @@ class TrainingService extends AbstractWebaugustusService {
                 return
             }
 
-            proteinExistsFlag = true
-
             cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.protein_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
         } // end of (!(trainingInstance.protein_ftp_link == null))
-
+        
         // confirm file upload via e-mail
         if (trainingInstance.genome_ftp_link != null || trainingInstance.protein_ftp_link != null || trainingInstance.est_ftp_link != null) {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieved all ftp files successfully.")
@@ -442,7 +445,8 @@ class TrainingService extends AbstractWebaugustusService {
                 struct_cksum      == trainingInstance.struct_cksum
                 job_status != '6' && // ignore jobs targeted to an identical job
                 isNull('old_url') && // ignore jobs targeted to an identical job
-                accession_id != trainingInstance.accession_id // not itself
+                accession_id != trainingInstance.accession_id && // not itself
+                dateCreated < trainingInstance.dateCreated // created before
             }
         }
         def identicalTraining = findTraining()
@@ -472,10 +476,15 @@ class TrainingService extends AbstractWebaugustusService {
             
             return
         } // end of job was submitted before check
-
+        
+        
+        boolean structureExistsFlag = (new File(projectDir, "training-gene-structure.gff")).exists()
+        boolean estExistsFlag = (new File(projectDir, "est.fa")).exists()
+        boolean proteinExistsFlag = (new File(projectDir, "protein.fa")).exists()
+        
         //Create a sge script:
         String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Writing ${computeClusterName} submission script.")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Writing ${computeClusterName} submission script: EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ")
         File jobFile = new File(projectDir, "augtrain.sh")
         // write command in script (according to uploaded files)
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"

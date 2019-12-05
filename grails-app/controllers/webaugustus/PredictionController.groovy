@@ -49,7 +49,7 @@ class PredictionController {
         
         if(jobQueueLength >= maxJobQueueLength){
             def logMessage = "Somebody tried to invoke the Prediction webserver but the job queue length was ${jobQueueLength} and longer "
-            logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
+            logMessage += "than ${maxJobQueueLength} and the user was informed that submission is currently not possible"
             Utilities.log(logFile, 1, logVerb, "Prediction creation", logMessage)
 
             def m1 = "You tried to access the AUGUSTUS prediction job submission page."
@@ -133,8 +133,6 @@ class PredictionController {
         String confirmationString = "Prediction job ID: ${predictionInstance.accession_id}\n"
         predictionInstance.job_id = 0
         // define flags for file format check, file removal in case of failure
-        def estExistsFlag = 0
-        def hintExistsFlag = 0
         def overRideUtrFlag = 0
         // species name for AUGUSTUS
         def species
@@ -643,7 +641,7 @@ class PredictionController {
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
                 cleanRedirect()
                 return
-            } else { estExistsFlag = 1 }
+            }
 
             def cmd = ["cksum ${dirName}/est.fa"]
             predictionInstance.est_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
@@ -655,7 +653,6 @@ class PredictionController {
             confirmationString = "${confirmationString}cDNA file: ${predictionInstance.est_ftp_link}\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "est web-link is ${predictionInstance.est_ftp_link}")
             projectDir.mkdirs()
-            estExistsFlag = 1
 
             // check whether URL exists
             def cmd = ['curl', '-IL', '-o /dev/null', '--write-out', '%{http_code}', '--silent', '--head', predictionInstance.est_ftp_link]
@@ -793,7 +790,6 @@ class PredictionController {
                     return
                 }
             }
-            hintExistsFlag = 1
 
             def cmd = ["cksum ${dirName}/hints.gff"]
             predictionInstance.hint_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "structCksumScript", cmd, "(\\d*) \\d* ")

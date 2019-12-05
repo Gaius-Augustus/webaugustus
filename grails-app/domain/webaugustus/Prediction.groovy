@@ -145,4 +145,8 @@ class Prediction extends AbstractWebAugustusDomainClass {
         has_structures(nullable:true)
         has_conflicts(nullable:true)
     }
+    
+    public String toString() {
+        return "Prediction " + id + " - " + accession_id
+    }
 }

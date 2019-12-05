@@ -105,7 +105,7 @@ abstract class AbstractWebaugustusService {
     public void startWorkerThread() {
         synchronized(LOCK) {
             Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "start worker thread" + (workerThread != null && workerThread.isAlive() ? " - still running" : ""))
-
+            
             if (workerThread == null || !workerThread.isAlive()) {
                 workerThread = Thread.start(getServiceName()+"WorkerThread", getTask())
             }
@@ -139,7 +139,14 @@ abstract class AbstractWebaugustusService {
                 committedJobs.each { instance ->
                     // if there are jobs to start and the amount of currently runnning jobs is less getMaxRunningJobCount()
                     if (getRunningJobCount() < getMaxRunningJobCount()) {
-                        loadDataAndStartJob(instance)
+                        try {
+                            loadDataAndStartJob(instance)
+                        }
+                        catch (Throwable t) {
+                            System.err.println("Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
+                            t.printStackTrace(System.err)
+                            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
+                        }
                         sleep(1000) // just wait a bit for the job to get startet
                         deleteEmailAddress(instance) // just in case the job was aborted
                     }
@@ -147,11 +154,18 @@ abstract class AbstractWebaugustusService {
              
                 submittedJobs = findSubmittedJobs()
                 submittedJobs.each { instance ->
-                    boolean jobDone = checkJobReadyness(instance)
-                    if (jobDone) {
-                        finishJob(instance)
-                        deleteEmailAddress(instance)
+                    try {
+                        boolean jobDone = checkJobReadyness(instance)
+                        if (jobDone) {
+                            finishJob(instance)
+                            deleteEmailAddress(instance)
+                        }
                     }
+                    catch (Throwable t) {
+                        System.err.println("Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage())
+                        t.printStackTrace(System.err)
+                        Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage())
+                    }                        
                 }
                 
                 if (committedJobs.isEmpty() && submittedJobs.isEmpty()) {

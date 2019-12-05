@@ -44,7 +44,7 @@ class TrainingController {
 
         if(jobQueueLength >= maxJobQueueLength){
             def logMessage = "Somebody tried to invoke the Training webserver but the job queue was was ${jobQueueLength} longer "
-            logMessage += "than ${sgeLen} and the user was informed that submission is currently not possible"
+            logMessage += "than ${maxJobQueueLength} and the user was informed that submission is currently not possible"
             Utilities.log(logFile, 1, logVerb, "Training creation", logMessage)
 
             def m1 = "You tried to access the AUGUSTUS training job submission page."
@@ -133,12 +133,6 @@ class TrainingController {
         confirmationString += "Species name: ${trainingInstance.project_name}\n"
         trainingInstance.job_id = 0
         trainingInstance.job_error = 0
-        // define flags for file format check, file removal in case of failure
-        def estExistsFlag = 0
-        def structureGffFlag = 0
-        def structureGbkFlag = 0
-        def structureExistsFlag = 0
-        def proteinExistsFlag = 0
         
         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "AUGUSTUS training webserver starting on ${trainingInstance.dateCreated}")
         
@@ -395,7 +389,7 @@ class TrainingController {
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
                 cleanRedirect()
                 return
-            } else { estExistsFlag = 1 }
+            }
 
             def cmd = ["cksum ${dirName}/est.fa"]
             trainingInstance.est_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
@@ -478,6 +472,7 @@ class TrainingController {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded training gene structure file ${uploadedStructFile.originalFilename} was renamed to training-gene-structure.gff and moved to ${dirName}")
                 def gffColErrorFlag = 0
                 def gffNameErrorFlag = 0
+                def structureGbkFlag = 0
                 if(!uploadedGenomeFile.empty){
                     // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
                     boolean metacharacterFlag = false
@@ -493,6 +488,13 @@ class TrainingController {
                         else if (line.startsWith("LOCUS")) {
                             structureGbkFlag = 1
                         }                        
+                    }
+                    if (metacharacterFlag) {
+                        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
+                        deleteDir()
+                        flash.error = "Gene Structure file contains metacharacters (*, ?, ...). This is not allowed."
+                        cleanRedirect()
+                        return
                     }
                     if(structureGbkFlag == 0){
                         def checkGffScript = new File(projectDir, "checkGff.sh")
@@ -521,13 +523,6 @@ class TrainingController {
                         def delProc = "${cmdStr}".execute()
                         delProc.waitFor()
                     }
-                    if (metacharacterFlag) {
-                        Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gene structure file contains metacharacters (e.g. * or ?).");
-                        deleteDir()
-                        flash.error = "Gene Structure file contains metacharacters (*, ?, ...). This is not allowed."
-                        cleanRedirect()
-                        return
-                    }
                     if(gffColErrorFlag == 1 && structureGbkFlag == 0){
                         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Training gene structure file does not always contain 9 columns.")
                         flash.error = "Training gene structure file  ${trainingInstance.struct_file} is not in a compatible gff format (has not 9 columns). Please make sure the gff-format complies with the instructions in our 'Help' section!"
@@ -551,7 +546,6 @@ class TrainingController {
                 cleanRedirect()
                 return
             }
-            structureExistsFlag = 1
 
             def cmd = ["cksum ${dirName}/training-gene-structure.gff"]
             trainingInstance.struct_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "structCksumScript", cmd, "(\\d*) \\d* ")
@@ -638,8 +632,7 @@ class TrainingController {
                 cleanRedirect()
                 return
             }
-            proteinExistsFlag = 1
-
+            
             def cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.protein_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
