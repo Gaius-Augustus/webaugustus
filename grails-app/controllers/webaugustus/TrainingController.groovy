@@ -191,6 +191,7 @@ class TrainingController {
 
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected genome file was bigger than ${maxButtonFileSize}.")
+                deleteDir()
                 flash.error = "Genome file is bigger than ${maxButtonFileSize/1024/1024} MB, which is our maximal size for file upload from local harddrives via web browser. Please select a smaller file or use the ftp/http web link file upload option."
                 cleanRedirect()
                 return
@@ -199,19 +200,24 @@ class TrainingController {
             uploadedGenomeFile.transferTo( new File(projectDir, "genome.fa"))
             confirmationString = "${confirmationString}Genome file: ${trainingInstance.genome_file}\n"
 
-            if("${uploadedGenomeFile.originalFilename}" =~ /\.gz/){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Genome file is gzipped.")
-                def cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipGenomeScript", cmd)
-
-                if (!new File(projectDir, "genome.fa").exists()) {
+            if (Utilities.isUnSupportedCompressMode(uploadedGenomeFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file is compressed by a not supported algorithm ${uploadedGenomeFile.originalFilename}")
+                deleteDir()
+                flash.error = "The genome file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
+            if (Utilities.isSupportedCompressMode(uploadedGenomeFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Genome file ${uploadedGenomeFile.originalFilename} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/genome.fa", "gz", logFile, verb, trainingInstance.accession_id)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gzipped Genome file is corrupt")
+                    deleteDir()
                     flash.error = "The gzipped Genome file is corrupt."
                     cleanRedirect()
                     return
                 }
             }
-
+            
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "uploaded genome file ${uploadedGenomeFile.originalFilename} was renamed to genome.fa and moved to ${dirName}")
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "trying: grep -c '>' ${dirName}/genome.fa > ${dirName}/genome.nSeq")
             // check number of scaffolds
@@ -226,33 +232,16 @@ class TrainingController {
                 return
             }
             // check for fasta format
-            boolean metacharacterFlag = false
-            boolean genomeFastaFlag = false
-            new File(projectDir, "genome.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (genomeFastaFlag) {
-                    return
-                }                
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
-                    genomeFastaFlag = true
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"))
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The genome file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-
-
-            if (genomeFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file was not fasta.")
                 deleteDir()
                 flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
@@ -267,6 +256,13 @@ class TrainingController {
 
         // retrieve beginning of genome file for format check
         if(!(trainingInstance.genome_ftp_link == null)){
+            if (Utilities.isUnSupportedCompressMode(trainingInstance.genome_ftp_link)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file is compressed by a not supported algorithm ${trainingInstance.genome_ftp_link}")
+                deleteDir()
+                flash.error = "The genome file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "genome web-link is ${trainingInstance.genome_ftp_link}")
             projectDir.mkdirs()
 
@@ -285,7 +281,7 @@ class TrainingController {
 
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${trainingInstance.genome_ftp_link} 2>&1"]
-            def pattern = ".*Length: (\\d*).* "
+            def pattern = ".*Length: (\\d*).*"
             Long genome_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
             if(genome_size == null || genome_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Genome file size exceeds permitted ${maxFileSizeByWget} bytes by ${genome_size} bytes.")
@@ -297,27 +293,11 @@ class TrainingController {
 
             confirmationString = "${confirmationString}Genome file: ${trainingInstance.genome_ftp_link}\n"
             // checking web file for DNA fasta format:
-            if(!("${trainingInstance.genome_ftp_link}" =~ /\.gz/)){
-                def URL url = new URL("${trainingInstance.genome_ftp_link}");
-                def URLConnection uc = url.openConnection()
-                def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
-                boolean genomeFastaFlag = false
-                try{
-                    def String inputLine
-                    def char inputChar
-                    def charCounter = 1
-                    while ( ((inputChar = br.read()) != null) && (charCounter <= 1000)) {
-                        if(inputChar =~ />/){
-                            inputLine = br.readLine();
-                        }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            genomeFastaFlag = true
-                        }
-                        charCounter = charCounter + 1
-                    }
-                }finally{
-                    br.close()
-                }
-                if (genomeFastaFlag) {
+            if ( !Utilities.isSupportedCompressMode(trainingInstance.genome_ftp_link) ) {
+                URL url = new URL("${trainingInstance.genome_ftp_link}")
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                
+                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The first 20 lines in genome file are not fasta.")
                     deleteDir()
                     flash.error = "Genome file ${trainingInstance.genome_ftp_link} is not in DNA fasta format."
@@ -325,7 +305,7 @@ class TrainingController {
                     return
                 }
             }else{
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked genome file is gzipped. Format will be checked later after extraction.")
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked genome file ${trainingInstance.genome_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
         }
 
@@ -344,46 +324,35 @@ class TrainingController {
             uploadedEstFile.transferTo( new File(projectDir, "est.fa"))
             confirmationString = "${confirmationString}cDNA file: ${trainingInstance.est_file}\n"
 
-            if("${uploadedEstFile.originalFilename}" =~ /\.gz/){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST file is gzipped.")
-                def cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipEstScript", cmd)
-
-                if (!new File(projectDir, "est.fa").exists()) {
+            if (Utilities.isUnSupportedCompressMode(uploadedEstFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The EST file is compressed by a not supported algorithm ${uploadedEstFile.originalFilename}")
+                deleteDir()
+                flash.error = "The cDNA file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
+            if (Utilities.isSupportedCompressMode(uploadedEstFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST file ${uploadedEstFile.originalFilename} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/est.fa", "gz", logFile, verb, trainingInstance.accession_id)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gzipped EST file is corrupt")
                     deleteDir()
-                    flash.error = "The gzipped EST file is corrupt."
+                    flash.error = "The gzipped cDNA file is corrupt."
                     cleanRedirect()
                     return
                 }
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            boolean metacharacterFlag = false
-            boolean estFastaFlag = false        
-            new File(projectDir, "est.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (estFastaFlag) {
-                    return
-                }                
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
-                    estFastaFlag = true
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The cDNA file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if (estFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
                 deleteDir()
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
@@ -399,6 +368,13 @@ class TrainingController {
 
         // retrieve beginning of est file for format check
         if(!(trainingInstance.est_ftp_link == null)){
+            if (Utilities.isUnSupportedCompressMode(trainingInstance.est_ftp_link)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The EST file is compressed by a not supported algorithm ${trainingInstance.est_ftp_link}")
+                deleteDir()
+                flash.error = "The cDNA file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "est web-link is ${trainingInstance.est_ftp_link}")
             projectDir.mkdirs()
             confirmationString = "${confirmationString}cDNA file: ${trainingInstance.est_ftp_link}\n"
@@ -418,7 +394,7 @@ class TrainingController {
 
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${trainingInstance.est_ftp_link} 2>&1"]
-            def pattern = ".*Length: (\\d*).* "
+            def pattern = ".*Length: (\\d*).*"
             Long est_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
             if(est_size == null || est_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST file size exceeds permitted ${maxFileSizeByWget} bytes by ${est_size} bytes.")
@@ -428,28 +404,12 @@ class TrainingController {
                 return
             }
 
-            if(!("${trainingInstance.est_ftp_link}" =~ /\.gz/)){
-                // checking web file for DNA fasta format:
-                def URL url = new URL("${trainingInstance.est_ftp_link}");
-                def URLConnection uc = url.openConnection()
-                def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
-                boolean estFastaFlag = false
-                try{
-                    def String inputLine
-                    def char inputChar
-                    def charCounter = 1
-                    while ( ((inputChar = br.read()) != null) && (charCounter <= 1000)) {
-                        if(inputChar =~ />/){
-                            inputLine = br.readLine();
-                        }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            estFastaFlag = true
-                        }
-                        charCounter = charCounter + 1
-                    }
-                }finally{
-                    br.close()
-                }
-                if (estFastaFlag) {
+            // checking web file for DNA fasta format
+            if ( !Utilities.isSupportedCompressMode(trainingInstance.est_ftp_link) ) {
+                URL url = new URL("${trainingInstance.est_ftp_link}")
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                
+                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
                     deleteDir()
                     flash.error = "cDNA file ${trainingInstance.est_ftp_link} is not in DNA fasta format."
@@ -457,7 +417,7 @@ class TrainingController {
                     return
                 }
             }else{
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked EST file is gzipped. Format will be checked later after extraction.")
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked EST file ${trainingInstance.est_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
         }
 
@@ -555,7 +515,6 @@ class TrainingController {
 
 
         // upload of protein file
-        def cRatio = 0
         if(!uploadedProteinFile.empty){
             // check file size
             def long preUploadSize = uploadedProteinFile.getSize()
@@ -571,12 +530,16 @@ class TrainingController {
             uploadedProteinFile.transferTo( new File(projectDir, "protein.fa"))
             confirmationString = "${confirmationString}Protein file: ${trainingInstance.protein_file}\n"
 
-            if("${uploadedProteinFile.originalFilename}" =~ /\.gz/){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Protein file is gzipped.")
-                def cmd = ["mv ${dirName}/protein.fa ${dirName}/protein.fa.gz; gunzip ${dirName}/protein.fa.gz"]
-                Utilities.execute(logFile, verb, trainingInstance.accession_id, "gunzipProteinScript", cmd)
-
-                if (!new File(projectDir, "protein.fa").exists()) {
+            if (Utilities.isUnSupportedCompressMode(uploadedProteinFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The Protein file is compressed by a not supported algorithm ${uploadedProteinFile.originalFilename}")
+                deleteDir()
+                flash.error = "The Protein file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
+            if (Utilities.isSupportedCompressMode(uploadedProteinFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Protein file ${uploadedProteinFile.originalFilename} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/protein.fa", "gz", logFile, verb, trainingInstance.accession_id)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The gzipped Protein file is corrupt")
                     deleteDir()
                     flash.error = "The gzipped Protein file is corrupt."
@@ -586,49 +549,26 @@ class TrainingController {
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded protein file ${uploadedProteinFile.originalFilename} was renamed to protein.fa and moved to ${dirName}")
             // check fasta format
-            // check that file contains protein sequence, here defined as not more than 5 percent C or c
-            def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
-            def allAminoAcidsCounter = 0
-            boolean metacharacterFlag = false
-            boolean proteinFastaFlag = false
-            new File(projectDir, "protein.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (proteinFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) ) { 
-                    proteinFastaFlag = true 
-                }
-                else if (!line.startsWith(">")) {
-                    line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){allAminoAcidsCounter = allAminoAcidsCounter + 1}
-                    line.eachMatch(/[Cc]/){cytosinCounter = cytosinCounter + 1}
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), true)
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "The protein file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if (allAminoAcidsCounter == 0 || proteinFastaFlag) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
+            if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
                 deleteDir()
-                flash.error = "Protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
+                flash.error = "Your protein file was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
                 cleanRedirect()
                 return
             }
-            cRatio = cytosinCounter/allAminoAcidsCounter
-            if (cRatio >= 0.05){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
                 deleteDir()
-                flash.error = "Your protein file was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
+                flash.error = "Protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
                 cleanRedirect()
                 return
             }
@@ -641,6 +581,13 @@ class TrainingController {
 
         // retrieve beginning of protein file for format check
         if(!(trainingInstance.protein_ftp_link == null)){
+            if (Utilities.isUnSupportedCompressMode(trainingInstance.protein_ftp_link)) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file is compressed by a not supported algorithm ${trainingInstance.protein_ftp_link}")
+                deleteDir()
+                flash.error = "The protein file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "protein web-link is ${trainingInstance.protein_ftp_link}")
             projectDir.mkdirs()
             confirmationString = "${confirmationString}Protein file: ${trainingInstance.protein_ftp_link}\n"
@@ -660,52 +607,29 @@ class TrainingController {
 
             // check whether the protein file is small enough for upload
             cmd = ["wget --spider ${trainingInstance.protein_ftp_link} 2>&1"]
-            def pattern = ".*Length: (\\d*).* "
+            def pattern = ".*Length: (\\d*).*"
             Long protein_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
             if(protein_size == null || protein_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Protein file size exceeds permitted ${maxFileSizeByWget} bytes by ${protein_size} bytes.")
                 deleteDir()
-                flash.error = "protein_size file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+                flash.error = "protein file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
                 cleanRedirect()
                 return
             }
 
-            if(!("${trainingInstance.protein_ftp_link}" =~ /\.gz/)){
+            if ( !Utilities.isSupportedCompressMode(trainingInstance.protein_ftp_link) ) {
                 // checking web file for protein fasta format:
                 def URL url = new URL("${trainingInstance.protein_ftp_link}");
-                def URLConnection uc = url .openConnection()
-                def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
-                try{
-                    def String inputLine
-                    def charCounter = 1
-                    def char inputChar
-                    def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
-                    def allAminoAcidsCounter = 0
-                    while ( ((inputChar = br.read()) != null) && (charCounter <= 2000)) {
-                        if(inputChar =~ />/){
-                            inputLine = br.readLine();
-                        }else if(!(inputChar =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/) && !(inputChar =~ /^$/)){
-                            proteinFastaFlag = 1
-                        }else{
-                            allAminoAcidsCounter += 1;
-                            if(inputChar =~ /[Cc]/){
-                                cytosinCounter += 1;
-                            }
-                        }
-                        charCounter++;
-                    }
-                    cRatio = allAminoAcidsCounter == 0 ? 1 : cytosinCounter/allAminoAcidsCounter
-                }finally{
-                    br.close()
-                }
-                if (cRatio >= 0.05){
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url, true)
+                
+                if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
+                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
                     deleteDir()
                     flash.error = "Protein file ${trainingInstance.protein_ftp_link} does not contain protein sequences."
                     cleanRedirect()
                     return
                 }
-                if(proteinFastaFlag == 1) {
+                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
                     deleteDir()
                     flash.error = "Protein file ${trainingInstance.protein_ftp_link} is not in fasta format."
@@ -713,7 +637,7 @@ class TrainingController {
                     return
                 }
             }else{
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked Protein file is gzipped. Format will be checked later after extraction.")
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The linked Protein file ${trainingInstance.protein_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
 
         }

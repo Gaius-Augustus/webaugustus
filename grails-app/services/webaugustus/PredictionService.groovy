@@ -147,10 +147,14 @@ class PredictionService extends AbstractWebaugustusService {
             def cmd = ["wget -O ${dirName}/genome.fa ${predictionInstance.genome_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "getGenomeScript", cmd)
 
-            if("${predictionInstance.genome_ftp_link}" =~ /\.gz/){
-                cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "gunzipGenomeScript", cmd)
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Unpacked genome file.")
+            if (Utilities.isSupportedCompressMode(predictionInstance.genome_ftp_link)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Genome file ${predictionInstance.genome_ftp_link} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/genome.fa", "gz", getLogFile(), getLogLevel(), predictionInstance.accession_id)) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The gzipped Genome file is corrupt.");
+                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided gzipped genome file\n${predictionInstance.genome_ftp_link} is corrupt.\n\n"
+                    abortJob(predictionInstance, mailStr)
+                    return
+                }
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
             // check number of scaffolds (to avoid Java heapspace error in the next step)
@@ -166,39 +170,15 @@ class PredictionService extends AbstractWebaugustusService {
 
             // check for fasta format & get seq names for gff validation:
             def seqNames = []
-            boolean metacharacterFlag = 0
-            boolean genomeFastaFlag = 0      
-            new File(projectDir, "genome.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (genomeFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ){ 
-                    genomeFastaFlag = true
-                    return
-                }
-                if (line.startsWith(">")) {
-                    line = line.substring(1).trim()
-                    if (line.isEmpty()) {
-                        genomeFastaFlag = true 
-                        return
-                    }
-                    seqNames << line
-                }            
-            }           
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), seqNames)
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
-            if (genomeFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)
@@ -271,36 +251,26 @@ class PredictionService extends AbstractWebaugustusService {
             def cmd = ["wget -O ${dirName}/est.fa ${predictionInstance.est_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "getEstScript", cmd)
 
-            if("${predictionInstance.est_ftp_link}" =~ /\.gz/){
-                cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "gunzipEstScript", cmd)
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Unpacked EST file.")
+            if (Utilities.isSupportedCompressMode(predictionInstance.est_ftp_link)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST file ${predictionInstance.est_ftp_link} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/est.fa", "gz", getLogFile(), getLogLevel(), predictionInstance.accession_id)) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The gzipped EST file is corrupt.");
+                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided gzipped cDNA file\n${predictionInstance.genome_ftp_link} is corrupt.\n\n"
+                    abortJob(predictionInstance, mailStr)
+                    return
+                }
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
-            boolean metacharacterFlag = false
-            boolean estFastaFlag = false
-            new File(projectDir, "est.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                } 
-                if (estFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) {
-                    estFastaFlag = true
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
+           
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
-            if (estFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
                 String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(predictionInstance, mailStr)

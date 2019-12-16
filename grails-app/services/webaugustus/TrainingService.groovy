@@ -149,10 +149,14 @@ class TrainingService extends AbstractWebaugustusService {
             def cmd = ["wget -O ${dirName}/genome.fa ${trainingInstance.genome_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getGenomeScript", cmd)
 
-            if("${trainingInstance.genome_ftp_link}" =~ /\.gz/){
-                cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipGenomeScript", cmd)
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked genome file.")
+            if (Utilities.isSupportedCompressMode(trainingInstance.genome_ftp_link)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Genome file ${trainingInstance.genome_ftp_link} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/genome.fa", "gz", getLogFile(), getLogLevel(), trainingInstance.accession_id)) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gzipped Genome file is corrupt.");
+                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted\nbecause the provided gzipped genome file\n${trainingInstance.genome_ftp_link} is corrupt.\n\n"
+                    abortJob(trainingInstance, mailStr)
+                    return
+                }
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "genome file upload finished, file stored as genome.fa at ${dirName}")
             // check number of scaffolds (to avoid Java heapspace error in the next step)
@@ -166,31 +170,16 @@ class TrainingService extends AbstractWebaugustusService {
                 return
             }
             
-            // check for fasta format & get seq names for gff validation:
-            boolean metacharacterFlag = false
-            boolean genomeFastaFlag = false
-            new File(projectDir, "genome.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (genomeFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
-                    genomeFastaFlag = true 
-                }
-            }
-            if (metacharacterFlag) {
+            // check for fasta format:
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"))
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (genomeFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided genome file\n${trainingInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
@@ -274,10 +263,14 @@ class TrainingService extends AbstractWebaugustusService {
             def cmd = ["wget -O ${dirName}/est.fa ${trainingInstance.est_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getEstScript", cmd)
 
-            if("${trainingInstance.est_ftp_link}" =~ /\.gz/){
-                cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipEstScript", cmd)
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked EST file.")
+            if (Utilities.isSupportedCompressMode(trainingInstance.est_ftp_link)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST file ${trainingInstance.est_ftp_link} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/est.fa", "gz", getLogFile(), getLogLevel(), trainingInstance.accession_id)) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gzipped EST file is corrupt.");
+                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted\nbecause the provided gzipped EST/cDNA file\n${trainingInstance.genome_ftp_link} is corrupt.\n\n"
+                    abortJob(trainingInstance, mailStr)
+                    return
+                }
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             File estFile = new File(projectDir, "est.fa")
@@ -288,30 +281,15 @@ class TrainingService extends AbstractWebaugustusService {
                 return
             }
             // check for fasta format:
-            boolean metacharacterFlag = false
-            boolean estFastaFlag = false
-            estFile.eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (estFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) {
-                    estFastaFlag = true
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(estFile)
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (estFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The EST/cDNA file was not fasta. ${dirName} is deleted.")
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
@@ -365,54 +343,35 @@ class TrainingService extends AbstractWebaugustusService {
             def cmd = ["wget -O ${dirName}/protein.fa ${trainingInstance.protein_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getProteinScript", cmd)
 
-            if("${trainingInstance.protein_ftp_link}" =~ /\.gz/){
-                cmd = ["mv ${dirName}/protein.fa ${dirName}/protein.fa.gz; gunzip ${dirName}/protein.fa.gz"]
-                Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "gunzipProteinScript", cmd)
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Unpacked protein file.")
+            if (Utilities.isSupportedCompressMode(trainingInstance.protein_ftp_link)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Protein file ${trainingInstance.protein_ftp_link} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/protein.fa", "gz", getLogFile(), getLogLevel(), trainingInstance.accession_id)) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gzipped Protein file is corrupt.");
+                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted\nbecause the provided gzipped protein file\n${trainingInstance.protein_ftp_link} is corrupt.\n\n"
+                    abortJob(trainingInstance, mailStr)
+                    return
+                }
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein file upload finished, file stored as protein.fa at ${dirName}")
 
             // check for fasta protein format:
-            def cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
-            def allAminoAcidsCounter = 0
-            boolean metacharacterFlag = false
-            boolean proteinFastaFlag = false
-            new File(projectDir, "protein.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (proteinFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) ) { 
-                    proteinFastaFlag = true 
-                    return
-                }
-                if (!line.startsWith(">")) {
-                    line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/){ allAminoAcidsCounter = allAminoAcidsCounter + 1 }
-                    line.eachMatch(/[Cc]/){ cytosinCounter = cytosinCounter + 1 }
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), true)
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (allAminoAcidsCounter == 0 || proteinFastaFlag) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not protein fasta.")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis not in fasta format.\n\n"
+            if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            def cRatio = cytosinCounter/allAminoAcidsCounter
-            if (cRatio >= 0.05){
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was with cysteine ratio ${cRatio} not recognized as protein file (probably DNA sequence).")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not protein fasta.")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis not in fasta format.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
@@ -761,9 +720,6 @@ class TrainingService extends AbstractWebaugustusService {
         }else{
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere.")
             String msgStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
-            if (trainingInstance.email_adress != null) {
-                msgStr += "E-Mail: ${trainingInstance.email_adress}\n"
-            }
             msgStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
             if (autoAugErrSize != 0) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!");

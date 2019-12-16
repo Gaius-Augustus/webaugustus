@@ -444,13 +444,17 @@ class PredictionController {
             uploadedGenomeFile.transferTo( new File(projectDir, "genome.fa"))
             //predictionInstance.genome_file = uploadedGenomeFile.originalFilename
             confirmationString = "${confirmationString}Genome file: ${predictionInstance.genome_file}\n"
-
-            if("${uploadedGenomeFile.originalFilename}" =~ /\.gz/){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Genome file is gzipped.")
-                def cmd = ["mv ${dirName}/genome.fa ${dirName}/genome.fa.gz; gunzip ${dirName}/genome.fa.gz"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipGenomeScript", cmd)
-
-                if (!new File(projectDir, "genome.fa").exists()) {
+            
+            if (Utilities.isUnSupportedCompressMode(uploadedGenomeFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file is compressed by a not supported algorithm ${uploadedGenomeFile.originalFilename}")
+                deleteDir()
+                flash.error = "The genome file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
+            if (Utilities.isSupportedCompressMode(uploadedGenomeFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Genome file ${uploadedGenomeFile.originalFilename} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/genome.fa", "gz", logFile, verb, predictionInstance.accession_id)) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The gzipped Genome file is corrupt")
                     deleteDir()
                     flash.error = "The gzipped Genome file is corrupt."
@@ -472,40 +476,16 @@ class PredictionController {
             }
 
             // check for fasta format & extract fasta headers for gff validation:
-            boolean metacharacterFlag = false
-            boolean genomeFastaFlag = false
-            new File(projectDir, "genome.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (genomeFastaFlag) {
-                    return
-                }
-                if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) ) { 
-                    genomeFastaFlag = true
-                    return
-                }
-                if (line.startsWith(">")) {
-                    line = line.substring(1).trim()
-                    if (line.isEmpty()) {
-                        genomeFastaFlag = true 
-                        return
-                    }
-                    seqNames << line
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), seqNames)
+            
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
                 deleteDir()
                 flash.error = "Genome file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if (genomeFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file was not fasta.")
                 deleteDir()
                 flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
@@ -520,6 +500,13 @@ class PredictionController {
         // retrieve beginning of genome file for format check
         if(!(predictionInstance.genome_ftp_link == null)){
             confirmationString = "${confirmationString}Genome file: ${predictionInstance.genome_ftp_link}\n"
+            if (Utilities.isUnSupportedCompressMode(predictionInstance.genome_ftp_link)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file is compressed by a not supported algorithm ${predictionInstance.genome_ftp_link}")
+                deleteDir()
+                flash.error = "The genome file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }            
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "genome web-link is ${predictionInstance.genome_ftp_link}")
             projectDir.mkdirs()
 
@@ -538,7 +525,7 @@ class PredictionController {
 
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${predictionInstance.genome_ftp_link} 2>&1"]
-            def pattern = ".*Length: (\\d*).* "
+            def pattern = ".*Length: (\\d*).*"
             Integer genome_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
             if(genome_size == null || genome_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Genome file size exceeds permitted ${maxFileSizeByWget} bytes by ${genome_size} bytes.")
@@ -549,27 +536,11 @@ class PredictionController {
             }
 
             // checking web file for DNA fasta format:
-            if(!("${predictionInstance.genome_ftp_link}" =~ /\.gz/)){
-                def URL url = new URL("${predictionInstance.genome_ftp_link}");
-                def URLConnection uc = url.openConnection()
-                def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
-                boolean genomeFastaFlag = false
-                try{
-                    def String inputLine
-                    def char inputChar
-                    def charCounter = 1
-                    while ( ((inputChar = br.read()) != null) && (charCounter <= 1000)) {
-                        if(inputChar =~ />/){
-                            inputLine = br.readLine();
-                        }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            genomeFastaFlag = true
-                        }
-                        charCounter = charCounter + 1
-                    }
-                }finally{
-                    br.close()
-                }
-                if (genomeFastaFlag) {
+            if ( !Utilities.isSupportedCompressMode(predictionInstance.genome_ftp_link) ) {
+                URL url = new URL("${predictionInstance.genome_ftp_link}");
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                
+                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The first 20 lines in genome file are not fasta.")
                     deleteDir()
                     flash.error = "Genome file ${predictionInstance.genome_ftp_link} is not in DNA fasta format."
@@ -577,7 +548,7 @@ class PredictionController {
                     return
                 }
             }else{
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The linked genome file is gzipped. Format will be checked later after extraction.")
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The linked genome file ${predictionInstance.genome_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
         }
         // upload of est file
@@ -596,46 +567,36 @@ class PredictionController {
             uploadedEstFile.transferTo( new File(projectDir, "est.fa"))
             //predictionInstance.est_file = uploadedEstFile.originalFilename
             confirmationString = "${confirmationString}cDNA file: ${predictionInstance.est_file}\n"
-            if("${uploadedEstFile.originalFilename}" =~ /\.gz/){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST file is gzipped.")
-                def cmd = ["mv ${dirName}/est.fa ${dirName}/est.fa.gz; gunzip ${dirName}/est.fa.gz"]
-                Utilities.execute(logFile, verb, predictionInstance.accession_id, "gunzipEstScript", cmd)
-
-                if (!new File(projectDir, "est.fa").exists()) {
+            
+            if (Utilities.isUnSupportedCompressMode(uploadedEstFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST file is compressed by a not supported algorithm ${uploadedEstFile.originalFilename}")
+                deleteDir()
+                flash.error = "The cDNA file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
+            if (Utilities.isSupportedCompressMode(uploadedEstFile.originalFilename)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST file ${uploadedEstFile.originalFilename} is gzipped.")
+                if ( !Utilities.deCompress("${dirName}/est.fa", "gz", logFile, verb, predictionInstance.accession_id)) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The gzipped EST file is corrupt")
                     deleteDir()
-                    flash.error = "The gzipped EST file is corrupt."
+                    flash.error = "The gzipped cDNA file is corrupt."
                     cleanRedirect()
                     return
                 }
             }
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            boolean metacharacterFlag = false
-            boolean estFastaFlag = false
-            new File(projectDir, "est.fa").eachLine{line ->
-                if (metacharacterFlag || line.isEmpty()) {
-                    return
-                }
-                if(line =~ /\*/ || line =~ /\?/){
-                    metacharacterFlag = true
-                    return
-                }
-                if (estFastaFlag) {
-                    return
-                }
-                if (!(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
-                    estFastaFlag = true
-                }
-            }
-            if (metacharacterFlag) {
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
+           
+            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).")
                 deleteDir()
                 flash.error = "cDNA file contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
-            if (estFastaFlag) {
+            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
                 deleteDir()
                 flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
@@ -651,6 +612,13 @@ class PredictionController {
         // retrieve beginning of est file for format check
         if(!(predictionInstance.est_ftp_link == null)){
             confirmationString = "${confirmationString}cDNA file: ${predictionInstance.est_ftp_link}\n"
+            if (Utilities.isUnSupportedCompressMode(predictionInstance.est_ftp_link)) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The EST file is compressed by a not supported algorithm ${predictionInstance.est_ftp_link}")
+                deleteDir()
+                flash.error = "The cDNA file is compressed by a not supported algorithm. Please use gzip to compress your file."
+                cleanRedirect()
+                return
+            }
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "est web-link is ${predictionInstance.est_ftp_link}")
             projectDir.mkdirs()
 
@@ -669,7 +637,7 @@ class PredictionController {
 
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${predictionInstance.est_ftp_link} 2>&1"]
-            def pattern = ".*Length: (\\d*).* "
+            def pattern = ".*Length: (\\d*).*"
             Long est_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
             if(est_size == null || est_size > maxFileSizeByWget){//1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST file size exceeds permitted ${maxFileSizeByWget} bytes by ${est_size} bytes.")
@@ -679,28 +647,12 @@ class PredictionController {
                 return
             }
 
-            if(!("${predictionInstance.est_ftp_link}" =~ /\.gz/)){
-                // checking web file for DNA fasta format:
-                def URL url = new URL("${predictionInstance.est_ftp_link}");
-                def URLConnection uc = url.openConnection()                    
-                def BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
-                boolean estFastaFlag = false
-                try{
-                    def String inputLine
-                    def char inputChar
-                    def charCounter = 1
-                    while ( ((inputChar = br.read()) != null) && (charCounter <= 1000)) {
-                        if(inputChar =~ />/){
-                            inputLine = br.readLine();
-                        }else if(!(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNn]/) && !(inputChar =~ /^$/)){
-                            estFastaFlag = true
-                        }
-                        charCounter = charCounter + 1
-                    }
-                }finally{
-                    br.close()
-                }
-                if (estFastaFlag) {
+            // checking web file for DNA fasta format
+            if ( !Utilities.isSupportedCompressMode(predictionInstance.est_ftp_link) ) {
+                URL url = new URL("${predictionInstance.est_ftp_link}")
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                
+                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
                     deleteDir()
                     flash.error = "cDNA file ${predictionInstance.est_ftp_link} is not in DNA fasta format."
@@ -708,7 +660,7 @@ class PredictionController {
                     return
                 }
             }else{
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The linked EST file is gzipped. Format will be checked later after extraction.")
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The linked EST file ${predictionInstance.est_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
         }
         // get hints file, format check
@@ -734,7 +686,7 @@ class PredictionController {
             def gffSourceErrorFlag = 0
             def gffFeatureErrorFlag = 0
             if(!uploadedGenomeFile.empty){ // if seqNames already exists
-                // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
+                // gff format validation: number of columns 9, + or - in column 7, column 1 must be  member of seqNames
                 def gffArray
                 def isElement
                 boolean metacharacterFlag = false
