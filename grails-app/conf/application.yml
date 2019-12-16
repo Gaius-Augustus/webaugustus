@@ -160,7 +160,7 @@ grails:
 augustus:
     path:
         config:  /usr/share/augustus/config
-        species: /data/www/webaugustus/species/
+        species: /data/www/webaugustus/species
         scripts: /usr/share/augustus/scripts
         
 url:
