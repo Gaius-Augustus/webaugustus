@@ -189,7 +189,11 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             return null
         }
         else if ( statusContent =~ /${jobIdentifier}/) {
-            if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/) ) {
+            if ( (statusContent =~ /  NF /) || (statusContent =~ /NODE_FAIL/) 
+                || (statusContent =~ /  CG /) || (statusContent =~ /COMPLETING/) ) {
+                // wait for the final message
+            }
+            else if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/) ) {
                 return JobStatus.WAITING_FOR_EXECUTION
             }
             else if ( (statusContent =~ /  R /) || (statusContent =~ /RUNNING/) ) {
@@ -229,7 +233,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         
         // copy results into output_dir
         Utilities.log(logFile, 1, maxLogLevel, processName, "copy data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}")
-        def cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverDataPath}/ ${parentPath}/"]
+        def cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverDataPath}/ ${parentPath}/"]
         Integer statusDataCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyDataFromSlurmServer", cmd)
         Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}, status=${statusDataCopy}")
         
@@ -241,7 +245,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             serverWebPath = localWebPath.substring(1)
         }
         Utilities.log(logFile, 1, maxLogLevel, processName, "copy web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}")
-        cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverWebPath}/ ${localWebPath}/"]
+        cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverWebPath}/ ${localWebPath}/"]
         int statusWebCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyWebDataFromSlurmServer", cmd)
         Utilities.log(logFile, 1, maxLogLevel, processName, "copied web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}, status=${statusWebCopy}")
         
@@ -265,7 +269,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
                 String serverSpeciesPath = getSlurmSpeciesDir() + "/" + parentFolderName
 
                 Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}")
-                cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverSpeciesPath} ${localSpeciesPath}"]
+                cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverSpeciesPath} ${localSpeciesPath}"]
                 int statusSpeciesCopy = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
                 Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}, status=${statusSpeciesCopy}")
 
