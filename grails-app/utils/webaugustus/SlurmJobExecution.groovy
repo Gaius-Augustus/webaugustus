@@ -114,9 +114,34 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * @param scriptName file name of the script
      * @param jobType is it a prediction or training job
      * 
-     * @return the job identifier or null if the jobs wasn't started
+     * @return the job identifier or null if the job wasn't started
      */
     public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName) {
+        String jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName)
+        if (jobID == null && !isSlurmLocal()) {
+            // try again later - perhaps a ssh connection was cut
+            for (int i = 0; i < 10; i++) {
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again.")
+                sleep(10000)
+                jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName)
+                if (jobID != null) {
+                    return jobID
+                }
+            }
+        }
+        return jobID
+    }
+    
+	/**
+     * Start a job identified by the specified script.
+     *
+     * @param parentPath parent path of the script
+     * @param scriptName file name of the script
+     * @param jobType is it a prediction or training job
+     * 
+     * @return the job identifier or null if the job wasn't started
+     */
+    public String startJobInternal(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName) {
         String parentFolderName = new File(parentPath).getName()
         String serverDataPath = parentPath
             
@@ -134,8 +159,11 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             // copy the list of species to slurm server
             String AUGUSTUS_SPECIES_PATH = AbstractWebaugustusService.getAugustusSpeciesPath()
             cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${AUGUSTUS_SPECIES_PATH}/ ${getSlurmUserName()}@${getSlurmHost()}:${getSlurmSpeciesDir()}/"]
-            Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
-            Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${getSlurmSpeciesDir()} on ${getSlurmHost()}")
+            exitCode = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
+            Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${getSlurmSpeciesDir()} on ${getSlurmHost()}, exitCode=${exitCode}")
+            if (exitCode != 0) {
+                return null
+            }
         }
         
         // copy the slurm submit file and replace PLACEHOLDER by parentFolderName
@@ -219,11 +247,35 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      *
      * @param parentPath parent path of the executed script wich contains all results
      * @param jobType is it a prediction or training job
-     * @return 0 if everything is ok else a status code from the executed command if available else 1
+     * @return 0 if everything is ok else a exit code from the executed command if available else 1
      */
     public int cleanupJob(String parentPath, AbstractWebaugustusService serviceInstance, JobType jobType, File logFile, int maxLogLevel, String processName) {
+        int exitCode = cleanupJobInternal(parentPath, serviceInstance, jobType, logFile, maxLogLevel, processName)
+        
+        if (exitCode != 0 && !isSlurmLocal()) {
+        // try again later - perhaps a ssh connection was cut
+            for (int i = 0; i < 10; i++) {
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again.")
+                sleep(10000)
+                exitCode = cleanupJobInternal(parentPath, serviceInstance, jobType, logFile, maxLogLevel, processName)
+                if (exitCode != 0) {
+                    return exitCode
+                }
+            }
+        }
+        return exitCode
+    }
+    
+    /**
+     * Cleanup after a job is done.
+     *
+     * @param parentPath parent path of the executed script wich contains all results
+     * @param jobType is it a prediction or training job
+     * @return 0 if everything is ok else a exit code from the executed command if available else 1
+     */
+    public int cleanupJobInternal(String parentPath, AbstractWebaugustusService serviceInstance, JobType jobType, File logFile, int maxLogLevel, String processName) {
         if (isSlurmLocal()) {
-            return // nothing to do
+            return 0 // nothing to do
         }
         String parentFolderName = new File(parentPath).getName()
         String serverDataPath = parentPath
@@ -234,8 +286,8 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         // copy results into output_dir
         Utilities.log(logFile, 1, maxLogLevel, processName, "copy data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}")
         def cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverDataPath}/ ${parentPath}/"]
-        Integer statusDataCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyDataFromSlurmServer", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}, status=${statusDataCopy}")
+        int exitCodeDataCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyDataFromSlurmServer", cmd)
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied data from ${serverDataPath} on ${getSlurmHost()} to ${parentPath}, exitCode=${exitCodeDataCopy}")
         
         
         // copy results into web_output_dir
@@ -246,14 +298,14 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         }
         Utilities.log(logFile, 1, maxLogLevel, processName, "copy web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}")
         cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverWebPath}/ ${localWebPath}/"]
-        int statusWebCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyWebDataFromSlurmServer", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}, status=${statusWebCopy}")
+        int exitCodeWebCopy = Utilities.execute(logFile, maxLogLevel, processName, "copyWebDataFromSlurmServer", cmd)
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied web data from ${serverWebPath} on ${getSlurmHost()} to ${localWebPath}, exitCode=${exitCodeWebCopy}")
         
-        if (statusDataCopy != 0) {
-            return statusDataCopy
+        if (exitCodeDataCopy != 0) {
+            return exitCodeDataCopy
         }
-        if (statusWebCopy != 0) {
-            return statusWebCopy
+        if (exitCodeWebCopy != 0) {
+            return exitCodeWebCopy
         }
         
         cmd = [getAsSSHCommand("rm -rf ${serverDataPath} ${serverWebPath}")]
@@ -270,16 +322,15 @@ class SlurmJobExecution extends webaugustus.JobExecution {
 
                 Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}")
                 cmd = ["rsync -auv --ignore-missing-args -e 'ssh ${getSlurmSSHParam()}' ${getSlurmUserName()}@${getSlurmHost()}:${serverSpeciesPath} ${localSpeciesPath}"]
-                int statusSpeciesCopy = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
-                Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}, status=${statusSpeciesCopy}")
+                int exitCodeSpeciesCopy = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
+                Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}, exitCode=${exitCodeSpeciesCopy}")
 
-                if (statusSpeciesCopy != 0) {
-                    return statusSpeciesCopy
+                if (exitCodeSpeciesCopy == null || exitCodeSpeciesCopy != 0) {
+                    return exitCodeSpeciesCopy
                 }
             }
         }
         
-        return 0
-        
+        return 0        
     }
 }

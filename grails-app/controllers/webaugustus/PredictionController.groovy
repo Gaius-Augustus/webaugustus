@@ -104,6 +104,12 @@ class PredictionController {
             redirect(action:'create', controller: 'prediction')
             return
         }
+        if (request == null) {
+            String senderAdress = PredictionService.getWebaugustusEmailAddress()
+            flash.error = "Internal error 3. Please contact ${senderAdress} if the problem persists!"
+            redirect(action:'create', controller: 'prediction')
+            return
+        }
         
         // retrieve parameters of form for early save()
         def uploadedGenomeFile = request.getFile('GenomeFile')
@@ -236,6 +242,7 @@ class PredictionController {
         // check whether parameters are available for project_id (previous prediction run)
         Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter ID is ${predictionInstance.project_id}")
         if(!(predictionInstance.project_id == null)){
+            predictionInstance.project_id = predictionInstance.project_id.trim();
             def spec_conf_dir = new File("${AUGUSTUS_SPECIES_PATH}/${predictionInstance.project_id}")
             if(!spec_conf_dir.exists()){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The given parameter-string \"${predictionInstance.project_id}\" does not exist on our system.")

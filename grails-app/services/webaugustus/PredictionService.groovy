@@ -400,6 +400,9 @@ class PredictionService extends AbstractWebaugustusService {
         //Create script:
         Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Writing submission script.")
         File jobFile = new File(projectDir, "aug-pred.sh")
+        if (jobFile.exists()) {
+            jobFile.delete()
+        }
         // write command in script (according to uploaded files)
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         cmdStr = "mkdir ${dirName}/augustus\n"
@@ -562,15 +565,6 @@ class PredictionService extends AbstractWebaugustusService {
         File projectDir = new File(dirName)
         
         int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
-        if (exitCode != 0) {
-            // try again - perhaps a ssh connection was cut
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
-            sleep(10000)
-            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
-            if (exitCode != 0) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
-            }
-        }
         
         // set file rigths to readable by others
         Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${predictionInstance.accession_id}")
@@ -597,7 +591,7 @@ class PredictionService extends AbstractWebaugustusService {
                 sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
             }else{
                 sgeErrSize = 10
-                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "segErrFile was not created. Setting size to default value 10.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "sgeErrFile was not created. Setting size to default value 10.")
             }
         }
         if(new File(projectDir, "writeResults.err").exists()){
@@ -645,7 +639,7 @@ class PredictionService extends AbstractWebaugustusService {
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if(sgeErrSize > 0){
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "a ${computeClusterName} error occured!");
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured!");
                 msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
             }else{
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured during writing results!");

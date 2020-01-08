@@ -445,6 +445,9 @@ class TrainingService extends AbstractWebaugustusService {
         String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
         Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Writing ${computeClusterName} submission script: EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ")
         File jobFile = new File(projectDir, "augtrain.sh")
+        if (jobFile.exists()) {
+            jobFile.delete()
+        }
         // write command in script (according to uploaded files)
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         String cmdStr = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} "
@@ -543,15 +546,7 @@ class TrainingService extends AbstractWebaugustusService {
         File projectDir = new File(dirName)
         
         int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
-        if (exitCode != 0) {
-            // try again - perhaps a ssh connection was cut
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. exitCode=${exitCode} try again.")
-            sleep(10000)
-            exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
-            if (exitCode != 0) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed again. exitCode=${exitCode} try again.")
-            }
-        }
+        
         // set file rigths to readable by others
         Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${trainingInstance.accession_id}")
         def webOutputDir = new File(getWebOutputDir(), trainingInstance.accession_id)
