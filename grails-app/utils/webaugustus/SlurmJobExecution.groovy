@@ -105,8 +105,6 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         return count
     }
 
-	// TODO: $ ssh root@server 'bash -s' < script.sh
-    
     /**
      * Start a job identified by the specified script.
      *
