@@ -77,7 +77,17 @@ class Training extends AbstractWebAugustusDomainClass {
                          return 'not_agreed'
            }
      })
-        project_name(blank:false, unique:false, maxSize:30)
+        project_name(blank:false, unique:false, maxSize:30, validator: { val, obj ->
+            if (obj.project_name == null || obj.project_name.trim().isEmpty()) {
+                return 'empty'
+            }
+            if (obj.project_name.matches(".*\\s+.*")) {
+                 return 'white_spaces'
+            }
+            if (!obj.project_name.matches("^[a-zA-Z0-9\\._-]+\$")) {
+                 return 'invalid_characters'
+            }
+        })    
         genome_file(nullable:true, blank:true, validator: { val, obj ->
              if (obj.genome_file == null && obj.genome_ftp_link == null) {
                  return 'no_genome_file'
@@ -90,8 +100,8 @@ class Training extends AbstractWebAugustusDomainClass {
              } else if (!(obj.protein_ftp_link == null) && !(obj.struct_file == null)) {
                  return 'not_struct'
              } else if (obj.genome_ftp_link =~ /dropbox/) {
-             return 'no_dropbox'
-         }
+                 return 'no_dropbox'
+             }
         })
         genome_ftp_link(nullable:true, blank:true, url:true)
         est_file(nullable:true, blank:true, validator: { val, obj ->

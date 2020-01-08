@@ -175,6 +175,7 @@ class TrainingController {
             return
         }
 
+        trainingInstance.project_name = trainingInstance.project_name.trim()
         // check that species name does not contain spaces
         if(trainingInstance.project_name =~ /\s/){
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The species name contained whitespaces.")
