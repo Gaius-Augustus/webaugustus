@@ -670,8 +670,8 @@ class PredictionService extends AbstractWebaugustusService {
             if(predictionInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
             }else{
-                msgStr = "${mailStr}The administrator of the AUGUSTUS web server has been informed and"
-                msgStr += " will get back to you as soon as the problem is solved.\n\n"
+                msgStr = "${mailStr}The administrator of the AUGUSTUS web server has been informed.\n"
+                msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
                 sendMailToUser(predictionInstance, "An error occured while executing AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }

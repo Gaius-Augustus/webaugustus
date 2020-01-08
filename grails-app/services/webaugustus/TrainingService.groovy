@@ -785,9 +785,10 @@ class TrainingService extends AbstractWebaugustusService {
             if(trainingInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email address was supplied.")
             }else{
+                String senderAdress = TrainingService.getWebaugustusEmailAddress()
                 msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"
-                msgStr += "The administrator of the AUGUSTUS web server has been informed and "
-                msgStr += "will get back to you as soon as the problem is solved.\n\n"
+                msgStr += "The administrator of the AUGUSTUS web server has been informed.\n"
+                msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
                 sendMailToUser(trainingInstance, "An error occured while executing AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
