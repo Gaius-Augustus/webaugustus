@@ -526,11 +526,17 @@ class PredictionController {
             // check whether the genome file is small enough for upload
             cmd = ["wget --spider ${predictionInstance.genome_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).*"
-            Integer genome_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
-            if(genome_size == null || genome_size > maxFileSizeByWget){//1 GB
+            Long genome_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
+            if (genome_size == null) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Invalid genome URL.")
+                flash.error = "Cannot retrieve genome file from HTTP/FTP link ${predictionInstance.genome_ftp_link}."
+            }
+            else if (genome_size > maxFileSizeByWget){ // 1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Genome file size exceeds permitted ${maxFileSizeByWget} bytes by ${genome_size} bytes.")
-                deleteDir()
                 flash.error = "Genome file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+            }
+            if (genome_size == null || genome_size > maxFileSizeByWget) {
+                deleteDir()
                 cleanRedirect()
                 return
             }
@@ -639,10 +645,16 @@ class PredictionController {
             cmd = ["wget --spider ${predictionInstance.est_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).*"
             Long est_size = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "spiderScript", cmd, pattern)
-            if(est_size == null || est_size > maxFileSizeByWget){//1 GB
+            if (est_size == null) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Invalid EST URL.")
+                flash.error = "Cannot retrieve cDNA file from HTTP/FTP link ${predictionInstance.est_ftp_link}."
+            }
+            else if (est_size > maxFileSizeByWget) { // 1 GB
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "EST file size exceeds permitted ${maxFileSizeByWget} bytes by ${est_size} bytes.")
-                deleteDir()
                 flash.error = "cDNA file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+            }
+            if (est_size == null || est_size > maxFileSizeByWget){
+                deleteDir()
                 cleanRedirect()
                 return
             }

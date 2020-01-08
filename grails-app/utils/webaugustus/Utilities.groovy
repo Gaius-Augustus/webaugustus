@@ -242,7 +242,7 @@ class Utilities {
      * 
      * @return the return value of the command or null in case of an error
      */
-    static def executeForString(File logFile, int maxLogLevel, String process, String scriptName, List cmd) {
+    static String executeForString(File logFile, int maxLogLevel, String process, String scriptName, List cmd) {
         def cmd2Script = cmd.join(" ")
         def logScript = cleanCommandForLog(cmd2Script)
         log(logFile, 3, maxLogLevel, process, "${scriptName} << \"${logScript}\"")
@@ -254,7 +254,7 @@ class Utilities {
             log(logFile, 1, maxLogLevel, process, "Exception status code=${execute.exitValue()} (${execute.err.text})")
         }
         
-        def outputValue = execute.text.trim()
+        String outputValue = execute.text.trim()
         log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\"")
         if (execute.exitValue() && outputValue.isEmpty()) {
             return null
@@ -338,9 +338,9 @@ class Utilities {
      * or null in case of an error
      */
     static Integer executeForInteger(File logFile, int maxLogLevel, String process, String scriptName, List cmd, String pattern="") {
-        def value = executeForString(logFile, maxLogLevel, process, scriptName, cmd)
+        String value = executeForString(logFile, maxLogLevel, process, scriptName, cmd)
         
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null
         }
         
@@ -355,6 +355,9 @@ class Utilities {
             def outputValue = 0
             (1..output_array.groupCount()).each{outputValue = "${output_array[0][it]}"}
             log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\" as integer by using this pattern \"${pattern}\"")
+            if (outputValue == null || outputValue.trim().isEmpty()) {
+                return null
+            }
             return outputValue.toInteger()
         }
     }
@@ -375,9 +378,9 @@ class Utilities {
      * or null in case of an error
      */
     static Long executeForLong(File logFile, int maxLogLevel, String process, String scriptName, List cmd, String pattern="") {
-        def value = executeForString(logFile, maxLogLevel, process, scriptName, cmd)
+        String value = executeForString(logFile, maxLogLevel, process, scriptName, cmd)
         
-        if (value == null) {
+        if (value == null || value.trim().isEmpty()) {
             return null
         }
         
@@ -392,6 +395,9 @@ class Utilities {
             def outputValue = 0
             (1..output_array.groupCount()).each{outputValue = "${output_array[0][it]}"}
             log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\" as long by using this pattern \"${pattern}\"")
+            if (outputValue == null || outputValue.trim().isEmpty()) {
+                return null
+            }
             return outputValue.toLong()
         }
     }

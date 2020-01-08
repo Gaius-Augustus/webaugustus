@@ -187,7 +187,7 @@ class TrainingController {
         // upload of genome file
         if(!uploadedGenomeFile.empty){
             // check file size
-            def long preUploadSize = uploadedGenomeFile.getSize()
+            long preUploadSize = uploadedGenomeFile.getSize()
             projectDir.mkdirs()
 
             if(preUploadSize > maxButtonFileSize){
@@ -284,10 +284,16 @@ class TrainingController {
             cmd = ["wget --spider ${trainingInstance.genome_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).*"
             Long genome_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
-            if(genome_size == null || genome_size > maxFileSizeByWget){//1 GB
+            if (genome_size == null) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Invalid genome URL.")
+                flash.error = "Cannot retrieve genome file from HTTP/FTP link ${trainingInstance.genome_ftp_link}."
+            }
+            else if (genome_size > maxFileSizeByWget) { // 1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Genome file size exceeds permitted ${maxFileSizeByWget} bytes by ${genome_size} bytes.")
-                deleteDir()
                 flash.error = "Genome file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+            }
+            if (genome_size == null || genome_size > maxFileSizeByWget) {
+                deleteDir()
                 cleanRedirect()
                 return
             }
@@ -397,10 +403,16 @@ class TrainingController {
             cmd = ["wget --spider ${trainingInstance.est_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).*"
             Long est_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
-            if(est_size == null || est_size > maxFileSizeByWget){//1 GB
+            if (est_size == null) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Invalid EST URL.")
+                flash.error = "Cannot retrieve cDNA file from HTTP/FTP link ${trainingInstance.est_ftp_link}."
+            }
+            else if (est_size > maxFileSizeByWget) { // 1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "EST file size exceeds permitted ${maxFileSizeByWget} bytes by ${est_size} bytes.")
-                deleteDir()
                 flash.error = "cDNA file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+            }
+            if (est_size == null || est_size > maxFileSizeByWget) {
+                deleteDir()
                 cleanRedirect()
                 return
             }
@@ -610,10 +622,16 @@ class TrainingController {
             cmd = ["wget --spider ${trainingInstance.protein_ftp_link} 2>&1"]
             def pattern = ".*Length: (\\d*).*"
             Long protein_size = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "spiderScript", cmd, pattern)
-            if(protein_size == null || protein_size > maxFileSizeByWget){//1 GB
+            if (protein_size == null) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Invalid protein URL.")
+                flash.error = "Cannot retrieve protein file from HTTP/FTP link ${trainingInstance.protein_ftp_link}."
+            }
+            else if (protein_size > maxFileSizeByWget) { // 1 GB
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Protein file size exceeds permitted ${maxFileSizeByWget} bytes by ${protein_size} bytes.")
-                deleteDir()
                 flash.error = "protein file is bigger than 1 GB bytes, which is our maximal size for file download from a web link."
+            }
+            if (protein_size == null || protein_size > maxFileSizeByWget) {
+                deleteDir()
                 cleanRedirect()
                 return
             }
