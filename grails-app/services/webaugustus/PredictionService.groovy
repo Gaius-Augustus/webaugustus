@@ -255,7 +255,7 @@ class PredictionService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST file ${predictionInstance.est_ftp_link} is gzipped.")
                 if ( !Utilities.deCompress("${dirName}/est.fa", "gz", getLogFile(), getLogLevel(), predictionInstance.accession_id)) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The gzipped EST file is corrupt.");
-                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided gzipped cDNA file\n${predictionInstance.genome_ftp_link} is corrupt.\n\n"
+                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided gzipped cDNA file\n${predictionInstance.est_ftp_link} is corrupt.\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
                 }

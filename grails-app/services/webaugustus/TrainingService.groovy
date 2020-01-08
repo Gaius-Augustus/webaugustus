@@ -267,7 +267,7 @@ class TrainingService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST file ${trainingInstance.est_ftp_link} is gzipped.")
                 if ( !Utilities.deCompress("${dirName}/est.fa", "gz", getLogFile(), getLogLevel(), trainingInstance.accession_id)) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The gzipped EST file is corrupt.");
-                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted\nbecause the provided gzipped EST/cDNA file\n${trainingInstance.genome_ftp_link} is corrupt.\n\n"
+                    String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} was aborted\nbecause the provided gzipped EST/cDNA file\n${trainingInstance.est_ftp_link} is corrupt.\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
