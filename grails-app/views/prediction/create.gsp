@@ -56,10 +56,13 @@
                                  <tr>
                                     <td class="prop" colspan="2">
                                        <table><tr><td class="prop">
-                                          <g:checkBox name="agree_email" value="${prediction?.agree_email}" />
+                                          <g:checkBox id="agree_email" name="agree_email" value="${prediction?.agree_email}" />
                                        </td><td class="prop">
-                                          If I provide an e-mail address, I consent to the processing of my personal data in accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
-                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                           <label for="agree_email">
+                                               If I provide an e-mail address, I consent to the processing of my personal data in 
+                                               accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
+                                               I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                           </label>
                                        </td></tr></table>
                                     </td>
                                  </tr>
@@ -75,14 +78,14 @@
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
-                                       <label for="ArchiveFile"><b>AUGUSTUS species parameters</b> <font color="#FF0000">*</font></label>
-                                    </td>
-                                    <td valign="top">
+                                    <td valign="top" colspan="2" class="name">
+                                       <b>AUGUSTUS species parameters</b> <font color="#FF0000">*</font>
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload an archive file  <font size="1">(max. 100 MB)</font>: &nbsp; <a href="${createLink(uri:'/help#archive')}"><small>Help</small></a>
+                                    <td valign="top">
+                                        <label for="ArchiveFile" style="display: inline;">Upload an archive file <font size="1">(max. 100 MB)</font>: </label>
+                                        &nbsp; <a href="${createLink(uri:'/help#archive')}"><small>Help</small></a>
                                     </td>
                                     <td valign="top">
                                        <g:if test="${prediction?.has_param_file == true}">
@@ -98,7 +101,7 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="project_id">specify a project identifier:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                                       <label for="project_id">specify a project identifier:</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'project_id','errors')}">
                                        <input type="text" id="project_id" name="project_id" value="${fieldValue(bean:prediction,field:'project_id')}"/> <a href="${createLink(uri:'/help#project_id')}"><small>Help</small></a>
@@ -109,10 +112,10 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="project_id">select an organism:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+                                       <label for="species_select">select an organism:</label>
                                     </td>
                                     <td valign="top" class="value ${hasErrors(bean:prediction,field:'species_select','errors')}">
-                                       <g:select name="species_select" from="${[
+                                       <g:select id="species_select" name="species_select" from="${[
                                           'Acyrthosiphon pisum (animal)', 
                                           'Aedes aegypti (animal)', 
                                           'Amphimedon queenslandica (animal)', 
@@ -189,14 +192,12 @@
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
-                                       <label for="GenomeFile"><b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a></label>
-                                    </td>
-                                    <td valign="top">
+                                    <td valign="top" colspan="2" class="name">
+                                       <b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a>
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 100 MB)</font>:</td>
+                                    <td valign="top"><label for="GenomeFile">Upload a file <font size="1">(max. 100 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${prediction?.has_genome_file == true}">
                                           <div class="prop_warn">
@@ -224,14 +225,12 @@
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
-                                       <label for="EstFile"><b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp;<a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a></label>
-                                    </td>
-                                    <td valign="top">
+                                    <td valign="top" colspan="2" class="name">
+                                       <b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp;<a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a>
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 100 MB)</font>:</td>
+                                    <td valign="top"><label for="EstFile">Upload a file <font size="1">(max. 100 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${prediction?.has_est_file == true}">
                                           <div class="prop_warn">
@@ -256,14 +255,12 @@
                                     <td></td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
-                                       <label for="hint_file"><b>Hints file</b> &nbsp; <a href="${createLink(uri:'/help#hints')}"><small>Help</small></a></label>
-                                    </td>
-                                    <td valign="top">
+                                    <td valign="top" colspan="2" class="name">
+                                       <b>Hints file</b> &nbsp; <a href="${createLink(uri:'/help#hints')}"><small>Help</small></a>
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 200 MB)</font>:</td>
+                                    <td valign="top"><label for="HintFile">Upload a file <font size="1">(max. 200 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${prediction?.has_hint_file == true}">
                                           <div class="prop_warn">
@@ -280,63 +277,62 @@
                               <tbody>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="UtrPrediction"><b>UTR prediction</b> &nbsp; <a href="${createLink(uri:'/help#utr')}"><small>Help</small></a></label>
+                                       <b>UTR prediction</b> &nbsp; <a href="${createLink(uri:'/help#utr')}"><small>Help</small></a>
                                     </td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:checkBox name="utr" value="${prediction?.utr}" /> predict UTRs (requires species-specific UTR parameters)
+                                       <label><g:checkBox name="utr" value="${prediction?.utr}" /> predict UTRs (requires species-specific UTR parameters)</label>
                                     </td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <br><label for="StrandPrediction"><b>Report genes on</b></label>
+                                       <br><b>Report genes on</b></label>
                                     </td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:radio name="pred_strand" value="1" checked="${prediction?.pred_strand == 1}"/> both strands  &nbsp; &nbsp; 
-                                       <g:radio name="pred_strand" value="2" checked="${prediction?.pred_strand == 2}"/> forward strand only &nbsp; &nbsp; 
-                                       <g:radio name="pred_strand" value="3" checked="${prediction?.pred_strand == 3}"/> reverse strand only
+                                       <label style="display: inline;"><g:radio name="pred_strand" value="1" checked="${prediction?.pred_strand == 1}"/> both strands </label> &nbsp; &nbsp; 
+                                       <label style="display: inline;"><g:radio name="pred_strand" value="2" checked="${prediction?.pred_strand == 2}"/> forward strand only </label> &nbsp; &nbsp; 
+                                       <label style="display: inline;"><g:radio name="pred_strand" value="3" checked="${prediction?.pred_strand == 3}"/> reverse strand only </label>
                                     </td>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <br><label for="AlternativeTranscripts"><b>Alternative transcripts:</b></label>
-                                    </td>
-                                 </tr>
-                                 <tr class="prop">
-                                    <td valign="top" class="name">
-                                       <g:radio name="alt_transcripts" value="1" checked="${prediction?.alt_transcripts == 1}"/>
-                                       none  &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="2" checked="${prediction?.alt_transcripts == 2}"/>
-                                       few &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="3" checked="${prediction?.alt_transcripts == 3}"/>
-                                       medium &nbsp; &nbsp; 
-                                       <g:radio name="alt_transcripts" value="4" checked="${prediction?.alt_transcripts == 4}"/>
-                                       many 
+                                       <br><b>Alternative transcripts:</b>
                                     </td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <br><label for="GeneStructure"><b>Allowed gene structure:</b>&nbsp; <a href="${createLink(uri:'/help#allowedGeneStructure')}"><small>Help</small></a></label>
+                                       <label style="display: inline;"><g:radio name="alt_transcripts" value="1" checked="${prediction?.alt_transcripts == 1}"/> none </label> &nbsp; &nbsp; 
+                                       <label style="display: inline;"><g:radio name="alt_transcripts" value="2" checked="${prediction?.alt_transcripts == 2}"/> few </label> &nbsp; &nbsp; 
+                                       <label style="display: inline;"><g:radio name="alt_transcripts" value="3" checked="${prediction?.alt_transcripts == 3}"/> medium </label> &nbsp; &nbsp; 
+                                       <label style="display: inline;"><g:radio name="alt_transcripts" value="4" checked="${prediction?.alt_transcripts == 4}"/> many </label>
                                     </td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <g:radio name="allowed_structures" value="1" checked="${prediction?.allowed_structures == 1}"/> predict any number of (possibly partial) genes<br>
-                                       <g:radio name="allowed_structures" value="2" checked="${prediction?.allowed_structures == 2}"/> only predict complete genes<br>
-                                       <g:radio name="allowed_structures" value="3" checked="${prediction?.allowed_structures == 3}"/> only predict complete genes - at least one<br>
-                                       <g:radio name="allowed_structures" value="4" checked="${prediction?.allowed_structures == 4}"/> predict exactly one gene<br><br>
-                                       
-                                       <g:checkBox name="ignore_conflicts" value="${prediction?.ignore_conflicts}" /> ignore conflicts with other strand
+                                       <br><b>Allowed gene structure:</b>&nbsp; <a href="${createLink(uri:'/help#allowedGeneStructure')}"><small>Help</small></a>
+                                    </td>
+                                 </tr>
+                                 <tr class="prop">
+                                    <td valign="top" class="name">
+                                       <label style="margin-bottom:0px;"><g:radio name="allowed_structures" value="1" checked="${prediction?.allowed_structures == 1}"/> predict any number of (possibly partial) genes</label>
+                                       <label style="margin-bottom:0px;"><g:radio name="allowed_structures" value="2" checked="${prediction?.allowed_structures == 2}"/> only predict complete genes</label>
+                                       <label style="margin-bottom:0px;"><g:radio name="allowed_structures" value="3" checked="${prediction?.allowed_structures == 3}"/> only predict complete genes - at least one</label>
+                                       <label style="margin-bottom:0px;"><g:radio name="allowed_structures" value="4" checked="${prediction?.allowed_structures == 4}"/> predict exactly one gene</label>
+                                       <br>
+                                       <label><g:checkBox name="ignore_conflicts" value="${prediction?.ignore_conflicts}" /> ignore conflicts with other strand</label>
                                     </td>
                                  </tr>
                               </tbody>
                            </table>
                            <br><br>
                            <p>
-                              <g:checkBox name="agree_nonhuman" value="${prediction?.agree_nonhuman}" />
-                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).&nbsp;<font color="#FF0000">*</font></b>
+                              <label style="display: inline;">
+                                  <g:checkBox name="agree_nonhuman" value="${prediction?.agree_nonhuman}" />
+                                  &nbsp;<b>I am not submitting personalized human sequence data (mandatory).
+                              </label>
+                              &nbsp;<font color="#FF0000">*</font></b>
                               &nbsp;<a href="${createLink(uri:'/help#nonhuman')}"><small>Help</small></a>
                            </p>
                            <br>
@@ -348,7 +344,11 @@
                                        <g:if test="${prediction?.warn == true}">
                                           <div class="prop_warn">
                                        </g:if>
-                                       <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; <g:textField name="captcha"/> <font color="#FF0000">*</font>
+                                       <label style="display: inline;">
+                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; 
+                                           <g:textField name="captcha"/>
+                                       </label>
+                                       &nbsp;<font color="#FF0000">*</font>
                                        <g:if test="${prediction?.warn == true}"></div></g:if>
                                     </td>
                                  </tr>

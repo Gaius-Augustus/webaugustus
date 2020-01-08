@@ -57,10 +57,13 @@
                                     <td class="prop" colspan="2">
                                        <%--<g:if test="${training.agree_email == true}"><div class="prop_warn"></g:if>--%>
                                        <table><tr><td class="prop">
-                                          <g:checkBox name="agree_email" value="${training.agree_email}" />
+                                          <g:checkBox id="agree_email" name="agree_email" value="${training.agree_email}" />
                                        </td><td class="prop">
-                                          If I provide an e-mail address, I consent to the processing of my personal data in accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
-                                          I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                           <label for="agree_email">
+                                               If I provide an e-mail address, I consent to the processing of my personal data in 
+                                               accordance with the <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.<br>
+                                               I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted.
+                                           </label>
                                        </td></tr></table>
                                        <%--<g:if test="${training.agree_email == true}"></div></g:if>--%>
                                     </td>
@@ -91,13 +94,13 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="GenomeFile"><b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a></label>
+                                       <b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a
                                     </td>
                                     <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 100 MB)</font>:</td>
+                                    <td valign="top"><label for="GenomeFile">Upload a file <font size="1">(max. 100 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${training?.has_genome_file == true}">
                                           <div class="prop_warn">
@@ -127,13 +130,13 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="EstFile"><b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a></label>
+                                       <b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a>
                                     </td>
                                     <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 100 MB)</font>:</td>
+                                    <td valign="top"><label for="EstFile">Upload a file <font size="1">(max. 100 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${training?.has_est_file == true}">
                                           <div class="prop_warn">
@@ -159,13 +162,13 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="ProteinFile"><b>Protein file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#protein')}"><small>Help</small></a></label>
+                                       <b>Protein file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#protein')}"><small>Help</small></a>
                                     </td>
                                     <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 100 MB)</font>:</td>
+                                    <td valign="top"><label for="ProteinFile">Upload a file <font size="1">(max. 100 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${training?.has_protein_file == true}">
                                           <div class="prop_warn">
@@ -191,12 +194,12 @@
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top" class="name">
-                                       <label for="struct_file"><b>Training gene structure file</b> &nbsp; <a href="${createLink(uri:'/help#structure')}"><small>Help</small></a> <font color="#FF0000">(gff or gb format, no gzip!)</font></label>
+                                       <b>Training gene structure file</b> &nbsp; <a href="${createLink(uri:'/help#structure')}"><small>Help</small></a> <font color="#FF0000">(gff or gb format, no gzip!)</font>
                                     </td>
                                     <td valign="top"></td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top">Upload a file <font size="1">(max. 200 MB)</font>:</td>
+                                    <td valign="top"><label for="StructFile">Upload a file <font size="1">(max. 200 MB)</font>:</label></td>
                                     <td valign="top">
                                        <g:if test="${training?.has_struct_file == true}">
                                           <div class="prop_warn">
@@ -232,8 +235,11 @@
                            <!-- end of javascript content on click -->
                            <br><br>
                            <p> 
-                              <g:checkBox name="agree_nonhuman" value="${training.agree_nonhuman}" />
-                              &nbsp;<b>I am not submitting personalized human sequence data (mandatory).&nbsp;<font color="#FF0000">*</font></b> 
+                              <label style="display: inline;">
+                                  <g:checkBox name="agree_nonhuman" value="${training.agree_nonhuman}" />
+                                  &nbsp;<b>I am not submitting personalized human sequence data (mandatory).
+                              </label>
+                              &nbsp;<font color="#FF0000">*</font></b> 
                               &nbsp;<a href="${createLink(uri:'/help#nonhuman')}"><small>Help</small></a>
                            </p>
                            <br>
@@ -245,7 +251,11 @@
                                        <g:if test="${training?.warn == true}">
                                           <div class="prop_warn">
                                        </g:if>
-                                       <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; <g:textField name="captcha"/><font color="#FF0000">*</font>
+                                       <label style="display: inline;">
+                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; 
+                                           <g:textField name="captcha"/>
+                                       </label>
+                                       &nbsp;<font color="#FF0000">*</font>
                                        <g:if test="${training?.warn == true}"></div></g:if>
                                     </td>
                                  </tr>
