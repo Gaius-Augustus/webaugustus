@@ -345,7 +345,7 @@
                                           <div class="prop_warn">
                                        </g:if>
                                        <label style="display: inline;">
-                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; 
+                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}" style="vertical-align: bottom;"/> &nbsp; &nbsp; 
                                            <g:textField name="captcha"/>
                                        </label>
                                        &nbsp;<font color="#FF0000">*</font>

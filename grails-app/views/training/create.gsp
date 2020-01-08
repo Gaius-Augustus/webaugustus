@@ -93,10 +93,8 @@
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
+                                    <td valign="top" colspan="2" class="name">
                                        <b>Genome file</b> <font color="#FF0000">*</font>&nbsp; (max. 250000 scaffolds) <a href="${createLink(uri:'/help#genome_file')}"><small>Help</small></a
-                                    </td>
-                                    <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
@@ -129,10 +127,8 @@
                                     </td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
+                                    <td valign="top" colspan="2" class="name">
                                        <b>cDNA file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#cDNA')}"><small>Help</small></a>
-                                    </td>
-                                    <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
@@ -161,10 +157,8 @@
                                     <td></td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
+                                    <td valign="top" colspan="2" class="name">
                                        <b>Protein file</b> &nbsp; <small><b><i>Non-commercial users only</i></b></small> &nbsp; <a href="${createLink(uri:'/help#protein')}"><small>Help</small></a>
-                                    </td>
-                                    <td valign="top">
                                     </td>
                                  </tr>
                                  <tr class="prop">
@@ -193,10 +187,9 @@
                                     <td></td>
                                  </tr>
                                  <tr class="prop">
-                                    <td valign="top" class="name">
+                                    <td valign="top" colspan="2" class="name">
                                        <b>Training gene structure file</b> &nbsp; <a href="${createLink(uri:'/help#structure')}"><small>Help</small></a> <font color="#FF0000">(gff or gb format, no gzip!)</font>
                                     </td>
-                                    <td valign="top"></td>
                                  </tr>
                                  <tr class="prop">
                                     <td valign="top"><label for="StructFile">Upload a file <font size="1">(max. 200 MB)</font>:</label></td>
@@ -252,7 +245,7 @@
                                           <div class="prop_warn">
                                        </g:if>
                                        <label style="display: inline;">
-                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}"/> &nbsp; &nbsp; 
+                                           <img src="${createLink(controller: 'simpleCaptcha', action: 'captcha')}" style="vertical-align: bottom;"/> &nbsp; &nbsp; 
                                            <g:textField name="captcha"/>
                                        </label>
                                        &nbsp;<font color="#FF0000">*</font>
