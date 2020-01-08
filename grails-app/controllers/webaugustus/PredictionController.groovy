@@ -16,6 +16,8 @@ import javax.annotation.PostConstruct
  */
 class PredictionController {
     
+    static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
+    
     def predictionService // inject the bean
     // human verification:
     def simpleCaptchaService
@@ -110,6 +112,14 @@ class PredictionController {
             redirect(action:'create', controller: 'prediction')
             return
         }
+        try {
+            request.getFile('GenomeFile')
+        }
+        catch (groovy.lang.MissingMethodException e) {
+            Utilities.log(logFile, 1, 1, "COMMIT", "catched MissingMethodException ${e}")
+            response.sendError(405)
+            return
+        }
         
         // retrieve parameters of form for early save()
         def uploadedGenomeFile = request.getFile('GenomeFile')
@@ -194,7 +204,6 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User did not enable UTR prediction.")
         }
         // get parameter archive file (if available)
-        //def uploadedParamArch = request.getFile('ArchiveFile')
         if(!uploadedParamArch.empty){
             // check file size
             def long preUploadSize = uploadedParamArch.getSize()
@@ -434,12 +443,10 @@ class PredictionController {
         }
 
         // upload of genome file
-        //def uploadedGenomeFile
-        //uploadedGenomeFile = request.getFile('GenomeFile')
         def seqNames = []
         if(!uploadedGenomeFile.empty){
             // check file size
-            def long preUploadSize = uploadedGenomeFile.getSize()
+            long preUploadSize = uploadedGenomeFile.getSize()
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The selected genome file was bigger than ${maxButtonFileSize}. Submission rejected.")
                 deleteDir()
@@ -564,8 +571,8 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The linked genome file ${predictionInstance.genome_ftp_link} is gzipped. Format will be checked later after extraction.")
             }
         }
+        
         // upload of est file
-        // def uploadedEstFile = request.getFile('EstFile')
         if(!uploadedEstFile.empty){
             // check file size
             def long preUploadSize = uploadedEstFile.getSize()

@@ -13,6 +13,8 @@ package webaugustus
  */
 class TrainingController {
     
+    static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
+    
     def trainingService // inject the bean
     // human verification:
     def simpleCaptchaService
@@ -98,8 +100,16 @@ class TrainingController {
         def trainingInstance = new Training(params)
         if(!(trainingInstance.id == null)){
             String senderAdress = TrainingService.getWebaugustusEmailAddress()
-            flash.error = "Internal error 2. Please contact ${senderAdress} if the problem persists!"
+            flash.error = "Internal error 5. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'training')
+            return
+        }
+        try {
+            request.getFile('GenomeFile')
+        }
+        catch (groovy.lang.MissingMethodException e) {
+            Utilities.log(logFile, 1, 1, "COMMIT", "catched MissingMethodException ${e}")
+            response.sendError(405)
             return
         }
         
