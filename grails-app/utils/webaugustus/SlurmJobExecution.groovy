@@ -159,7 +159,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             // copy the list of species to slurm server
             String AUGUSTUS_SPECIES_PATH = AbstractWebaugustusService.getAugustusSpeciesPath()
             cmd = ["rsync -auv -e 'ssh ${getSlurmSSHParam()}' ${AUGUSTUS_SPECIES_PATH}/ ${getSlurmUserName()}@${getSlurmHost()}:${getSlurmSpeciesDir()}/"]
-            exitCode = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
+            int exitCode = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
             Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${AUGUSTUS_SPECIES_PATH} to ${getSlurmSpeciesDir()} on ${getSlurmHost()}, exitCode=${exitCode}")
             if (exitCode != 0) {
                 return null
