@@ -487,7 +487,36 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The augustus training job wasn't started")
             trainingInstance.results_urls = null
             trainingInstance.job_status = '5'
+            
+            String senderAdress = TrainingService.getWebaugustusEmailAddress()
+            String userMailStr = "An error occured while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\n"
+            trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${userMailStr}"
+            trainingInstance.message = "${trainingInstance.message}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+            
             trainingInstance.save(flush: true)
+            
+            if (trainingInstance.email_adress == null) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
+            }
+            else {
+                userMailStr += "The administrator of the AUGUSTUS web server has been informed.\n"
+                userMailStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+                sendMailToUser(trainingInstance, "An error occured while executing AUGUSTUS training job ${trainingInstance.accession_id}", userMailStr)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
+            }
+            
+            String admin_email = getAdminEmailAddress()
+            String adminMailStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
+            adminMailStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
+            adminMailStr += "The job was not started on ${computeClusterName}. \n"
+            adminMailStr += "Please check manually what's wrong.\n"
+            adminMailStr += "The user has "
+            if (trainingInstance.email_adress == null) {
+                adminMailStr += "not "
+            }
+            adminMailStr += "been informed."
+            sendMailToAdmin("Error in AUGUSTUS training job ${trainingInstance.accession_id}", adminMailStr)
+            
             return
         }
 
@@ -643,42 +672,46 @@ class TrainingService extends AbstractWebaugustusService {
         
         // check whether errors occured by log-file-sizes
         Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Beginning to look for errors.")
-        def autoAugErrSize = 10 // default: error
-        def sgeErrSize = 10 // default: error
-        def writeResultsErrSize = 10 // default: error
+        boolean autoAugErr = false
+        boolean sgeErr = false
+        boolean writeResultsErr = false
         if(new File(projectDir, "AutoAug.err").exists()){
-            autoAugErrSize = new File(projectDir, "AutoAug.err").size()
-            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAugErrorSize is ${autoAugErrSize}.")
+            autoAugErr = new File(projectDir, "AutoAug.err").size() > 0
+            if (autoAugErr) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!")
+            }
         }else{
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "autoAugError file was not created. Default size value is set to 10.")
-            autoAugErrSize = 10
+            autoAugErr = true
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed! The AutoAug.err file was not created.")            
         }
         if (exitCode != 0) {
-            sgeErrSize = 10
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. Default size to default value 10.")
+            sgeErr = true
+            String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. A ${computeClusterName} error occured!")
         }
         else {
             if(new File(projectDir, "augtrain.sh.e${jobID}").exists()){
-                sgeErrSize = new File(projectDir, "augtrain.sh.e${jobID}").size()
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "sgeErrSize is ${sgeErrSize}.")
-
+                sgeErr = new File(projectDir, "augtrain.sh.e${jobID}").size() > 0
+                if (sgeErr) {
+                    String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+                    Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "A ${computeClusterName} error occured!")
+                }
             }else{
-                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "sgeErr file was not created. Default size value is set to 10.")
-                sgeErrSize = 10
+                sgeErr = true
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "sgeErr file was not created.")
             }
         }
         if(new File(projectDir, "writeResults.err").exists()){
-            writeResultsErrSize = new File(projectDir, "writeResults.err").size()
-            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "writeResultsSize is ${writeResultsErrSize}.")
+            writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
+            if (writeResultsErr) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured during writing results!");
+            }
         }else{
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "writeResultsErr file was not created. Default size value is set to 10.")
-            writeResultsErrSize = 10
+            writeResultsErr = true
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "writeResults.err file was not created.")
         }
 
-        String admin_email = getAdminEmailAddress()
-        String footer = getEmailFooter()
-        
-        if(autoAugErrSize==0 && sgeErrSize==0 && writeResultsErrSize==0){
+        if (!autoAugErr && !sgeErr && !writeResultsErr) {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "no errors occured (option 1).")
 
             String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} finished.\n\n"
@@ -713,20 +746,17 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job completed. Result: ok.")
         }else{
-            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere.")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere: autoAugErr=${autoAugErr}, sgeErr=${sgeErr}, writeResultsErr=${writeResultsErr}")
+            String admin_email = getAdminEmailAddress()
             String msgStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
-            if (autoAugErrSize != 0) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!");
+            if (autoAugErr) {
                 msgStr += "An error occured in the autoAug pipeline. "
             }
-            if (sgeErrSize != 0) {
-                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "a ${computeClusterName} error occured!");
+            if (sgeErr) {
                 msgStr += "A ${computeClusterName} error occured. "
             }
-            if (writeResultsErrSize != 0) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured during writing results!");
+            if (writeResultsErr) {
                 msgStr += "An error occured during writing results. "
             }
             msgStr += "Please check manually what's wrong.\n"
@@ -735,13 +765,9 @@ class TrainingService extends AbstractWebaugustusService {
                 msgStr += "not "
             }
             msgStr += "been informed."
-            sendMail {
-                to "${admin_email}"
-                subject "Error in AUGUSTUS training job ${trainingInstance.accession_id}"
-                text """${msgStr}${footer}"""
-            }
+            sendMailToAdmin("Error in AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                
-            if (autoAugErrSize != 0) {
+            if (autoAugErr) {
                 trainingInstance.job_error = 5
                 trainingInstance.job_status = 4
                 
@@ -762,14 +788,14 @@ class TrainingService extends AbstractWebaugustusService {
                 deleteDir(trainingInstance)
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             }
-            if (sgeErrSize != 0) {
+            if (sgeErr) {
                 trainingInstance.job_error = 5
                 trainingInstance.job_status = 4
                 
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when ${computeClusterName} error occured.")
             }
-            if (writeResultsErrSize != 0) {
+            if (writeResultsErr != 0) {
                 trainingInstance.job_status = 4
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job error status is ${trainingInstance.job_error} after all errors have been checked.")
@@ -778,7 +804,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.save(flush: true)
             
             if(trainingInstance.email_adress == null){
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Cound not send e-mail to anonymous user because no email address was supplied.")
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
             }else{
                 String senderAdress = TrainingService.getWebaugustusEmailAddress()
                 msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"

@@ -398,7 +398,8 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Moved uploaded parameters and renamed species to ${predictionInstance.accession_id}")
         }
         //Create script:
-        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Writing submission script.")
+        String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Writing ${computeClusterName} submission script.")
         File jobFile = new File(projectDir, "aug-pred.sh")
         if (jobFile.exists()) {
             jobFile.delete()
@@ -438,7 +439,36 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The augustus job wasn't started")
             predictionInstance.results_urls = null
             predictionInstance.job_status = 5
+            
+            String senderAdress = PredictionService.getWebaugustusEmailAddress()
+            String userMailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
+            predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${userMailStr}"
+            predictionInstance.message = "${predictionInstance.message}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+            
             predictionInstance.save(flush: true)
+            
+            if (predictionInstance.email_adress == null) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
+            }
+            else {
+                userMailStr += "The administrator of the AUGUSTUS web server has been informed.\n"
+                userMailStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+                sendMailToUser(predictionInstance, "An error occured while executing AUGUSTUS prediction job ${predictionInstance.accession_id}", userMailStr)
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
+            }
+            
+            String admin_email = getAdminEmailAddress()
+            String adminMailStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
+            adminMailStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
+            adminMailStr += "The job was not started on ${computeClusterName}. \n"
+            adminMailStr += "Please check manually what's wrong.\n"
+            adminMailStr += "The user has "
+            if (predictionInstance.email_adress == null) {
+                adminMailStr += "not "
+            }
+            adminMailStr += "been informed."
+            sendMailToAdmin("Error in AUGUSTUS prediction job ${predictionInstance.accession_id}", adminMailStr)
+            
             return
         }
 
@@ -580,31 +610,36 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.save(flush: true)
         }
         // check whether errors occured by log-file-sizes
-        def sgeErrSize
-        def writeResultsErrSize
+        boolean sgeErr = false
+        boolean executionErr = false
+        boolean writeResultsErr = false
         if (exitCode != 0) {
-            sgeErrSize = 10
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. Setting size to default value 10.")
+            sgeErr = true
+            String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. A ${computeClusterName} error occured!")
         }
         else {
             if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
-                sgeErrSize = new File(projectDir, "aug-pred.sh.e${jobID}").size()
+                executionErr = new File(projectDir, "aug-pred.sh.e${jobID}").size() > 0
+                if (executionErr) {
+                    Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "an error occured during script execution!");
+                }
             }else{
-                sgeErrSize = 10
-                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "sgeErrFile was not created. Setting size to default value 10.")
+                executionErr = true
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "the aug-pred.sh.e${jobID} output file was not created, probably the script was not started")
             }
         }
         if(new File(projectDir, "writeResults.err").exists()){
-            writeResultsErrSize = new File(projectDir, "writeResults.err").size()
+            writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
+            if (writeResultsErr) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "an error occured during writing results!");
+            }
         }else{
-            writeResultsErrSize = 10
-            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "writeResultsErr was not created. Setting size to default value 10.")
+            writeResultsErr = true
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "writeResults.err file was not created.")
         }
 
-        String admin_email = getAdminEmailAddress()
-        String footer = getEmailFooter()
-        
-        if(sgeErrSize==0 && writeResultsErrSize==0){
+        if (!sgeErr && !executionErr && !writeResultsErr) {
             String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} finished.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
             predictionInstance.job_status = 4
@@ -635,27 +670,26 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "job directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job completed. Result: ok.")
         }else{
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured somewhere: sgeErr=${sgeErr}, executionErr=${executionErr}, writeResultsErr=${writeResultsErr}")
+            String admin_email = getAdminEmailAddress()
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
-            if(sgeErrSize > 0){
-                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured!");
+            if (sgeErr) {
                 msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
-            }else{
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured during writing results!");
-                msgStr += "An error occured during writing results.. Please check manually what's wrong.\n"
+            }
+            else if (executionErr) {
+                msgStr += "An error occured. Please check manually what's wrong.\n"
+            }
+            else if (writeResultsErr) {
+                msgStr += "An error occured during writing results. Please check manually what's wrong.\n"
             }
             msgStr += "The user has "
             if (predictionInstance.email_adress == null) {
                 msgStr += "not "
             }
             msgStr += "been informed."
-                
-            sendMail {
-                to "${admin_email}"
-                subject "Error in AUGUSTUS prediction job ${predictionInstance.accession_id}"
-                text """${msgStr}${footer}"""
-            }
+            
+            sendMailToAdmin("Error in AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
             
             String mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
             

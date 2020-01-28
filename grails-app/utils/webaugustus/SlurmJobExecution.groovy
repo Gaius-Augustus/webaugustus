@@ -120,7 +120,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             // try again later - perhaps a ssh connection was cut
             for (int i = 0; i < 10; i++) {
                 Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again.")
-                sleep(60000)
+                sleep(600000) // 600000 = 10 minutes
                 jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName)
                 if (jobID != null) {
                     return jobID
@@ -254,7 +254,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         // try again later - perhaps a ssh connection was cut
             for (int i = 0; i < 10; i++) {
                 Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again.")
-                sleep(60000)
+                sleep(600000) // 600000 = 10 minutes
                 exitCode = cleanupJobInternal(parentPath, serviceInstance, jobType, logFile, maxLogLevel, processName)
                 if (exitCode == 0) {
                     return exitCode

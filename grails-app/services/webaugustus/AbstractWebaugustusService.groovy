@@ -84,6 +84,17 @@ abstract class AbstractWebaugustusService {
         }
     }
     
+    public void sendMailToAdmin(String subjectString, String message) {
+        String email_address = getAdminEmailAddress()
+        String footer = getEmailFooter()
+        String msgStr = "${message}${footer}"
+        sendMail {
+            to "${email_address}"
+            subject "${subjectString}"
+            text "${msgStr}"
+        }
+    }
+    
     private final Object LOCK = new Object()
     
     private Thread workerThread = null
