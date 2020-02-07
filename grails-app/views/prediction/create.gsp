@@ -356,8 +356,10 @@
                            </table>
                            <p><font color="#FF0000">*</font>) mandatory input arguments</p>
                         </div>
-                        <div id="commit-button" class="buttons" onclick="toggle_visibility('commit-button');toggle_visibility('aug-spinner');" style="display:block;">
-                           <span class="button"><input class="commit" type="submit" value="Start Predicting" /></span><br>
+                        <div id="commit-button" class="buttons" style="display:block;">
+                          <span class="button" onclick="toggle_visibility('commit-button');toggle_visibility('aug-spinner');">
+                            <input class="commit" type="submit" value="Start Predicting" />
+                          </span>
                         </div>
                      </g:uploadForm>
                      <br>
