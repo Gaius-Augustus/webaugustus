@@ -1,6 +1,6 @@
 package webaugustus
 
-import javax.annotation.PostConstruct
+import org.springframework.validation.FieldError
 
 /**
  * The class PredictionController controls everything that is related to preparing a job for predicting genes with pre-trained parameters on a novel genome
@@ -19,6 +19,7 @@ class PredictionController {
     static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
     
     def predictionService // inject the bean
+    def messageSource     // inject the messageSource
     // human verification:
     def simpleCaptchaService
     
@@ -100,18 +101,57 @@ class PredictionController {
         def AUGUSTUS_SCRIPTS_PATH = PredictionService.getAugustusScriptPath()
         
         def predictionInstance = new Prediction(params)
-        if(!(predictionInstance.id == null)){
+        if (predictionInstance.id != null) {
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Internal error 2.")
             String senderAdress = PredictionService.getWebaugustusEmailAddress()
             flash.error = "Internal error 2. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'prediction')
             return
         }
         if (request == null) {
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Internal error 3.")
             String senderAdress = PredictionService.getWebaugustusEmailAddress()
             flash.error = "Internal error 3. Please contact ${senderAdress} if the problem persists!"
             redirect(action:'create', controller: 'prediction')
             return
         }
+        
+         // clean up directory (delete) function
+        String dirName = "${output_dir}/${predictionInstance.accession_id}"
+        File projectDir = new File(dirName)
+        def deleteDir = {
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Project directory ${dirName} is deleted")
+            def cmd = ["rm -r ${dirName} &> /dev/null"]
+            Utilities.execute(logFile, 2, predictionInstance.accession_id, "removeProjectDir", cmd)
+        }
+        
+         // put redirect procedure into a function
+        def cleanRedirect = {
+            if (predictionInstance.email_adress == null) {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous is aborted!")
+            }
+            else {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
+            }
+            flash.message = "Info: Please check all fields marked in blue for completeness before starting the prediction job!"
+            if (predictionInstance.species_select != null && !predictionInstance.species_select.equals("null") ) {
+                predictionInstance.project_id = null
+            }
+            // flag for redirect to submission form, display warning in appropriate places
+            predictionInstance.warn = true
+       
+            render(view:'create', model:[prediction:predictionInstance])
+        }
+        
+        //verify that the submitter is a person
+        boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
+        if (captchaValid == false) {
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The user is probably not a human person.")
+            flash.error = "The verification string at the bottom of the page was not entered correctly!"
+            cleanRedirect()
+            return
+        }
+        
         try {
             request.getFile('GenomeFile')
         }
@@ -126,19 +166,19 @@ class PredictionController {
         def uploadedParamArch = request.getFile('ArchiveFile')
         def uploadedEstFile = request.getFile('EstFile')
         def uploadedStructFile = request.getFile('HintFile')
-        predictionInstance.has_genome_file = !uploadedGenomeFile.empty
+        predictionInstance.has_genome_file = uploadedGenomeFile != null && !uploadedGenomeFile.empty
         if (predictionInstance.has_genome_file) {
             predictionInstance.genome_file = uploadedGenomeFile.originalFilename
         }
-        predictionInstance.has_param_file = !uploadedParamArch.empty
+        predictionInstance.has_param_file = uploadedParamArch != null && !uploadedParamArch.empty
         if (predictionInstance.has_param_file) {
             predictionInstance.archive_file = uploadedParamArch.originalFilename
         }
-        predictionInstance.has_est_file = !uploadedEstFile.empty
+        predictionInstance.has_est_file = uploadedEstFile != null && !uploadedEstFile.empty
         if (predictionInstance.has_est_file) {
             predictionInstance.est_file = uploadedEstFile.originalFilename
         }
-        predictionInstance.has_hint_file = !uploadedStructFile.empty
+        predictionInstance.has_hint_file = uploadedStructFile != null && !uploadedStructFile.empty
         if (predictionInstance.has_hint_file) {
             predictionInstance.hint_file = uploadedStructFile.originalFilename
         }
@@ -156,41 +196,22 @@ class PredictionController {
         // get date
         Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "AUGUSTUS prediction webserver starting on ${predictionInstance.dateCreated}")
         
-        // put redirect procedure into a function
-        def cleanRedirect = {
-            if(predictionInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous is aborted!")
-            }else{
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} is aborted!")
-            }
-            flash.message = "Info: Please check all fields marked in blue for completeness before starting the prediction job!"
-            if (predictionInstance.species_select != null && !predictionInstance.species_select.equals("null") ) {
-                predictionInstance.project_id = null
-            }
-            // flag for redirect to submission form, display warning in appropriate places
-            predictionInstance.warn = true
-       
-            render(view:'create', model:[prediction:predictionInstance])
-        }
-        // clean up directory (delete) function
-        def String dirName = "${output_dir}/${predictionInstance.accession_id}"
-        def projectDir = new File(dirName)
-        def deleteDir = {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Project directory ${dirName} is deleted")
-            def cmd = ["rm -r ${dirName} &> /dev/null"]
-            Utilities.execute(logFile, 2, predictionInstance.accession_id, "removeProjectDir", cmd)
-        }
-        //verify that the submitter is a person
-        boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
-        if(captchaValid == false){
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The user is probably not a human person.")
-            flash.error = "The verification string at the bottom of the page was not entered correctly!"
-            cleanRedirect()
-            return
-        }
-        
         predictionInstance.validate()
         if (predictionInstance.hasErrors()) {
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "job request has errors: wrong or incomplete data in form")
+            
+            try {
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id,  'prediction request errors ' + predictionInstance.errors.allErrors.size())
+                predictionInstance.errors.allErrors.each {FieldError error ->
+//                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "error: " + error)
+//                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "default message: " + error.getDefaultMessage())
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "message source : " + messageSource.getMessage(error, null))
+                }
+            }
+            catch (Throwable t) {
+                Utilities.log(logFile, 1, 1, predictionInstance.accession_id, "catched Throwable ${t}")
+            }
+            
             cleanRedirect()
             return
         }
@@ -204,7 +225,7 @@ class PredictionController {
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User did not enable UTR prediction.")
         }
         // get parameter archive file (if available)
-        if(!uploadedParamArch.empty){
+        if (uploadedParamArch != null && !uploadedParamArch.empty) {
             // check file size
             def long preUploadSize = uploadedParamArch.getSize()
             if(preUploadSize > maxButtonFileSize){
@@ -444,7 +465,7 @@ class PredictionController {
 
         // upload of genome file
         def seqNames = []
-        if(!uploadedGenomeFile.empty){
+        if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) {
             // check file size
             long preUploadSize = uploadedGenomeFile.getSize()
             if(preUploadSize > maxButtonFileSize){
@@ -573,7 +594,7 @@ class PredictionController {
         }
         
         // upload of est file
-        if(!uploadedEstFile.empty){
+        if (uploadedEstFile != null && !uploadedEstFile.empty) {
             // check file size
             def long preUploadSize = uploadedEstFile.getSize()
             if(preUploadSize > maxButtonFileSize){
@@ -691,7 +712,7 @@ class PredictionController {
         }
         // get hints file, format check
         // def uploadedStructFile = request.getFile('HintFile')
-        if(!uploadedStructFile.empty){
+        if (uploadedStructFile != null && !uploadedStructFile.empty) {
             // check file size
             long preUploadSize = uploadedStructFile.getSize()
             long allowedHintsSize = maxButtonFileSize * 2
@@ -711,7 +732,7 @@ class PredictionController {
             def gffNameErrorFlag = 0
             def gffSourceErrorFlag = 0
             def gffFeatureErrorFlag = 0
-            if(!uploadedGenomeFile.empty){ // if seqNames already exists
+            if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) { // if seqNames already exists
                 // gff format validation: number of columns 9, + or - in column 7, column 1 must be  member of seqNames
                 def gffArray
                 def isElement

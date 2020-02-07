@@ -1,5 +1,7 @@
 package webaugustus
 
+import org.springframework.validation.FieldError
+
 /**
  * The class TrainingController controls everything that is related to preparing a job for training AUGUSTUS through the webserver:
  *    - it handles the file upload
@@ -16,6 +18,7 @@ class TrainingController {
     static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
     
     def trainingService // inject the bean
+    def messageSource   // inject the messageSource
     // human verification:
     def simpleCaptchaService
     
@@ -98,12 +101,54 @@ class TrainingController {
         
         
         def trainingInstance = new Training(params)
-        if(!(trainingInstance.id == null)){
-            String senderAdress = TrainingService.getWebaugustusEmailAddress()
-            flash.error = "Internal error 5. Please contact ${senderAdress} if the problem persists!"
+        if (trainingInstance.id != null) {
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Internal error 5.")
+            String senderAddress = TrainingService.getWebaugustusEmailAddress()
+            flash.error = "Internal error 5. Please contact ${senderAddress} if the problem persists!"
             redirect(action:'create', controller: 'training')
             return
         }
+        if (request == null) {
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Internal error 6.")
+            String senderAddress = TrainingService.getWebaugustusEmailAddress()
+            flash.error = "Internal error 6. Please contact ${senderAddress} if the problem persists!"
+            redirect(action:'create', controller: 'prediction')
+            return
+        }
+        
+        // directory delete function
+        String dirName = "${output_dir}/${trainingInstance.accession_id}"
+        File projectDir = new File(dirName)
+        def deleteDir = {
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Project directory is deleted")
+            def cmd = ["rm -r ${dirName} &> /dev/null"]
+            Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeProjectDir", cmd)
+        }
+        
+         // redirect function
+        def cleanRedirect = {
+            if (trainingInstance.email_adress == null) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
+            }
+            else {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
+            }
+            flash.message = "Info: Please check all fields marked in blue for completeness before starting the training job!"
+            // flags for redirect to submission form, display warning in appropriate places
+            trainingInstance.warn = true
+            
+            render(view:'create', model:[training:trainingInstance])
+        }
+        
+        //verify that the submitter is a person
+        boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
+        if (captchaValid == false) {
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The user is probably not a human person.")
+            flash.error = "The verification string at the bottom of the page was not entered correctly!"
+            cleanRedirect()
+            return
+        }
+        
         try {
             request.getFile('GenomeFile')
         }
@@ -118,19 +163,19 @@ class TrainingController {
         def uploadedProteinFile = request.getFile('ProteinFile')
         def uploadedEstFile = request.getFile('EstFile')
         def uploadedStructFile = request.getFile('StructFile')
-        trainingInstance.has_genome_file = !uploadedGenomeFile.empty
+        trainingInstance.has_genome_file = uploadedGenomeFile != null && !uploadedGenomeFile.empty
         if (trainingInstance.has_genome_file) {
             trainingInstance.genome_file = uploadedGenomeFile.originalFilename
         }
-        trainingInstance.has_protein_file = !uploadedProteinFile.empty
+        trainingInstance.has_protein_file = uploadedProteinFile != null && !uploadedProteinFile.empty
         if (trainingInstance.has_protein_file) {
             trainingInstance.protein_file = uploadedProteinFile.originalFilename
         }
-        trainingInstance.has_est_file = !uploadedEstFile.empty
+        trainingInstance.has_est_file = uploadedEstFile != null && !uploadedEstFile.empty
         if (trainingInstance.has_est_file) {
             trainingInstance.est_file = uploadedEstFile.originalFilename
         }
-        trainingInstance.has_struct_file = !uploadedStructFile.empty
+        trainingInstance.has_struct_file = uploadedStructFile != null && !uploadedStructFile.empty
         if (trainingInstance.has_struct_file) {
             trainingInstance.struct_file = uploadedStructFile.originalFilename
         }
@@ -146,41 +191,22 @@ class TrainingController {
         
         Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "AUGUSTUS training webserver starting on ${trainingInstance.dateCreated}")
         
-        // redirect function
-        def cleanRedirect = {
-            if(trainingInstance.email_adress == null){
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} by anonymous user is aborted!")
-            }else{
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job ${trainingInstance.accession_id} is aborted!")
-            }
-            flash.message = "Info: Please check all fields marked in blue for completeness before starting the training job!"
-            // flags for redirect to submission form, display warning in appropriate places
-            trainingInstance.warn = true
-            
-            render(view:'create', model:[training:trainingInstance])
-
-        }
-        // directory delete function
-        def String dirName = "${output_dir}/${trainingInstance.accession_id}"
-        def projectDir = new File(dirName)
-        def deleteDir = {
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Project directory is deleted")
-            def cmd = ["rm -r ${dirName} &> /dev/null"]
-            Utilities.execute(logFile, 2, trainingInstance.accession_id, "removeProjectDir", cmd)
-        }
-        
-        //verify that the submitter is a person
-        boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
-        if(captchaValid == false){
-            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The user is probably not a human person.")
-            flash.error = "The verification string at the bottom of the page was not entered correctly!"
-            cleanRedirect()
-            return
-        }
-        
         trainingInstance.validate()
 
         if (trainingInstance.hasErrors()) {
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "job request has errors: wrong or incomplete data in form")
+            try {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id,  'training request errors ' + trainingInstance.errors.allErrors.size())
+                trainingInstance.errors.allErrors.each {FieldError error ->
+//                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "error: " + error)
+//                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "default message: " + error.getDefaultMessage())
+                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "message source : " + messageSource.getMessage(error, null))
+                }
+            }
+            catch (Throwable t) {
+                Utilities.log(logFile, 1, 1, trainingInstance.accession_id, "catched Throwable ${t}")
+            }
+            
             cleanRedirect()
             return
         }
@@ -195,7 +221,7 @@ class TrainingController {
         }
 
         // upload of genome file
-        if(!uploadedGenomeFile.empty){
+        if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) {
             // check file size
             long preUploadSize = uploadedGenomeFile.getSize()
             projectDir.mkdirs()
@@ -327,7 +353,7 @@ class TrainingController {
         }
 
         // upload of est file
-        if(!uploadedEstFile.empty){
+        if (uploadedEstFile != null && !uploadedEstFile.empty) {
             // check file size
             def long preUploadSize = uploadedEstFile.getSize()
             if(preUploadSize > maxButtonFileSize){
@@ -445,7 +471,7 @@ class TrainingController {
         }
 
         // upload of structure file
-        if(!uploadedStructFile.empty){
+        if (uploadedStructFile != null && !uploadedStructFile.empty){
             // check file size
             def long preUploadSize = uploadedStructFile.getSize()
             if(preUploadSize <= maxButtonFileSize * 2){
@@ -456,7 +482,7 @@ class TrainingController {
                 def gffColErrorFlag = 0
                 def gffNameErrorFlag = 0
                 def structureGbkFlag = 0
-                if(!uploadedGenomeFile.empty){
+                if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) {
                     // gff format validation: number of columns 9, + or - in column 7, column 1 muss member von seqNames sein
                     boolean metacharacterFlag = false
                     Utilities.log(logFile, 2, verb, trainingInstance.accession_id, "Checking training-gene-structure.gff file format")
@@ -538,7 +564,7 @@ class TrainingController {
 
 
         // upload of protein file
-        if(!uploadedProteinFile.empty){
+        if (uploadedProteinFile != null && !uploadedProteinFile.empty) {
             // check file size
             def long preUploadSize = uploadedProteinFile.getSize()
             if(preUploadSize > maxButtonFileSize){
