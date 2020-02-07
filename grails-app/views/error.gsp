@@ -32,9 +32,7 @@
             
         </g:if>
         <g:else>
-			<ul class="errors">
-				<li>An error has occurred</li>
-			</ul>
+            <h2>An error has occurred</h2>
             <p>
                 Ooops... this looks ugly! Our apologies! Please send an e-mail to 
                 <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a>. 
