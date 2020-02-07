@@ -74,8 +74,8 @@ grails:
     controllers:
         defaultScope: singleton
         upload:
-            maxFileSize: 10000000000000    # the real max file size has to be
-            maxRequestSize: 10000000000000 # limited in the controllers - this values are for tomcat
+            maxFileSize: 1073741824    # 1GB = 1024×1024×1024 the real max file size has to be
+            maxRequestSize: 1073741825 # limited in the controllers - this values are for tomcat
     converters:
         encoding: UTF-8
     views:
