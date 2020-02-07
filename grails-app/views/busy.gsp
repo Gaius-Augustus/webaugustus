@@ -34,7 +34,10 @@
                     We apologize for the inconvenience! Please try to submit your job later.
                 </p>
                 <p>
-                    Feel free to contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">us</a> in case your job is particularly urgent.
+                    If the problem persists longer than a week, or if your job is urgent, please contact 
+                    <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">
+                        ${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}
+                    </a>.
                 </p>
                 <div class="csc-default">
                     <div class="divider">
