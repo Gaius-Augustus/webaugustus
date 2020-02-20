@@ -67,7 +67,7 @@
                            <p>One frequently occurring error in the AutoAug.err file is the following:</p>
                            <p><b>The file with UTR parameters for train****** does not seem to exist.</b> This likely means that the UTR model has not been trained yet for train******.</p>
                            <p>This error message tells you that no UTR parameters were trained for your species. If no other error messages are contained above the first UTR error message, the general results of your job are ok, you simply did not get UTR parameters and thus no predictions with UTR.</p>
-                           <p><b>Illegal division by zero at /usr/local/augustus/trunks/scripts/autoAugTrain.pl line 241.<br>
+                           <p><b>Illegal division by zero at scripts/autoAugTrain.pl line 241.<br>
                               failed to execute: No such file or directory<br></b> This error occurs when not training gene structures were generated/available. This may be caused by one of the following circumstances:<br>
                            <ul>
                               <li>You supplied a genome and protein file. In this case, Scipio was not able to generate any <i>complete</i> gene structures from the data set. In most cases, some <i>incomplete</i> gene structures were produced, but since they frequently cause crashes in the augustus training routine, we do not use them within the web service.</li>
@@ -131,7 +131,7 @@
                          Please read our <a href="//bioinf.uni-greifswald.de/bioinf/datenschutz.html">Data Privacy Protection</a> declaration.</p>
                      <p>Job submission without giving an email address is possible but discouraged.</p>
                      <p>If you provide an e-mail address, we kindly ask to check the confirmation checkbox that you agree to the following terms:<br>
-                        "If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular AUGUSTUS job that I submitted."
+                        "If I provide an e-mail address, I agree that it will be stored on the server until the computations of my job have finished. I agree to receive e-mails that are related to the particular WebAUGUSTUS job that I submitted."
                      </p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
@@ -476,6 +476,8 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         <h2>Hints file</h2>
                      </div>
                      <p>For the gene prediction web server application, it is possible to submit an externally created file that contains extrinsic evidence for gene structures in gff format.</p>
+                     <p>Comment lines are not allowed.</p>
+                     <p>It makes no sense to upload gene prediction files (e.g. augustus.gff from AUGUSTUS gene prediction) as hints to WebAUGUSTUS. This is therefore not allowed.</p>
                      <p>In general, gff format must contain the following columns (The columns are separated by <b>tabulators</b>):</p>
                      <p>
                      <OL TYPE="1">
@@ -514,12 +516,12 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                         <br>
                         <b>Correct format example:</b>
                      <pre class="example">
-HS04636 anchor  exonpart        500     506     0       -       .       source=M
-HS04636 anchor  exon            966     1017    0       +       0       source=M
-HS04636 anchor  start           966     968     0       +       0       source=M
-HS04636 anchor  dss             2199    2199    0       +       .       source=M
-HS04636 anchor  stop            7631    7633    0       +       0       source=M
-HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
+Chr.1 anchor  exonpart        500     506     0       -       .       source=M
+Chr.1 anchor  exon            966     1017    0       +       0       source=M
+Chr.1 anchor  start           966     968     0       +       0       source=M
+Chr.1 anchor  dss             2199    2199    0       +       .       source=M
+Chr.1 anchor  stop            7631    7633    0       +       0       source=M
+Chr.1 anchor  intronpart      7631    7633    0       +       0       source=M
             </pre>
                      </p>
                      <p><a href="#seitenanfang">
@@ -674,7 +676,7 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
                      <p>Other users who submit exactly the same input files as have been submitted before, will be redirected to the results page of the previously submitted job. They do not need to guess the link.</p>
                      <p>Files that you upload to our server, e.g. sequence files, are not directly made available to anyone. However, if you chose to upload a file via http/ftp link, the link to your file is displayed on the job status page.</p>
                      <p>We are interested in redistributing high quality parameter sets for novel species with the AUGUSTUS release. We will not do so without your explicit permission. Please contact us if you would like to add your parameters to the AUGUSTUS repository.</p>
-                     <p>Our server logs e-mail addresses, IP addresses and all job submission details. We store this data for up to 180 days in order to be able to trace back errors. By submitting a job, you agree that we log this data.</p>
+                     <p>Our server logs e-mail addresses, IP addresses and all job submission details. We store this data for up to 180 days in order to be able to trace back errors. E-mail addresses are stored until your job has finished. By submitting a job, you agree that we log this data.</p>
                      <p>Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> if your particular job requires a more secure environment, e.g. as part of a collaboration.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
@@ -720,46 +722,46 @@ HS04636 anchor  intronpart      7631    7633    0       +       0       source=M
 # Looks like /var/tmp/augustus/AUG-1855139717/input.fa is in fasta format.
 # We have hints for 1 sequence and for 1 of the sequences in the input set.
 #
-# ----- prediction on sequence number 1 (length = 6483, name = HSACKI10) -----
+# ----- prediction on sequence number 1 (length = 6483, name = Chr.1) -----
 #
 # Delete group HintGroup , 5803-5803, mult= 1, priority= -1 1 features
 # Forced unstranded hint group to the only possible strand for 3 groups.
 # Deleted 1 groups because some hint was not satisfiable.
 # Constraints/Hints:
-HSACKI10 anchor   start 182   184   0  +  .  src=M
-HSACKI10 anchor   stop  3058  3060  0  +  .  src=M
-HSACKI10 anchor   dss   4211  4211  0  +  .  src=M
-HSACKI10 b2h   ep 1701  2075  0  .  .  grp=154723761;pri=4;src=E
-HSACKI10 b2h   ep 1716  2300  0  +  .  grp=13907559;pri=4;src=E
-HSACKI10 b2h   ep 1908  2300  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   ep 3592  3593  0  +  .  grp=13907559;pri=4;src=E
-HSACKI10 b2h   ep 3836  3940  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   ep 5326  5499  0  +  .  grp=27937842;pri=4;src=E
-HSACKI10 b2h   ep 5805  6157  0  +  .  grp=27937842;pri=4;src=E
-HSACKI10 b2h   exon  3142  3224  0  +  .  grp=13907559;pri=4;src=E
-HSACKI10 b2h   exon  3142  3224  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   exon  3592  3748  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 anchor   intronpart  5000  5100  0  +  .  src=M
-HSACKI10 b2h   intron   2301  3141  0  +  .  grp=13907559;pri=4;src=E
-HSACKI10 b2h   intron   2301  3141  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   intron   3225  3591  0  +  .  grp=13907559;pri=4;src=E
-HSACKI10 b2h   intron   3225  3591  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   intron   3749  3835  0  +  .  grp=154736078;pri=4;src=E
-HSACKI10 b2h   intron   5500  5804  0  +  .  grp=27937842;pri=4;src=E
-HSACKI10 anchor   CDS   6194  6316  0  -  0  src=M
-HSACKI10 anchor   CDSpart  5900  6000  0  +  .  src=M
+Chr.1 anchor   start 182   184   0  +  .  src=M
+Chr.1 anchor   stop  3058  3060  0  +  .  src=M
+Chr.1 anchor   dss   4211  4211  0  +  .  src=M
+Chr.1 b2h   ep 1701  2075  0  .  .  grp=154723761;pri=4;src=E
+Chr.1 b2h   ep 1716  2300  0  +  .  grp=13907559;pri=4;src=E
+Chr.1 b2h   ep 1908  2300  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   ep 3592  3593  0  +  .  grp=13907559;pri=4;src=E
+Chr.1 b2h   ep 3836  3940  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   ep 5326  5499  0  +  .  grp=27937842;pri=4;src=E
+Chr.1 b2h   ep 5805  6157  0  +  .  grp=27937842;pri=4;src=E
+Chr.1 b2h   exon  3142  3224  0  +  .  grp=13907559;pri=4;src=E
+Chr.1 b2h   exon  3142  3224  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   exon  3592  3748  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 anchor   intronpart  5000  5100  0  +  .  src=M
+Chr.1 b2h   intron   2301  3141  0  +  .  grp=13907559;pri=4;src=E
+Chr.1 b2h   intron   2301  3141  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   intron   3225  3591  0  +  .  grp=13907559;pri=4;src=E
+Chr.1 b2h   intron   3225  3591  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   intron   3749  3835  0  +  .  grp=154736078;pri=4;src=E
+Chr.1 b2h   intron   5500  5804  0  +  .  grp=27937842;pri=4;src=E
+Chr.1 anchor   CDS   6194  6316  0  -  0  src=M
+Chr.1 anchor   CDSpart  5900  6000  0  +  .  src=M
 # Predicted genes for sequence number 1 on both strands
 # start gene g1
-HSACKI10 AUGUSTUS gene  182   3060  0.63  +  .  g1
-HSACKI10 AUGUSTUS transcript  182   3060  0.63  +  .  g1.t1
-HSACKI10 AUGUSTUS start_codon 182   184   .  +  0  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS initial  182   225   1  +  0  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS internal 1691  2300  0.86  +  1  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS terminal 3049  3060  0.74  +  0  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS CDS   182   225   1  +  0  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS CDS   1691  2300  0.86  +  1  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS CDS   3049  3060  0.74  +  0  transcript_id "g1.t1"; gene_id "g1";
-HSACKI10 AUGUSTUS stop_codon  3058  3060  .  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS gene  182   3060  0.63  +  .  g1
+Chr.1 AUGUSTUS transcript  182   3060  0.63  +  .  g1.t1
+Chr.1 AUGUSTUS start_codon 182   184   .  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS initial  182   225   1  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS internal 1691  2300  0.86  +  1  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS terminal 3049  3060  0.74  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS CDS   182   225   1  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS CDS   1691  2300  0.86  +  1  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS CDS   3049  3060  0.74  +  0  transcript_id "g1.t1"; gene_id "g1";
+Chr.1 AUGUSTUS stop_codon  3058  3060  .  +  0  transcript_id "g1.t1"; gene_id "g1";
 # coding sequence = [atgatgaaaccctgtctctaccaaaaagacaaaaaattagccagctcaagcaagcactactcttcctcccgcagtggag
 # gaggaggaggaggaggaggatgtggaggaggaggaggagtgtcatccctaagaatttctagcagcaaaggctcccttggtggaggatttagctcaggg
 # gggttcagtggtggctcttttagccgtgggagctctggtgggggatgctttgggggctcatcaggtggctatggaggattaggaggttttggtggagg

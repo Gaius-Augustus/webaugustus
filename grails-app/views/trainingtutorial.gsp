@@ -120,7 +120,7 @@
                      <div id="finding_form">
                         <h2><a href="#finding_form">1.1 - Finding the training submission form</a></h2>
                      </div>
-                     <p>You find the AUGUSTUS training submission form by clicking on the following link in the left side navigation bar:</p>
+                     <p>You find the WebAUGUSTUS training submission form by clicking on the following link in the left side navigation bar:</p>
                      <p>
                      <table border="2" cellspacing="0" cellpadding="0">
                         <tr>
@@ -151,7 +151,7 @@
                         </tr>
                      </table>
                      </p>
-                     <p>It is possible to run AUGUSTUS without giving an e-mail address but here are some reasons why we recommend supplying an e-mail address:
+                     <p>It is possible to run WebAUGUSTUS without giving an e-mail address but here are some reasons why we recommend supplying an e-mail address:
                      <ul>
                         <li>Unlike many other bioinformatics web services, the AUGUSTUS web server application is not an implementation of a fail-safe procedure. Particularly the assembly of a training gene set from extrinsic data (ESTs and protein sequences) and a genome sequence may not always work perfectly. Our pipeline may issue warnings or errors, and sometimes, we need to get some feedback from you via e-mail in order to figure out what is the problem with your particular input data set.</li>
                         <li>In addition, training AUGUSTUS is rather time consuming process that may take up to several weeks (depending on the input data). It may be more convenient to receive an e-mail notification about your job having finished, than checking the status page over and over, again</li>
@@ -687,7 +687,9 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <div id="error">
                         <h2><a href="#error">2.2 - Errors during training</a></h2>
                      </div>
-                     <p>You should automatically receive an e-mail in case an error occurs during the AUGUSTUS training process. The admin of this server is also notified by e-mail about errors. We will get in touch with you, again, after we figured out what caused the error. (If you did not supply an email address, we will probably ignore the error because we cannot communicate with you about the input files.)</p>
+                     <p>You should automatically receive an e-mail in case an error occurs during the AUGUSTUS training process. The admin of this server is also notified by e-mail about errors.
+                        Please contact <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a> if you want to find out what went wrong.
+                     </p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
