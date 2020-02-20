@@ -464,7 +464,7 @@ class PredictionController {
         }
 
         // upload of genome file
-        def seqNames = []
+        List seqNames = []
         if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) {
             // check file size
             long preUploadSize = uploadedGenomeFile.getSize()
@@ -728,62 +728,88 @@ class PredictionController {
             //predictionInstance.hint_file = uploadedStructFile.originalFilename
             confirmationString = "${confirmationString}Hints file: ${predictionInstance.hint_file}\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Uploaded hints file ${uploadedStructFile.originalFilename} was renamed to hints.gff and moved to ${dirName}")
-            def gffColErrorFlag = 0
-            def gffNameErrorFlag = 0
-            def gffSourceErrorFlag = 0
-            def gffFeatureErrorFlag = 0
             if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) { // if seqNames already exists
                 // gff format validation: number of columns 9, + or - in column 7, column 1 must be  member of seqNames
-                def gffArray
-                def isElement
+                Set seqNamesSet = seqNames.toSet()
+                Set allowedFeatures = ["start", "stop", "tss", "tts", "ass", "dss", "exonpart", "exon", "intronpart", "intron",
+                    "CDSpart", "CDS", "UTRpart", "UTR", "irpart", "nonexonpart", "genicpart"] as HashSet
+                boolean emptyFlag = false
+                boolean commentFlag = false
                 boolean metacharacterFlag = false
+                boolean gffColErrorFlag = false
+                boolean gffNameErrorFlag = false
+                boolean gffSourceErrorFlag = false
+                boolean gffFeatureErrorFlag = false
+                String unsupportedSource = ""
+                String unsupportedSeqName = ""
+                String unsupportedFeature = ""
                 new File(projectDir, "hints.gff").eachLine{line ->
-                    if (metacharacterFlag) {
+                    line = line.trim()
+                    if (line.size() == 0) {
+                        emptyFlag = true
                         return
                     }
-                    if(line =~ /\*/ || line =~ /\?/){
+                    if (line.startsWith("#")) {
+                        commentFlag = true
+                        return
+                    }                    
+                    if (!metacharacterFlag && (line.contains("*") || line.contains("?"))) {
                         metacharacterFlag = true
+                    }
+                    
+                    if (gffColErrorFlag && gffNameErrorFlag && gffSourceErrorFlag && gffFeatureErrorFlag) {
                         return
                     }
-                    gffArray = line.split("\t")
-                    if(!(gffArray.size() == 9)){
-                        gffColErrorFlag = 1
-                    }else{
-                        isElement = 0
-                        seqNames.each{ seq ->
-                            if(seq =~ /${gffArray[0]}/){ isElement = 1 }
-                            if(isElement == 0){ gffNameErrorFlag = 1 }
-                            if(!("${gffArray[8]}" =~ /source=M/)){gffSourceErrorFlag = 1}
-                            if(!("${gffArray[2]}" =~ /start$/) && !("${gffArray[2]}" =~ /stop$/) && !("${gffArray[2]}" =~ /tss$/) && !("${gffArray[2]}" =~ /tts$/) && !("${gffArray[2]}" =~ /ass$/) && !("${gffArray[2]}" =~ /dss$/) && !("${gffArray[2]}" =~ /exonpart$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /exon$/) && !("${gffArray[2]}" =~ /intronpart$/) && !("${gffArray[2]}" =~ /intron$/) && !("${gffArray[2]}" =~ /CDSpart$/) && !("${gffArray[2]}" =~ /CDS$/) && !("${gffArray[2]}" =~ /UTRpart$/) && !("${gffArray[2]}" =~ /UTR$/) && !("${gffArray[2]}" =~ /irpart$/) && !("${gffArray[2]}" =~ /nonexonpart$/) && !("${gffArray[2]}" =~ /genicpart$/)){
-                                gffFeatureErrorFlag = 1
-                            }
+                    
+                    def gffArray = line.split("\t")
+                    if (gffArray.size() != 9) {
+                        gffColErrorFlag = true
+                    }
+                    else {
+                        if (!gffSourceErrorFlag && (!gffArray[8].contains("source=M") && !gffArray[8].contains("src=M"))) {
+                            unsupportedSource = gffArray[8]
+                            gffSourceErrorFlag = true
                         }
+                        if (!gffNameErrorFlag && !seqNamesSet.contains(gffArray[0])) {
+                            unsupportedSeqName = gffArray[0]
+                            gffNameErrorFlag = true
+                        }
+                        if (!gffFeatureErrorFlag && !allowedFeatures.contains(gffArray[2])) {
+                            unsupportedFeature = gffArray[2]
+                            gffFeatureErrorFlag = true
+                        }                        
                     }
                 }
-                if (metacharacterFlag ){
+                
+                if (emptyFlag) {
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains empty lines.")
+                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains empty lines. This is not allowed.")
+                }
+                if (commentFlag) {
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains comments.")
+                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains comments. This is not allowed.")
+                }
+                if (metacharacterFlag) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).")
-                    deleteDir()
-                    flash.error = "Hints file contains metacharacters (*, ?, ...). This is not allowed."
-                    cleanRedirect()
-                    return
+                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains metacharacters (*, ?, ...). This is not allowed.")
                 }
-                if(gffSourceErrorFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file's last column is not in correct format")
-                    flash.error = "Hints file  ${predictionInstance.hint_file} is not in a compatible gff format (the last column does not contain source=M). Please make sure the gff-format complies with the instructions in our 'Help' section!"
+                if (gffSourceErrorFlag) {
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint files last column is not in correct format (e.g. \"${unsupportedSource}\")")
+                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} is not in a compatible gff format (the last column does not contain \"source=M\" but \"${unsupportedSource}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
                 }
-                if(gffColErrorFlag == 1){
+                if (gffColErrorFlag) {
                     Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file does not always contain 9 columns.")
-                    flash.error = "Hints file  ${predictionInstance.hint_file} is not in a compatible gff format (has not 9 columns). Please make sure the gff-format complies with the instructions in our 'Help' section!"
+                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} is not in a compatible gff format (has not 9 columns). Please make sure the gff-format complies with the instructions in our 'Help' section!")
                 }
-                if(gffNameErrorFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains entries that do not comply with genome sequence names.")
-                    flash.error = "Entries in the hints file  ${predictionInstance.hint_file} do not match the sequence names of the genome file. Please make sure the gff-format complies with the instructions in our 'Help' section!"
+                if (gffNameErrorFlag) {
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains entries that do not comply with genome sequence names. (e.g. \"${unsupportedSeqName}\")")
+                    predictionInstance.errors.rejectValue("hint_file", "", "Entries in the hints file ${predictionInstance.hint_file} do not match the sequence names of the genome file (e.g. \"${unsupportedSeqName}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
                 }
-                if(gffFeatureErrorFlag == 1){
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains unsupported features.")
-                    flash.error = "Entries in the hints file  ${predictionInstance.hint_file} contain unsupported features. Please make sure the gff-format complies with the instructions in our 'Help' section!"
+                if (gffFeatureErrorFlag) {
+                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains unsupported features (e.g. \"${unsupportedFeature}\").")
+                    predictionInstance.errors.rejectValue("hint_file", "", "Entries in the hints file ${predictionInstance.hint_file} contains unsupported features (e.g. \"${unsupportedFeature}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
                 }
-                if((gffColErrorFlag == 1 || gffNameErrorFlag == 1 || gffSourceErrorFlag == 1 || gffFeatureErrorFlag == 1)){
+                if (emptyFlag || commentFlag || metacharacterFlag || gffColErrorFlag || gffNameErrorFlag || gffSourceErrorFlag || gffFeatureErrorFlag) {
                     deleteDir()
                     cleanRedirect()
                     return
