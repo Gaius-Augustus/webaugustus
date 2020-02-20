@@ -675,6 +675,7 @@ class PredictionService extends AbstractWebaugustusService {
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if (sgeErr) {
+                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
                 msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
             }
             else if (executionErr) {

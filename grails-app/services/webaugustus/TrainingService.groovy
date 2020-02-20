@@ -754,6 +754,7 @@ class TrainingService extends AbstractWebaugustusService {
                 msgStr += "An error occured in the autoAug pipeline. "
             }
             if (sgeErr) {
+                String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
                 msgStr += "A ${computeClusterName} error occured. "
             }
             if (writeResultsErr) {
