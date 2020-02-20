@@ -8,11 +8,16 @@ div.errors {
 div.errors ul {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 div.errors li {
-        background: url(../images/skin/exclamation.png) 8px 0% no-repeat;
+    background: url(../images/skin/exclamation.png) 8px 0% no-repeat;
     line-height: 16px;
     padding-left: 30px;
+    margin-bottom: 10px;
+}
+div.errors li:last-child {
+    margin-bottom: 0px;
 }
 
 td.errors select {
