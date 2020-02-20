@@ -688,6 +688,8 @@ TACACGGAAATCAACGGCGGTGTCATAAGCGAG
                         <h4><a href="#hints_format">1.3.3.1 - Hints file format</a></h4>
                      </div>
                      <p>It is possible to submit an externally created file that contains extrinsic evidence for gene structures in gff format.</p>
+                     <p>Comment lines are not allowed.</p>
+                     <p>It makes no sense to upload gene prediction files (e.g. augustus.gff from AUGUSTUS gene prediction) as hints to WebAUGUSTUS. This is therefore not allowed.</p>
                      <p>In general, gff files must contain the following columns (the columns are separated by <b>tabulators</b>):</p>
                      <p>
                      <OL TYPE="1">
