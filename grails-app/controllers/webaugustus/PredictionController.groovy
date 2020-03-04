@@ -220,6 +220,13 @@ class PredictionController {
         if(predictionInstance.utr == true){
             overRideUtrFlag = 1
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User enabled UTR prediction.")
+            
+            // check valid UTR parameter combinations
+            if (predictionInstance.ignore_conflicts) { // User enabled ignore strand conflicts.
+                predictionInstance.errors.rejectValue("utr", "", "UTR prediction and the option \"Ignore conflicts with other strand\" are mutually exclusive. Please read the instructions in the UTR's 'Help' section!")
+                cleanRedirect()
+                return
+            }
         }else{
             overRideUtrFlag = 0
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "User did not enable UTR prediction.")
@@ -264,7 +271,8 @@ class PredictionController {
                 cleanRedirect()
                 return
                 // if only UTR params are missing, set flag to override any user-defined UTR settings
-            }else if(archCheckLogSize > 0){
+            }
+            else if (archCheckLogSize > 0 && overRideUtrFlag == 1) {
                 overRideUtrFlag = 0 // UTR predictions are now permanently disabled
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR predictions have been disabled because UTR parameters are missing!")
             }
@@ -824,10 +832,12 @@ class PredictionController {
         confirmationString = "${confirmationString}User set UTR prediction: ${predictionInstance.utr}\n"
         // utr
         // check whether utr parameters actually exist:
-        def utrParamContent = new File("${AUGUSTUS_SPECIES_PATH}/${species}/${species}_utr_probs.pbl")
-        if(utrParamContent.exists() == false){
-            overRideUtrFlag = 0;
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR prediction was disabled because UTR parameters do not exist for this species!")
+        if (species != null && new File("${AUGUSTUS_SPECIES_PATH}/${species}").exists()) {
+            def utrParamContent = new File("${AUGUSTUS_SPECIES_PATH}/${species}/${species}_utr_probs.pbl")
+            if (!utrParamContent.exists()) {
+                overRideUtrFlag = 0;
+                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR prediction was disabled because UTR parameters do not exist for this species!")
+            }
         }
         // enable or disable utr prediction in AUGUSTUS command
         if(overRideUtrFlag==1){
@@ -835,7 +845,8 @@ class PredictionController {
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "UTR prediction was disabled due to incompatibility with at least one or exactly one gene predcition")
                 overRideUtrFlag = 0;
             }
-        }else if(overRideUtrFlag==0 && predictionInstance.utr == true){
+        }
+        if (overRideUtrFlag==0 && predictionInstance.utr) {
             confirmationString = "${confirmationString}Server set UTR prediction: false [UTR parameters missing or conflict with allowed gene structure!]\n"
         }
         // strand prediction radio buttons

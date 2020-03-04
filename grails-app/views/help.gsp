@@ -597,10 +597,11 @@ Chr.1 anchor  intronpart      7631    7633    0       +       0       source=M
                         <li>predict any number of (possibly partial) genes</li>
                         <li>only predict complete genes</li>
                      </ul>
-                     <p>UTR prediction is not possible in combination with the gene structure constraints:</p>
+                     <p>UTR prediction is not possible in combination with the following constraints:</p>
                      <ul>
                         <li>only predict complete genes - at least one</li>
                         <li>predict exactly one gene</li>
+                        <li>ignore conflicts with other strand</li>
                      </ul>
                      <p>If no UTR parameter files exist for your species but you enables UTR prediction in the form, the web server application will overrule the choice to predict UTRs by simply not predicting any UTRs.</p>
                      <h3>Species for which UTR parameters are available:</h3>
