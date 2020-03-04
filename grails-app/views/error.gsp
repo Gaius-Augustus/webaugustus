@@ -7,7 +7,6 @@
 	</head>
 	<body>
         <g:if env="development">
-
             <p>
                 Ooops... this looks ugly! Our apologies! Please send an e-mail to 
                 <a href="mailto:${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}">${webaugustus.AbstractWebaugustusService.getWebaugustusEmailAddress()}</a>. 
