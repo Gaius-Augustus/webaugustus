@@ -156,6 +156,80 @@ class Utilities {
         return Utilities.FastaStatus.VALID_FASTA
     }
     
+    /**
+     * Check hints file format
+     * 
+     * @param hintsFile hints file
+     * @param origFileName uploaded file name 
+     * @param seqNames sequence names in hintsfile must be in this list
+     * @return empty list if format is ok, else this list contains messages about all format errors
+     */
+    static List checkHintsGffFormat(File hintsFile, String origFileName, List seqNames) {
+        
+        List errors = []
+        
+        // gff format validation: number of columns 9, + or - in column 7, column 1 must be  member of seqNames
+        Set seqNamesSet = seqNames.toSet()
+        Set allowedFeatures = ["start", "stop", "tss", "tts", "ass", "dss", "exonpart", "exon", "intronpart", "intron",
+            "CDSpart", "CDS", "UTRpart", "UTR", "irpart", "nonexonpart", "genicpart"] as HashSet
+        
+        boolean emptyFlag = false
+        boolean commentFlag = false
+        boolean metacharacterFlag = false
+        boolean gffColErrorFlag = false
+        boolean gffNameErrorFlag = false
+        boolean gffSourceErrorFlag = false
+        boolean gffFeatureErrorFlag = false
+        
+        hintsFile.eachLine{line ->
+            line = line.trim()
+            if (line.size() == 0) {
+                if (!emptyFlag) {
+                    emptyFlag = true
+                    errors.add("Hints file \"${origFileName}\" contains empty lines. This is not allowed.")
+                }
+                return
+            }
+            if (line.startsWith("#")) {
+                if (!commentFlag) {
+                    commentFlag = true
+                    errors.add("Hints file \"${origFileName}\" contains comments. This is not allowed.")
+                }
+                return
+            }                    
+            if (!metacharacterFlag && (line.contains("*") || line.contains("?"))) {
+                metacharacterFlag = true
+                errors.add("Hints file \"${origFileName}\" contains metacharacters (*, ?, ...). This is not allowed.")
+            }
+
+            if (gffColErrorFlag && gffNameErrorFlag && gffSourceErrorFlag && gffFeatureErrorFlag) {
+                return
+            }
+
+            def gffArray = line.split("\t")
+            if (gffArray.size() != 9) {
+                if (!gffColErrorFlag) {
+                    gffColErrorFlag = true
+                    errors.add("Hints file \"${origFileName}\" is not in a compatible gff format (did not contain 9 columns in each line).")
+                }
+                return
+            }
+            if (!gffNameErrorFlag && !seqNamesSet.contains(gffArray[0])) {
+                gffNameErrorFlag = true
+                errors.add("The sequence names in the hints file \"${origFileName}\" did not comply with the sequence names in the supplied genome file (e.g. \"${gffArray[0]}\").")
+            }
+            if (!gffFeatureErrorFlag && !allowedFeatures.contains(gffArray[2])) {
+                gffFeatureErrorFlag = true
+                errors.add("Entries in the third column of the hints file \"${origFileName}\" contains unsupported features (e.g. \"${gffArray[2]}\").")
+            }
+            if (!gffSourceErrorFlag && (!gffArray[8].contains("source=M") && !gffArray[8].contains("src=M"))) {
+                gffSourceErrorFlag = true
+                errors.add("Entries in the last column of the hints file \"${origFileName}\" does not contain \"source=M\" but \"${gffArray[8]}\".")
+            }
+        }
+        return errors
+    }
+    
     static Set<String> SUPPORTED_COMPRESS_FORMATS = new HashSet<>()
     static Set<String> UNSUPPORTED_COMPRESS_FORMATS = new HashSet<>()
     static {

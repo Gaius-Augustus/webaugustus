@@ -737,87 +737,15 @@ class PredictionController {
             confirmationString = "${confirmationString}Hints file: ${predictionInstance.hint_file}\n"
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Uploaded hints file ${uploadedStructFile.originalFilename} was renamed to hints.gff and moved to ${dirName}")
             if (uploadedGenomeFile != null && !uploadedGenomeFile.empty) { // if seqNames already exists
-                // gff format validation: number of columns 9, + or - in column 7, column 1 must be  member of seqNames
-                Set seqNamesSet = seqNames.toSet()
-                Set allowedFeatures = ["start", "stop", "tss", "tts", "ass", "dss", "exonpart", "exon", "intronpart", "intron",
-                    "CDSpart", "CDS", "UTRpart", "UTR", "irpart", "nonexonpart", "genicpart"] as HashSet
-                boolean emptyFlag = false
-                boolean commentFlag = false
-                boolean metacharacterFlag = false
-                boolean gffColErrorFlag = false
-                boolean gffNameErrorFlag = false
-                boolean gffSourceErrorFlag = false
-                boolean gffFeatureErrorFlag = false
-                String unsupportedSource = ""
-                String unsupportedSeqName = ""
-                String unsupportedFeature = ""
-                new File(projectDir, "hints.gff").eachLine{line ->
-                    line = line.trim()
-                    if (line.size() == 0) {
-                        emptyFlag = true
-                        return
-                    }
-                    if (line.startsWith("#")) {
-                        commentFlag = true
-                        return
-                    }                    
-                    if (!metacharacterFlag && (line.contains("*") || line.contains("?"))) {
-                        metacharacterFlag = true
-                    }
-                    
-                    if (gffColErrorFlag && gffNameErrorFlag && gffSourceErrorFlag && gffFeatureErrorFlag) {
-                        return
-                    }
-                    
-                    def gffArray = line.split("\t")
-                    if (gffArray.size() != 9) {
-                        gffColErrorFlag = true
-                    }
-                    else {
-                        if (!gffSourceErrorFlag && (!gffArray[8].contains("source=M") && !gffArray[8].contains("src=M"))) {
-                            unsupportedSource = gffArray[8]
-                            gffSourceErrorFlag = true
-                        }
-                        if (!gffNameErrorFlag && !seqNamesSet.contains(gffArray[0])) {
-                            unsupportedSeqName = gffArray[0]
-                            gffNameErrorFlag = true
-                        }
-                        if (!gffFeatureErrorFlag && !allowedFeatures.contains(gffArray[2])) {
-                            unsupportedFeature = gffArray[2]
-                            gffFeatureErrorFlag = true
-                        }                        
-                    }
-                }
                 
-                if (emptyFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains empty lines.")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains empty lines. This is not allowed.")
-                }
-                if (commentFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains comments.")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains comments. This is not allowed.")
-                }
-                if (metacharacterFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} contains metacharacters (*, ?, ...). This is not allowed.")
-                }
-                if (gffSourceErrorFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint files last column is not in correct format (e.g. \"${unsupportedSource}\")")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} is not in a compatible gff format (the last column does not contain \"source=M\" but \"${unsupportedSource}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
-                }
-                if (gffColErrorFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file does not always contain 9 columns.")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Hints file ${predictionInstance.hint_file} is not in a compatible gff format (has not 9 columns). Please make sure the gff-format complies with the instructions in our 'Help' section!")
-                }
-                if (gffNameErrorFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains entries that do not comply with genome sequence names. (e.g. \"${unsupportedSeqName}\")")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Entries in the hints file ${predictionInstance.hint_file} do not match the sequence names of the genome file (e.g. \"${unsupportedSeqName}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
-                }
-                if (gffFeatureErrorFlag) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Hint file contains unsupported features (e.g. \"${unsupportedFeature}\").")
-                    predictionInstance.errors.rejectValue("hint_file", "", "Entries in the hints file ${predictionInstance.hint_file} contains unsupported features (e.g. \"${unsupportedFeature}\"). Please make sure the gff-format complies with the instructions in our 'Help' section!")
-                }
-                if (emptyFlag || commentFlag || metacharacterFlag || gffColErrorFlag || gffNameErrorFlag || gffSourceErrorFlag || gffFeatureErrorFlag) {
+                Utilities.log(logFile, 2, verb, predictionInstance.accession_id, "Checking hints.gff file format")
+                List errors = Utilities.checkHintsGffFormat(new File(projectDir, "hints.gff"), predictionInstance.hint_file, seqNames)
+                if (!errors.isEmpty()) {
+                    for (error in errors) {
+                        Utilities.log(logFile, 1, verb, predictionInstance.accession_id, error)
+                        predictionInstance.errors.rejectValue("hint_file", "", error)
+                    }
+                    predictionInstance.errors.rejectValue("hint_file", "", "Please make sure the gff-format complies with the instructions in our 'Help' section!")
                     deleteDir()
                     cleanRedirect()
                     return

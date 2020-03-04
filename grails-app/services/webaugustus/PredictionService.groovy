@@ -193,47 +193,16 @@ class PredictionService extends AbstractWebaugustusService {
             if (structFile.exists() && predictionInstance.genome_ftp_link != null) { // if seqNames already exists
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
                 Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, "Checking hints.gff file format")
-                def gffArray
-                def isElement
-                metacharacterFlag = false
-                structFile.eachLine{line ->
-                    if(line =~ /\*/ || line =~ /\?/){
-                        metacharacterFlag = true
-                    }else{
-                        gffArray = line.split("\t")
-                        if(!(gffArray.size() == 9)){
-                            gffColErrorFlag = 1
-                        }else{
-                            isElement = 0
-                            seqNames.each{ seq ->
-                                if(seq =~ /${gffArray[0]}/){ isElement = 1 }
-                                if(isElement == 0){ gffNameErrorFlag = 1 }
-                                if(!("${gffArray[8]}" =~ /source=M/)){gffSourceErrorFlag = 1}
-                            }
-                        }
+                
+                List errors = Utilities.checkHintsGffFormat(structFile, predictionInstance.hint_file, seqNames)
+                if (!errors.isEmpty()) {
+                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because: \n"
+                    for (error in errors) {
+                        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, error)
+                        mailStr += " - " + error + "\n"
                     }
-                }
-                if (metacharacterFlag) {
-                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The hints file contains metacharacters (e.g. * or ?).");
-                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                    abortJob(predictionInstance, mailStr)
-                    return
-                }
-                if(gffColErrorFlag == 1){
-                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file does not always contain 9 columns.")
-                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided hints file\n${predictionInstance.hint_file}\ndid not contain 9 columns in each line. Please make sure the gff-format complies\nwith the instructions in our 'Help' section before submitting another job!\n\n"
-                    abortJob(predictionInstance, mailStr)
-                    return
-                }
-                if(gffNameErrorFlag == 1){
-                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file contains entries that do not comply with genome sequence names.")
-                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the sequence names in\nthe provided hints file\n${predictionInstance.hint_file}\ndid not comply with the sequence names in the supplied genome file\n${predictionInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
-                    abortJob(predictionInstance, mailStr)
-                    return
-                }
-                if(gffSourceErrorFlag ==1){
-                    Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Hints file contains entries that do not have source=M in the last column.")
-                    String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the last column of your\nhints file\n${predictionInstance.hint_file}\ndoes not contain the content source=M. Please make sure the gff-format complies with\nthe instructions in our 'Help' section before submitting another job!\n\n"
+                    mailStr +="Please make sure the gff-format complies with the instructions in our 'Help' section!\n"
+                    mailStr += "\n\n"
                     abortJob(predictionInstance, mailStr)
                     return
                 }
