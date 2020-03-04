@@ -106,24 +106,28 @@ class Utilities {
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
         int allAminoAcidsCounter = 0
         try{
-            String inputLine
             int charCounter = 1
+            int inputInt
             char inputChar
             int maxCharacters = isProtein ? 2000 : 1000
-
-            while ( ((inputChar = br.read()) != null) && (charCounter <= maxCharacters)) {
-                if (inputChar =~ /^$/) {
+            
+            while ( ((inputInt = br.read()) != -1) && (charCounter <= maxCharacters)) {
+                if (inputInt == 65279) { //BOM
+                    continue;
+                }
+                inputChar = (char) inputInt                
+                if (inputChar =~ /^$/) { // /n /r
                     continue;
                 }
                 if (inputChar =~ />/) {
-                    inputLine = br.readLine();
+                    br.readLine() // no further checks until end of this line
                 }
                 else if (charCounter == 1) {
                     // if the first character is not '>'
                     return Utilities.FastaStatus.NO_VALID_FASTA
                 }
                 else if (isProtein) {
-                    if ( !(inputChar =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/) ) {
+                    if ( !(inputChar =~ /[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/) ) {
                         // if not contains a valid character
                         return Utilities.FastaStatus.NO_VALID_FASTA
                     }
@@ -133,7 +137,7 @@ class Utilities {
                     }
                 }
                 else {
-                    if ( !(inputChar =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
+                    if ( !(inputChar =~ /^[AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
                         // if not contains a valid character
                         return Utilities.FastaStatus.NO_VALID_FASTA
                     }
