@@ -37,6 +37,12 @@ class Utilities {
             if (metacharacterFlag || line.isEmpty()) {
                 return
             }
+            if (checkFirstLineStart) {
+                checkFirstLineStart = false
+                if (!line.startsWith(">")) {
+                    fastaFlag = false
+                }
+            }
             if (line =~ /\*/ || line =~ /\?/){
                 metacharacterFlag = true
                 return
@@ -44,37 +50,31 @@ class Utilities {
             if (!fastaFlag) {
                 return
             }
-            if (checkFirstLineStart) {
-                checkFirstLineStart = false
-                if (!line.startsWith(">")) {
-                    fastaFlag = false
-                }
-            }
-            if (isProtein) {
-                if ( !(line =~ /^[>AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx ]/) ) { 
-                    fastaFlag = false
-                    return;
-                }
-                if (!line.startsWith(">")) {
-                    line.eachMatch(/[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/) {
-                        allAminoAcidsCounter++
-                    }
-                    line.eachMatch(/[Cc]/) {
-                        cytosinCounter++
-                    }
-                }
-            }
-            else if ( !(line =~ /^[>AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
-                fastaFlag = false
-                return
-            }
-            if (seqNames != null && line.startsWith(">")) {
-                line = line.substring(1).trim()
+            if (line.startsWith(">")) {
+                line = line.substring(1).trim() // remove '>'
                 if (line.isEmpty()) {
                     fastaFlag = false 
                     return
                 }
-                seqNames << line
+                if (seqNames != null) {
+                    seqNames << line
+                }
+            }
+            else {
+                if (isProtein) {
+                    if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]*$/) ) {
+                        fastaFlag = false
+                        return;
+                    }
+                    allAminoAcidsCounter += line.size()
+                    line.eachMatch(/[Cc]/) {
+                        cytosinCounter++
+                    }
+                }
+                else if ( !(line =~ /^[AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]*$/) ) {
+                    fastaFlag = false
+                    return
+                }
             }
         }
         if (metacharacterFlag) {
