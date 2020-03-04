@@ -207,7 +207,10 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking slurm job status...")
-        def cmd = [getAsSSHCommand("module load slurm; sacct -j ${jobIdentifier} -n --format=JobID,State")]
+        def cmd = [getAsSSHCommand("module load slurm; sacct -j ${jobIdentifier} -n --format=JobID,State,Reason")]
+        // or 
+        // def cmd = [getAsSSHCommand("module load slurm; squeue -h -j ${jobIdentifier} -o '%i %T %r'")]
+        
         def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "statusScript", cmd)
         
         if (statusContent == null) {
@@ -215,9 +218,20 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             return null
         }
         else if ( statusContent =~ /${jobIdentifier}/) {
+            
+            if ( (statusContent =~ /JobHeldUser/) || (statusContent =~ /launch failed requeued held/) ) {
+                if (   (statusContent =~ / PD /) || (statusContent =~ /PENDING/) 
+                    || (statusContent =~ / NF /) || (statusContent =~ /NODE_FAIL/) ) {
+                    
+                    releaseJob(jobIdentifier, logFile, maxLogLevel, processName)
+                    return null
+                }
+            }
+            
             if ( (statusContent =~ /  NF /) || (statusContent =~ /NODE_FAIL/) 
                 || (statusContent =~ /  CG /) || (statusContent =~ /COMPLETING/) ) {
                 // wait for the final message
+                return null
             }
             else if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/) ) {
                 return JobStatus.WAITING_FOR_EXECUTION
@@ -238,6 +252,15 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             }
         }
         return null
+    }
+    
+    /**
+     * release a job if the job is held
+     */
+    private void releaseJob(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
+        Utilities.log(logFile, 1, maxLogLevel, processName, "release job after JobHeldUser")
+        def cmd = [getAsSSHCommand("module load slurm; scontrol release ${jobIdentifier}")]
+        def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "releaseJob", cmd)
     }
     
     /**
