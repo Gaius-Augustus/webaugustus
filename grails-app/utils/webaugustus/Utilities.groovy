@@ -62,7 +62,7 @@ class Utilities {
             }
             else {
                 if (isProtein) {
-                    if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]*$/) ) {
+                    if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]*$/) ) {
                         fastaFlag = false
                         return;
                     }
@@ -127,7 +127,7 @@ class Utilities {
                     return Utilities.FastaStatus.NO_VALID_FASTA
                 }
                 else if (isProtein) {
-                    if ( !(inputChar =~ /[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvBbZzJjXx]/) ) {
+                    if ( !(inputChar =~ /[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]/) ) {
                         // if not contains a valid character
                         return Utilities.FastaStatus.NO_VALID_FASTA
                     }
