@@ -3,7 +3,6 @@ package webaugustus
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
 import javax.annotation.PostConstruct
-import webaugustus.AbstractWebAugustusDomainClass
 
 /**
  * The class PredictionService controls everything that is related to a job for predicting genes with pre-trained parameters on a novel genome
@@ -375,7 +374,7 @@ class PredictionService extends AbstractWebaugustusService {
         }
         // write command in script (according to uploaded files)
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
-        cmdStr = "mkdir ${dirName}/augustus\n"
+        cmdStr = "mkdir -p ${dirName}/augustus\n"
         if(estExistsFlag){
             cmdStr = "${cmdStr}blat -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
             cmdStr = "${cmdStr}cat ${dirName}/est.psl | sort -n -k 16,16 | sort -s -k 14,14 > ${dirName}/est.s.psl\n"
@@ -523,41 +522,44 @@ class PredictionService extends AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @returns true if the job is done
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
-    protected boolean checkJobReadyness(AbstractWebAugustusDomainClass instance) {
+    protected JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance) {
         Prediction predictionInstance = (Prediction) instance
         String jobID = predictionInstance.job_id
         
         JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, getLogFile(), getLogLevel(), predictionInstance.accession_id)
         
         if (status == null) {
-            return false
+            return JobExecution.JobStatus.UNKNOWN
         }
         else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
-            predictionInstance.job_status = '2'
+            if (!predictionInstance.job_status.equals("2")) {
+                predictionInstance.job_status = '2'
+                predictionInstance.save(flush: true)
+            }
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!predictionInstance.job_status.equals("3")) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
+                predictionInstance.job_status = '3'
+                predictionInstance.save(flush: true)
             }
-            predictionInstance.job_status = '3'
         }
-        else { // JobExecution.JobStatus.FINISHED
-            return true
-        }
-        predictionInstance.save(flush: true)
-        return false
+        
+        return status
     }
     
     /**
      * Do all tasks needed to process the job data and cleanup
+     * 
+     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
      */
     @Transactional
-    protected void finishJob(AbstractWebAugustusDomainClass instance) {
+    protected void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus) {
         Prediction predictionInstance = (Prediction) instance
-        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "finishJob")
+        Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "finishJob jobStatus=${jobStatus}")
         
         String jobID = predictionInstance.job_id
         String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
@@ -597,6 +599,11 @@ class PredictionService extends AbstractWebaugustusService {
                 executionErr = true
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "the aug-pred.sh.e${jobID} output file was not created, probably the script was not started")
             }
+        }
+        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
+            sgeErr = true
+            String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "A ${computeClusterName} error occured! jobStatus=${jobStatus}")
         }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
@@ -643,20 +650,22 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "job directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job completed. Result: ok.")
         }else{
-            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured somewhere: sgeErr=${sgeErr}, executionErr=${executionErr}, writeResultsErr=${writeResultsErr}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occured somewhere: sgeErr=${sgeErr}, executionErr=${executionErr}, writeResultsErr=${writeResultsErr}, jobStatus=${jobStatus}")
             String admin_email = getAdminEmailAddress()
             String msgStr = "Hi ${admin_email}!\n\nJob: ${predictionInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${predictionInstance.id}\n\n"
             if (sgeErr) {
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
-                msgStr += "A ${computeClusterName} error occured. Please check manually what's wrong.\n"
+                msgStr += "A ${computeClusterName} error occured."
             }
             else if (executionErr) {
-                msgStr += "An error occured. Please check manually what's wrong.\n"
+                msgStr += "An error occured."
             }
             else if (writeResultsErr) {
-                msgStr += "An error occured during writing results. Please check manually what's wrong.\n"
+                msgStr += "An error occured during writing results."
             }
+            msgStr += " Please check manually what's wrong.\n"
+            msgStr += "The job status is ${jobStatus}\n"
             msgStr += "The user has "
             if (predictionInstance.email_adress == null) {
                 msgStr += "not "
@@ -665,15 +674,25 @@ class PredictionService extends AbstractWebaugustusService {
             
             sendMailToAdmin("Error in AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
             
-            String mailStr = "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
-            
             String senderAdress = PredictionService.getWebaugustusEmailAddress()
-            predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+            String mailStr = ""
+            if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                mailStr += "The AUGUSTUS prediction job ${predictionInstance.accession_id} was cancelled, the maximum computation time has been reached.\n"
+                mailStr += "If your genome file contains multiple fasta entries, split this file into smaller parts and try again.\n\n"
+            }
+            else {
+                mailStr += "An error occured while running the AUGUSTUS prediction job ${predictionInstance.accession_id}.\n\n"
+                mailStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+            }            
+            
+            predictionInstance.message += "----------------------------------------------\n${new Date()} - Error Message:\n"
+            predictionInstance.message += "----------------------------------------------\n\n"
+            predictionInstance.message += mailStr
+            
             if(predictionInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
             }else{
                 msgStr = "${mailStr}The administrator of the AUGUSTUS web server has been informed.\n"
-                msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
                 sendMailToUser(predictionInstance, "An error occured while executing AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }

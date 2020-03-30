@@ -2,7 +2,6 @@ package webaugustus
 
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
-import webaugustus.AbstractWebAugustusDomainClass
 
 @Transactional
 abstract class AbstractWebaugustusService {
@@ -166,9 +165,9 @@ abstract class AbstractWebaugustusService {
                 submittedJobs = findSubmittedJobs()
                 submittedJobs.each { instance ->
                     try {
-                        boolean jobDone = checkJobReadyness(instance)
-                        if (jobDone) {
-                            finishJob(instance)
+                        JobExecution.JobStatus jobStatus = checkJobReadyness(instance)
+                        if (isJobDone(jobStatus)) {
+                            finishJob(instance, jobStatus)
                             deleteEmailAddress(instance)
                         }
                     }
@@ -195,6 +194,18 @@ abstract class AbstractWebaugustusService {
                 }
             }
         }
+    }
+    
+    /**
+     * 
+     * @param status the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return true if the job is done
+     */
+    private boolean isJobDone(JobExecution.JobStatus jobStatus) {
+        return jobStatus != null && 
+            (  JobExecution.JobStatus.TIMEOUT.equals(jobStatus)
+            || JobExecution.JobStatus.ERROR.equals(jobStatus)
+            || JobExecution.JobStatus.FINISHED.equals(jobStatus))
     }
     
     /**
@@ -231,16 +242,18 @@ abstract class AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @returns true if the job is done
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
-    protected abstract boolean checkJobReadyness(AbstractWebAugustusDomainClass instance)
+    protected abstract JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance)
     
     /**
      * Do all tasks needed to process the job data and cleanup
+     * 
+     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
      */
     @Transactional
-    protected abstract void finishJob(AbstractWebAugustusDomainClass instance)
+    protected abstract void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus)
     
     /**
      * delete the email address after the job is done or aborted

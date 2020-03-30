@@ -10,6 +10,9 @@ abstract class JobExecution {
     public enum JobStatus {
         WAITING_FOR_EXECUTION,
         COMPUTING,
+        TIMEOUT,
+        UNKNOWN,
+        ERROR,
         FINISHED
     }
     
@@ -60,7 +63,7 @@ abstract class JobExecution {
      * Returns the job status 
      *
      * @param job identifier - returned by method startJob
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING or FINISHED) or null if an exception occured
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
      */
     public abstract JobExecution.JobStatus getJobStatus(String identifier, File logFile, int maxLogLevel, String processName)
 	

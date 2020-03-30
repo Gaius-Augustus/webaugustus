@@ -73,7 +73,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         if (isSlurmLocal()) {
             return command
         }
-        return "ssh ${getSlurmSSHParam()} ${getSlurmUserName()}@${getSlurmHost()} '${command}'"
+        return "ssh ${getSlurmSSHParam()} ${getSlurmUserName()}@${getSlurmHost()} \"bash --login -c '${command}'\""
     }
     
     /**
@@ -203,7 +203,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * Returns the job status 
      *
      * @param jobIdentifier the job identifier - returned by method startJob
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING or FINISHED) or null in case of an error
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking slurm job status...")
@@ -215,7 +215,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         
         if (statusContent == null) {
             Utilities.log(logFile, 1, maxLogLevel, processName, "slurm job status -> null")
-            return null
+            return JobStatus.UNKNOWN
         }
         else if ( statusContent =~ /${jobIdentifier}/) {
             
@@ -224,14 +224,14 @@ class SlurmJobExecution extends webaugustus.JobExecution {
                     || (statusContent =~ / NF /) || (statusContent =~ /NODE_FAIL/) ) {
                     
                     releaseJob(jobIdentifier, logFile, maxLogLevel, processName)
-                    return null
+                    return JobStatus.UNKNOWN
                 }
             }
             
             if ( (statusContent =~ /  NF /) || (statusContent =~ /NODE_FAIL/) 
                 || (statusContent =~ /  CG /) || (statusContent =~ /COMPLETING/) ) {
                 // wait for the final message
-                return null
+                return JobStatus.UNKNOWN
             }
             else if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/) ) {
                 return JobStatus.WAITING_FOR_EXECUTION
@@ -239,19 +239,25 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             else if ( (statusContent =~ /  R /) || (statusContent =~ /RUNNING/) ) {
                 return JobStatus.COMPUTING
             }
-            else if ( (statusContent =~ /  CD /) || (statusContent =~ /COMPLETED/) 
-                || (statusContent =~ /  TO /) || (statusContent =~ /TIMEOUT/) 
-                || (statusContent =~ /  F /) || (statusContent =~ /FAILED/) 
+            else if ( (statusContent =~ /  TO /) || (statusContent =~ /TIMEOUT/)  ) {
+                Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} by TIMEOUT.")
+                return JobStatus.TIMEOUT
+            }
+            else if ( (statusContent =~ /  F /) || (statusContent =~ /FAILED/) 
                 || (statusContent =~ /  CA /) || (statusContent =~ /CANCELLED/) ) {
-                Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()}.")
+                Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} by ${statusContent}.")
+                return JobStatus.ERROR
+            }
+            else if ( (statusContent =~ /  CD /) || (statusContent =~ /COMPLETED/) ) {
+                Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} by COMPLETED.")
                 return JobStatus.FINISHED
             }
             else {
                 Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} for an unexpected reason: ${statusContent}.")
-                return JobStatus.FINISHED
+                return JobStatus.ERROR
             }
         }
-        return null
+        return JobStatus.UNKNOWN
     }
     
     /**
@@ -346,7 +352,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
                 int exitCodeSpeciesCopy = Utilities.execute(logFile, maxLogLevel, processName, "copySpeciesToSlurmServer", cmd)
                 Utilities.log(logFile, 1, maxLogLevel, processName, "copied species from ${serverSpeciesPath} on ${getSlurmHost()} to ${localSpeciesPath}, exitCode=${exitCodeSpeciesCopy}")
 
-                if (exitCodeSpeciesCopy == null || exitCodeSpeciesCopy != 0) {
+                if (exitCodeSpeciesCopy != 0) {
                     return exitCodeSpeciesCopy
                 }
             }

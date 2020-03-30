@@ -3,7 +3,6 @@ package webaugustus
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
 import javax.annotation.PostConstruct
-import webaugustus.AbstractWebAugustusDomainClass
 
 /**
  * The class TrainingService controls everything that is related to a job for training AUGUSTUS through the webserver:
@@ -529,46 +528,48 @@ class TrainingService extends AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @returns true if the job is done
-     * 
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
-    protected boolean checkJobReadyness(AbstractWebAugustusDomainClass instance) {
+    protected JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance) {
         Training trainingInstance = (Training) instance
         String jobID = trainingInstance.job_id
         
         JobExecution.JobStatus status = JobExecution.getDefaultJobExecution().getJobStatus(jobID, getLogFile(), getLogLevel(), trainingInstance.accession_id)
         
         if (status == null) {
-            return false
+            return JobExecution.JobStatus.UNKNOWN
         }
         else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
-            trainingInstance.job_status = '2'
+            if (!trainingInstance.job_status.equals("2")) {
+                trainingInstance.job_status = '2'
+                trainingInstance.save(flush: true)
+            }
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!trainingInstance.job_status.equals("3")) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
+                trainingInstance.job_status = '3'
+                trainingInstance.save(flush: true)
             }
-            trainingInstance.job_status = '3'
         }
-        else { // JobExecution.JobStatus.FINISHED
-            return true
-        }
-        trainingInstance.save(flush: true)
-        return false
+        
+        return status
     }
     
     /**
      * Do all tasks needed to process the job data and cleanup
+     * 
+     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
      */
     @Transactional
-    protected void finishJob(AbstractWebAugustusDomainClass instance) {
+    protected void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus) {
         
         String AUGUSTUS_CONFIG_PATH = getAugustusConfigPath()
         String AUGUSTUS_SCRIPTS_PATH = getAugustusScriptPath()
         
         Training trainingInstance = (Training) instance
-        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "finishJob")
+        Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "finishJob jobStatus=${jobStatus}")
         
         String jobID = trainingInstance.job_id
         String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
@@ -701,6 +702,11 @@ class TrainingService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "sgeErr file was not created.")
             }
         }
+        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
+            sgeErr = true
+            String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
+            Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "A ${computeClusterName} error occured! jobStatus=${jobStatus}")
+        }
         if(new File(projectDir, "writeResults.err").exists()){
             writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
             if (writeResultsErr) {
@@ -749,7 +755,7 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job completed. Result: ok.")
         }else{
-            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere: autoAugErr=${autoAugErr}, sgeErr=${sgeErr}, writeResultsErr=${writeResultsErr}")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occured somewhere: autoAugErr=${autoAugErr}, sgeErr=${sgeErr}, writeResultsErr=${writeResultsErr}, jobStatus=${jobStatus}")
             String admin_email = getAdminEmailAddress()
             String msgStr = "Hi ${admin_email}!\n\nJob: ${trainingInstance.accession_id}\n"
             msgStr += "Link: ${getHttpBaseURL()}show/${trainingInstance.id}\n\n"
@@ -764,6 +770,7 @@ class TrainingService extends AbstractWebaugustusService {
                 msgStr += "An error occured during writing results. "
             }
             msgStr += "Please check manually what's wrong.\n"
+            msgStr += "The job status is ${jobStatus}\n"
             msgStr += "The user has "
             if (trainingInstance.email_adress == null) {
                 msgStr += "not "
@@ -799,12 +806,26 @@ class TrainingService extends AbstractWebaugustusService {
                 String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when ${computeClusterName} error occured.")
             }
-            if (writeResultsErr != 0) {
+            if (writeResultsErr) {
                 trainingInstance.job_status = 4
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job error status is ${trainingInstance.job_error} after all errors have been checked.")
-            String mailStr = "An error occured while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\nPlease check the log-files carefully before proceeding to work with the produced results.\n\n"
-            trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
+            
+            String mailStr = ""
+            if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                mailStr += "The AUGUSTUS training job ${trainingInstance.accession_id} was cancelled, the maximum computation time has been reached.\n"
+                mailStr += "Maybe you can start a new training job with a smaller training set.\n\n"
+            }
+            else {
+                mailStr += "An error occured while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\n"
+                mailStr += "Please check the log-files carefully before proceeding to work with the produced results.\n\n"
+            }
+            trainingInstance.message += "----------------------------------------------\n${new Date()} - Error Message:\n"
+            trainingInstance.message += "----------------------------------------------\n\n"
+            trainingInstance.message += mailStr
+            if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                trainingInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
+            }
             trainingInstance.save(flush: true)
             
             if(trainingInstance.email_adress == null){
@@ -813,7 +834,10 @@ class TrainingService extends AbstractWebaugustusService {
                 String senderAdress = TrainingService.getWebaugustusEmailAddress()
                 msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"
                 msgStr += "The administrator of the AUGUSTUS web server has been informed.\n"
-                msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+                if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                    msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
+                    msgStr += "Results of your job are deleted from our server after 180 days.\n\n"
+                }
                 sendMailToUser(trainingInstance, "An error occured while executing AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
