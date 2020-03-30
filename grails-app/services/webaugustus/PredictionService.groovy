@@ -609,8 +609,11 @@ class PredictionService extends AbstractWebaugustusService {
         }
 
         if (!sgeErr && !executionErr && !writeResultsErr) {
+            
             String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} finished.\n\n"
-            predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
+            predictionInstance.message += "----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n"
+            predictionInstance.message += mailStr
+            predictionInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             predictionInstance.job_status = 4
             predictionInstance.save(flush: true)
             
@@ -620,6 +623,7 @@ class PredictionService extends AbstractWebaugustusService {
             else {
                 String msgStr = "${mailStr}You find the results at "
                 msgStr += "${getHttpBaseURL()}show/${predictionInstance.id}.\n\n"
+                msgStr += "Results of your job are deleted from our server after 180 days.\n\n"
                 sendMailToUser(predictionInstance, "AUGUSTUS prediction job ${predictionInstance.accession_id} is complete", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }

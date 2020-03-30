@@ -1067,6 +1067,7 @@ Chr.1        AUGUSTUS        stop_codon      3058    3060    .       +       0  
                      </p>
                      <p><a href="/webaugustus/examples/predExample/index.html">Click here</a> to view a real AUGUSTUS prediction web service output!</p>
                      <p>It is important that you check the results of an AUGUSTUS gene prediction run. Do not trust predictions blindly! Prediction accuracy depends on the input sequence quality, on hints quality and on whether a given parameter set fits to the species of the supplied genomic sequence.</p>
+                     <p>Results of your job are deleted from our server after 180 days.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page

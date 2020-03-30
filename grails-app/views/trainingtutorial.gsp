@@ -715,6 +715,7 @@ Chr.1 mySource 3'-UTR   280345   280405   78 +  .  transcript_id "g22472.t1"; ge
                      <p>If a cDNA file was submitted, <b>hints_pred.tar.gz</b> should be shown.</p>
                      <p>To save files on your local system, click the file link with the right mouse button and select "Save Link As..." (or similar).</p>
                      <p>Unpack *.tar.gz archives locally on your system by typing <tt>tar -xzvf *.tar.gz</tt> into your shell. (You find more information about the software tar at the <a href="http://www.gnu.org/s/tar/">GNU tar website</a>.)</p>
+                     <p>Results of your job are deleted from our server after 180 days.</p>
                      <p>To view a real training output example, <a href="/webaugustus/examples/trainExample/index.html">click here</a>!</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />

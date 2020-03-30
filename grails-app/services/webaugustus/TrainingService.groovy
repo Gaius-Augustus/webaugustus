@@ -715,7 +715,9 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "no errors occured (option 1).")
 
             String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} finished.\n\n"
-            trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
+            trainingInstance.message += "----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n"
+            trainingInstance.message += mailStr
+            trainingInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             trainingInstance.job_status = 4
             trainingInstance.save(flush: true)
             
@@ -725,6 +727,7 @@ class TrainingService extends AbstractWebaugustusService {
             else {
                 def msgStr = "${mailStr}You find the results at "
                 msgStr += "${getHttpBaseURL()}show/${trainingInstance.id}.\n\n"
+                msgStr += "Results of your job are deleted from our server after 180 days.\n\n"
                 sendMailToUser(trainingInstance, "AUGUSTUS training job ${trainingInstance.accession_id} is complete", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
