@@ -189,6 +189,7 @@ data:
             
 slurm:
     # adapt to the actual situation
+    # enabled: true -> use slurm; ;enabled: false -> use Sun Grid Engine
     enabled: true
     username: xxx
     host: xxx

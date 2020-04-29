@@ -55,7 +55,8 @@ class SunGridEngineJobExecution extends webaugustus.JobExecution {
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking job SGE status...")
-        def cmd = ['qstat -u "*" | grep ' + "' ${jobIdentifier} '"]
+        // append " || true" to ensure that grep returns a status code of 0 even if qstat returns nothing and/or nothing matches
+        def cmd = ['qstat -u "*" | grep ' + "' ${jobIdentifier} ' || true"]
         def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "statusScript", cmd)
         
         if (statusContent == null) {
