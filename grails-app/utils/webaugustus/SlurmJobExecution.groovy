@@ -39,12 +39,12 @@ class SlurmJobExecution extends webaugustus.JobExecution {
     }
     
     /** the prediction sbatch template */
-    private String getSlurmPredictionSumbitFilePath() {
+    private String getSlurmPredictionSubmitFilePath() {
         return Holders.getConfig().getProperty('slurm.path.prediction.submitScriptTemplate', String)
     }
     
     /** the training sbatch template */
-    private String getSlurmTrainingSumbitFilePath() {
+    private String getSlurmTrainingSubmitFilePath() {
         return Holders.getConfig().getProperty('slurm.path.training.submitScriptTemplate', String)
     }
     
@@ -168,11 +168,11 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         String submitFileTemplatePath
         String submitFileName
         if (JobType.PREDICTION.equals(jobType)) {
-            submitFileTemplatePath = getSlurmPredictionSumbitFilePath()
+            submitFileTemplatePath = getSlurmPredictionSubmitFilePath()
             submitFileName = getSlurmPredictionSubmitFileName()
         }
         else if (JobType.TRAINING.equals(jobType)) {
-            submitFileTemplatePath = getSlurmTrainingSumbitFilePath()
+            submitFileTemplatePath = getSlurmTrainingSubmitFilePath()
             submitFileName = getSlurmTrainingSubmitFileName()
         }
         else {
@@ -233,7 +233,8 @@ class SlurmJobExecution extends webaugustus.JobExecution {
                 // wait for the final message
                 return JobStatus.UNKNOWN
             }
-            else if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/) ) {
+            else if ( (statusContent =~ / PD /) || (statusContent =~ /PENDING/)
+                || (statusContent =~ / RQ /) || (statusContent =~ /REQUEUED/)) {
                 return JobStatus.WAITING_FOR_EXECUTION
             }
             else if ( (statusContent =~ /  R /) || (statusContent =~ /RUNNING/) ) {
