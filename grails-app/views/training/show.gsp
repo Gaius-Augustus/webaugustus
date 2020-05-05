@@ -29,7 +29,7 @@
             <hr>
             <h2><font color="#006699">Job Status</font></h2>
             <p>
-                <g:if test = "${fieldValue(bean:training, field:'job_status') == '0' || fieldValue(bean:training, field:'job_status') == '1' || fieldValue(bean:training, field:'job_status') == '2' || fieldValue(bean:training, field:'job_status') == '3' || fieldValue(bean:training, field:'job_status') == '4'}">
+                <g:if test = "${fieldValue(bean:training, field:'job_status') == '0' || fieldValue(bean:training, field:'job_status') == '1' || fieldValue(bean:training, field:'job_status') == '2' || fieldValue(bean:training, field:'job_status') == '3' || fieldValue(bean:training, field:'job_status') == '4' || fieldValue(bean:training, field:'job_status') == '7'}">
                     <g:if test = "${training.old_url == null}">
                         <div style="width:600px;height:30px;border:1px solid #d2d2dc">
                             <p>
@@ -39,7 +39,7 @@
                                 <g:if test = "${fieldValue(bean:training, field:'job_status') == '2'}">
                                     <b><font color="#d2d2dc" size=2>Job submitted</font> <font color="#ffb22a" size=2>&rarr;</font> <font color="#006699" size=2>waiting for execution</font> <font color="#d2d2dc" size=2>&rarr; computing &rarr; finished!</font></b><br>
                                 </g:if>
-                                <g:if test = "${fieldValue(bean:training, field:'job_status') == '3'}">
+                                <g:if test = "${fieldValue(bean:training, field:'job_status') == '3' || fieldValue(bean:training, field:'job_status') == '7'}">
                                     <b><font color="#d2d2dc" size=2>Job submitted</font> <font color="#ffb22a" size=2>&rarr;</font> <font color="#d2d2dc" size=2>waiting for execution</font> <font color="#ffb22a" size=2>&rarr;</font> <font color="#006699" size=2>computing</font> <font color="#d2d2dc" size=2>&rarr; finished!</font></b><br>
                                 </g:if>
                                 <g:if test = "${fieldValue(bean:training, field:'job_status') == '4'}">
