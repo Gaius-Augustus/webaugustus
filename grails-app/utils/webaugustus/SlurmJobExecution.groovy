@@ -73,6 +73,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         if (isSlurmLocal()) {
             return command
         }
+        command = command.replace("\"", "\\\"") // take the quotes before bash in the next line into account
         return "ssh ${getSlurmSSHParam()} ${getSlurmUserName()}@${getSlurmHost()} \"bash --login -c '${command}'\""
     }
     
@@ -207,9 +208,9 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking slurm job status...")
-        def cmd = [getAsSSHCommand("module load slurm; sacct -j ${jobIdentifier} -n --format=JobID,State,Reason")]
+        def cmd = [getAsSSHCommand("module load slurm; sacct -j ${jobIdentifier} -n --format=JobID,State,Reason | grep \"^${jobIdentifier} \"")]
         // or 
-        // def cmd = [getAsSSHCommand("module load slurm; squeue -h -j ${jobIdentifier} -o '%i %T %r'")]
+        // def cmd = [getAsSSHCommand("module load slurm; squeue -h -j ${jobIdentifier} -o '%i %T %r' | grep \"^${jobIdentifier} \"")]
         
         def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "statusScript", cmd)
         

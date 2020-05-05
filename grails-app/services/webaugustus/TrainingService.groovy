@@ -22,6 +22,7 @@ class TrainingService extends AbstractWebaugustusService {
     @PostConstruct
     def init() {
         Utilities.log(getLogFile(), 1, 1, "startup      ", "TrainingService")
+        sleep(60000) // start training worker thread a bit after prediction worker thread
         startWorkerThread()
     }
 

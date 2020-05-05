@@ -157,7 +157,7 @@ abstract class AbstractWebaugustusService {
                             t.printStackTrace(System.err)
                             Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
                         }
-                        sleep(1000) // just wait a bit for the job to get startet
+                        sleep(120000) // just wait a bit for the job to get startet
                         deleteEmailAddress(instance) // just in case the job was aborted
                     }
                 }
