@@ -17,7 +17,7 @@ class SunGridEngineJobExecution extends webaugustus.JobExecution {
     /**
      * Count jobs submitted to the worker queue.
      * 
-     * @return the job number of queued and running jobs or -1 if an exception occured
+     * @return the job number of queued and running jobs or -1 if an exception occurred
      */
     public int countStartedJobs(File logFile, int maxLogLevel) {
         def processForLog = "SGE         "

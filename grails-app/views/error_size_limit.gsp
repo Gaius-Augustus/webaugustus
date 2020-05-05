@@ -15,7 +15,7 @@
 <body>
     <g:if env="development">
         <p>
-            A SizeLimitExceededException occured.
+            A SizeLimitExceededException occurred.
         </p>
         <g:if test="${Throwable.isInstance(exception)}">
             <g:renderException exception="${exception}" />

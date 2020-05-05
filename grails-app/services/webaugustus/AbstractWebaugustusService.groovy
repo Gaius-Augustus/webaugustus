@@ -161,7 +161,7 @@ abstract class AbstractWebaugustusService {
                         deleteEmailAddress(instance) // just in case the job was aborted
                     }
                 }
-             
+                
                 submittedJobs = findSubmittedJobs()
                 submittedJobs.each { instance ->
                     try {

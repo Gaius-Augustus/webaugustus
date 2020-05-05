@@ -57,7 +57,7 @@
             </g:if>
             <g:if test = "${(fieldValue(bean:training, field:'job_error') == '5' || fieldValue(bean:training, field:'job_status') == '5') && training.old_url == null }">
                 <p>
-                    <b><font color="#f40707" size=2>An error occured when executing this job!</font></b>
+                    <b><font color="#f40707" size=2>An error occurred when executing this job!</font></b>
                 </p>
             </g:if>
             <g:if test = "${(training.job_status == '4' || training.job_status == '5') && training.results_urls != null}">

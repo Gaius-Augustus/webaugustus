@@ -44,7 +44,7 @@ abstract class JobExecution {
     /**
      * Count jobs submitted to the worker queue.
      * 
-     * @return the job number of queued and running jobs or -1 if an exception occured
+     * @return the job number of queued and running jobs or -1 if an exception occurred
      */
     public abstract int countStartedJobs(File logFile, int maxLogLevel)
 	
