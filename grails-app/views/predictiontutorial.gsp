@@ -282,7 +282,7 @@
                            </tr>
                            <tr>
                               <td><font size="1">Petromyzon marinus</font></td>
-                              <td><font size="1">lamprey</font></td>
+                              <td><font size="1">sealamprey</font></td>
                               <td><font size="1">Falk Hildebrand and Shigehiro Kuraku</font></td>
                            </tr>
                            <tr>

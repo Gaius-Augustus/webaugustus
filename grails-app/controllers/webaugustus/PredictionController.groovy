@@ -348,7 +348,7 @@ class PredictionController {
         }else if(predictionInstance.species_select == "Homo sapiens (animal)"){
             predictionInstance.project_id = "human"
         }else if(predictionInstance.species_select == "Petromyzon marinus (animal)"){
-            predictionInstance.project_id = "lamprey"
+            predictionInstance.project_id = "sealamprey"
         }else if(predictionInstance.species_select == "Nasonia vitripennis (animal)"){
             predictionInstance.project_id = "nasonia"
         }else if(predictionInstance.species_select == "Schistosoma mansoni (animal)"){

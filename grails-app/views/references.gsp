@@ -158,7 +158,7 @@
                            Phanerochaete chrysosporium, Pichia stipitis, Rhizopus oryzae, Saccharomyces cerevisiae, Schizosaccharomyces pombe, Ustilago maydis, Yarrowia lipolytica</i>.
                         </li>
                         <li>
-                           The training for lamprey (<i>Petromyzon marinus</i>) was performed by Falk Hildebrand and Shigehiro Kuraku, based on the
+                           The training for sealamprey (<i>Petromyzon marinus</i>) was performed by Falk Hildebrand and Shigehiro Kuraku, based on the
                            genome assembly (PMAR3.0) provided by the Genome Sequencing Center at Washington University School of Medicine (WUGSC)
                            in St. Louis.
                         </li>
