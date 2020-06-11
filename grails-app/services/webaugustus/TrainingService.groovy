@@ -187,9 +187,10 @@ class TrainingService extends AbstractWebaugustusService {
             }
 
             // check gff format
-            def gffColErrorFlag = 0
-            def gffNameErrorFlag = 0
-            def structureGbkFlag = 0
+            boolean metacharacterFlag = false
+            boolean gffColErrorFlag = false
+            boolean gffNameErrorFlag = false
+            boolean structureGbkFlag = false
             File structFile = new File(projectDir, "training-gene-structure.gff")
             if (structFile.exists()) {
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
@@ -204,7 +205,7 @@ class TrainingService extends AbstractWebaugustusService {
                         metacharacterFlag = true
                     } 
                     else if (line.startsWith("LOCUS")) {
-                        structureGbkFlag = 1
+                        structureGbkFlag = true
                     }
                 }
                 if (metacharacterFlag) {
@@ -213,7 +214,7 @@ class TrainingService extends AbstractWebaugustusService {
                     abortJob(trainingInstance, mailStr)
                     return
                 }
-                if(structureGbkFlag == 0){
+                if (!structureGbkFlag) {
                     def checkGffScript = new File(projectDir, "checkGff.sh")
                     def gffChkOutFile = "${dirName}/gffCheck.out"
                     def gffChkColsFile = "${dirName}/gffCols.out"
@@ -229,22 +230,22 @@ class TrainingService extends AbstractWebaugustusService {
                     stContent = new Scanner(ckContent)
                     long gffColStatus = stContent.nextLong()
                     if(gffErrorStatus == 1){
-                        gffNameErrorFlag = 1
+                        gffNameErrorFlag = true
                     }
                     if(gffColStatus == 1){
-                        gffColErrorFlag = 1
+                        gffColErrorFlag = true
                     }
                     cmdStr = "rm ${dirName}/checkGff.sh ${gffChkOutFile} ${gffChkColsFile}"
                     def delProc = "${cmdStr}".execute()
                     delProc.waitFor()
                 }
-                if(gffColErrorFlag == 1 && structureGbkFlag == 0){
+                if (gffColErrorFlag && !structureGbkFlag) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Training gene structure file does not always contain 9 columns.")
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided training gene structure file\n${trainingInstance.struct_file}\ndid not contain 9 columns in each line.\nPlease make sure the gff-format complies with the instructions in our 'Help' section before\nsubmitting another job!\n\n"
                     abortJob(trainingInstance, mailStr)
                     return
                 }
-                if(gffNameErrorFlag == 1 && structureGbkFlag == 0){
+                if (gffNameErrorFlag && !structureGbkFlag) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Training gene structure file contains entries that do not comply with genome sequence names.")
                     String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the sequence names in the provided training gene structure file\n${trainingInstance.struct_file}\ndid not comply with the sequence names in the supplied genome file\n${trainingInstance.genome_ftp_link}.\nPlease make sure the gff-format complies with the instructions in our 'Help' section\nbefore submitting another job!\n\n"
                     abortJob(trainingInstance, mailStr)
