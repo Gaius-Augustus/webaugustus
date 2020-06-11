@@ -98,10 +98,10 @@
                      <span class="navigation-sub__headline">Other AUGUSTUS Resources</span>
                      <ul class="navigation-sub">
                         <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/wiki/pmwiki.php?n=Augustus.Augustus">AUGUSTUS Wiki</a></li>
-                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/forum">AUGUSTUS Forum</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/forum/">AUGUSTUS Forum</a></li>
                         <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/augustus/downloads/index.php">Download AUGUSTUS</a></li>
-                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/augustus">Old AUGUSTUS web server</a></li>
-                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/braker">BRAKER</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/augustus/">Old AUGUSTUS web server</a></li>
+                        <li class="navigation-sub__item"><a href="//bioinf.uni-greifswald.de/bioinf/braker/">BRAKER</a></li>
                      </ul>
                   </li>
                   <li class="navigation-sub__item">

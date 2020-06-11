@@ -8479,42 +8479,6 @@ html:not(.mobile) .teaserbox-round.teaserbox-round--scale:hover{
     content:"\e90e";
     left:-3px;
 }
-.tab-map__area.tab-map__area--innenstadt{
-    background:url('../../typo3conf/ext/theme_hsmv_greifswald/Resources/Public/Images/Footer-Map/campus-innenstadt.jpg') no-repeat;
-    background-position:center center;
-    background-size:cover;
-}
-.tab-map__area.tab-map__area--berthold-beitz-platz{
-    background:url('../../typo3conf/ext/theme_hsmv_greifswald/Resources/Public/Images/Footer-Map/campus-berthold-beitz-platz.jpg') no-repeat;
-    background-position:center center;
-    background-size:cover;
-}
-.tab-map__area.tab-map__area--soldmannstrasse{
-    background:url('../../typo3conf/ext/theme_hsmv_greifswald/Resources/Public/Images/Footer-Map/campus-soldmannstrasse.jpg') no-repeat;
-    background-position:center center;
-    background-size:cover;
-}
-.tab-map__area.tab-map__area--loefflerstrasse{
-    background:url('../../typo3conf/ext/theme_hsmv_greifswald/Resources/Public/Images/Footer-Map/campus-loefflerstrasse.jpg') no-repeat;
-    background-position:center center;
-    background-size:cover;
-}
-.tab-map__area.tab-map__area--active{
-    display:-webkit-flex;
-    display:-ms-flexbox;
-    display:flex;
-    opacity:1;
-    visibility:visible;
-    -webkit-animation:fadeIn ease-in;
-    -ms-animation:fadeIn ease-in;
-    animation:fadeIn ease-in;
-    -webkit-animation-duration:0.25s;
-    -ms-animation-duration:0.25s;
-    animation-duration:0.25s;
-    -webkit-animation-fill-mode:forwards;
-    -ms-animation-fill-mode:forwards;
-    animation-fill-mode:forwards;
-}
 .breadcrumb__item{
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;

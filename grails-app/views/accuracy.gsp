@@ -32,7 +32,7 @@
                         A predicted gene is considered correct if any of its transcripts are correct, i.e. if
                         at least one isoform of the gene is exactly as annotated in the reference annotation.
                      </p>
-                     <h2>Accuracy results from the <a href="http://www.gencodegenes.org/rgasp/">rGASP Assessment</a> (round 2) using RNA-Seq</h2>
+                     <h2>Accuracy results from the <a href="https://www.gencodegenes.org/pages/rgasp/">rGASP Assessment</a> (round 2) using RNA-Seq</h2>
                      <br>
                      <p>The complete accuracy statistics is available on a page from the <a href="https://compgen.bio.ub.edu/tiki-index.php?page=RGASP+Summary+of+Evaluation+Results#RGASP:_ROUND_2">Computational Genomics Lab, Barcelona</a>. <i>Below pictures are loaded only after confirming the site authenticity. Click on broken image to confirm and enlarge!</i></p>
                      <table>
@@ -67,7 +67,7 @@
                      Above accuracy plots are from <a href="https://compgen.bio.ub.edu/tiki-index.php?page=RGASP+Summary+of+Evaluation+Results#RGASP:_ROUND_2">Josep Abril, Computational Genomics Lab</a>.
                      Our AUGUSTUS predictions are labelled Mar.*. The worst performing prediction of AUGUSTUS (there are 3 sets in human, and worm each, and 2 sets in fly) are <b><i>ab initio</i> predictions</b> and do not use any RNA-Seq at all.
                      <a href="https://compgen.bio.ub.edu/tiki-index.php?page=RGASP+Summary+of+Evaluation+Results#RGASP:_ROUND_2">Other participant codes are here</a>.<br><br>
-                     <h2>Accuracy results from the <a href="http://wiki.wormbase.org/index.php/NGASP">nGASP Assessment</a></h2>
+                     <h2>Accuracy results from the <a href="https://wiki.wormbase.org/index.php/NGASP">nGASP Assessment</a></h2>
                      <br>
                      <table border width="630">
                         <caption>Accuracy results from recent nGASP assessment on <i>C. elegans</i>: transcript-based</caption>
@@ -166,7 +166,7 @@
                            <td>47.6</td>
                         </tr>
                      </table>
-                     Above accuracy values are taken from <a href="http://www.biomedcentral.com/1471-2105/9/549">Coghlan et al. (2008):
+                     Above accuracy values are taken from <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-549">Coghlan et al. (2008):
                      <i>nGASP: the nematode genome annotation assessment project</i></a>.<br><br>
                      <table border width="630">
                         <caption>Accuracy results from recent nGASP assessment on <i>C. elegans</i>: <i>ab initio</i></caption>
@@ -309,9 +309,9 @@
                            <td>19.1</td>
                         </tr>
                      </table>
-                     Above accuracy values are taken from <a href="http://www.biomedcentral.com/1471-2105/9/549">Coghlan et al. (2008):
+                     Above accuracy values are taken from <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-549">Coghlan et al. (2008):
                      <i>nGASP: the nematode genome annotation assessment project</i></a>.<br><br>
-                     <h2>Accuracy results from the <a href="http://genomebiology.com/2006/7/S1/S2">EGASP Assessment</a></h2>
+                     <h2>Accuracy results from the <a href="https://genomebiology.biomedcentral.com/articles/10.1186/gb-2006-7-s1-s2">EGASP Assessment</a></h2>
                      <br>
                      <table border width="630">
                         <caption>Accuracy results on human ENCODE regions (ab initio)</caption>
