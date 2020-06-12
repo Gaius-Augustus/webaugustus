@@ -6,6 +6,12 @@ import org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverte
 import java.nio.charset.StandardCharsets
 import ch.qos.logback.core.util.FileSize
 
+import ch.qos.logback.classic.boolex.JaninoEventEvaluator
+import ch.qos.logback.core.filter.EvaluatorFilter
+
+import static ch.qos.logback.core.spi.FilterReply.DENY
+import static ch.qos.logback.core.spi.FilterReply.NEUTRAL
+
 conversionRule 'clr', ColorConverter
 conversionRule 'wex', WhitespaceThrowableProxyConverter
 
@@ -31,6 +37,16 @@ appender('ROLLING', RollingFileAppender) {
         fileNamePattern = "./logs/stacktrace.%d{yyyy-MM-dd}.out"
         maxHistory = 7
         totalSizeCap = FileSize.valueOf("2GB")
+    }
+
+    // filter out EOFException - this Exception is thrown if a POST with a file upload is cancelled, 
+    // e.g. a user select a file to upload in a form, submit this form and then cancel the submission by pressing the cancel/stop button of the browser
+    filter(EvaluatorFilter) {
+        evaluator(JaninoEventEvaluator) {
+            expression = 'return throwable != null && (java.io.EOFException.class.isInstance(throwable) || (throwable.getMessage() != null && throwable.getMessage().endsWith("EOFException")));'
+        }
+        onMatch = DENY
+        onMismatch = NEUTRAL
     }
 
     encoder(PatternLayoutEncoder) {
