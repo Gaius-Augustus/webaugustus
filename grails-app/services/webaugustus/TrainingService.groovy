@@ -376,6 +376,16 @@ class TrainingService extends AbstractWebaugustusService {
                 abortJob(trainingInstance, mailStr)
                 return
             }
+            
+            cmd = ["grep -c '>' ${dirName}/protein.fa"]
+            Long countProteins = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "countProteinsScript", cmd)
+            int minPSeqs = TrainingService.getMinPSeqs()
+            if (countProteins == null || countProteins < minPSeqs) {
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains just ${countProteins} proteins, but at least ${minPSeqs} are needed.")
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\ncontains just ${countProteins} proteins, but at least ${minPSeqs} are needed.\n\n"
+                abortJob(trainingInstance, mailStr)
+                return
+            }
 
             cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")

@@ -603,26 +603,37 @@ class TrainingController {
             if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
                 deleteDir()
-                flash.error = "The protein file contains metacharacters (*, ?, ...). This is not allowed."
+                flash.error = "The protein file ${uploadedProteinFile.originalFilename} contains metacharacters (*, ?, ...). This is not allowed."
                 cleanRedirect()
                 return
             }
             if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
                 deleteDir()
-                flash.error = "Your protein file was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
+                flash.error = "The protein file ${uploadedProteinFile.originalFilename} was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
                 cleanRedirect()
                 return
             }
             if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
                 deleteDir()
-                flash.error = "Protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
+                flash.error = "The protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
                 cleanRedirect()
                 return
             }
             
-            def cmd = ["cksum ${dirName}/protein.fa"]
+            def cmd = ["grep -c '>' ${dirName}/protein.fa"]
+            Long countProteins = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "countProteinsScript", cmd)
+            int minPSeqs = TrainingService.getMinPSeqs()
+            if (countProteins == null || countProteins < minPSeqs) {
+                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file ${uploadedProteinFile.originalFilename} contains just ${countProteins} proteins, but at least ${minPSeqs} are needed.")
+                deleteDir()
+                flash.error = "The protein file ${uploadedProteinFile.originalFilename} contains just ${countProteins} proteins, but at least ${minPSeqs} are needed for submission with WebAUGUSTUS."
+                cleanRedirect()
+                return
+            }
+            
+            cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.protein_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")

@@ -13,6 +13,8 @@ abstract class AbstractWebaugustusService {
     protected final static int maxStartedJobCount = Holders.getConfig().getProperty('job.submit.maxSize', Integer, 2);
 
     protected final static int maxNSeqs = 250000 // maximal number of scaffolds allowed in genome file
+    protected final static int minPSeqs = 400 // minimal number of proteins in protein file needed for training
+    
     // EST sequence properties (length)
     protected final static int estMinLen = 250
     protected final static int estMaxLen = 20000
@@ -53,6 +55,10 @@ abstract class AbstractWebaugustusService {
     
     public static int getMaxNSeqs() {
         return maxNSeqs;
+    }
+    
+    public static int getMinPSeqs() {
+        return minPSeqs;
     }
     
     public static int getEstMinLen() {
