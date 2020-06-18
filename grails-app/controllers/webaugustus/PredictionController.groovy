@@ -468,7 +468,12 @@ class PredictionController {
             flash.error = "No parameters given!"
             cleanRedirect()
             return
-
+        }
+        if (prokaryotic && predictionInstance.ignore_conflicts) {
+            predictionInstance.errors.rejectValue("ignore_conflicts", "", "The option \"ignore conflicts with other strand\" is not supported for prokaryotic organism.")
+            deleteDir()
+            cleanRedirect()
+            return
         }
 
         // upload of genome file

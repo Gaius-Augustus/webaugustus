@@ -471,7 +471,7 @@ class PredictionService extends AbstractWebaugustusService {
             }
         }
         if (overRideUtrFlag && predictionInstance.allowed_structures != 1 && predictionInstance.allowed_structures != 2) {
-            overRideUtrFlag = 0;
+            overRideUtrFlag = false;
         }
         
         String radioParameterString = overRideUtrFlag ? " --UTR=on" : " --UTR=off"
