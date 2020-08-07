@@ -22,8 +22,10 @@ class TrainingService extends AbstractWebaugustusService {
     @PostConstruct
     def init() {
         Utilities.log(getLogFile(), 1, 1, "startup      ", "TrainingService")
-        sleep(60000) // start training worker thread a bit after prediction worker thread
-        startWorkerThread()
+        Thread.start(getServiceName()+"WorkerThread pre start", {
+                sleep(60000) // start training worker thread a bit after prediction worker thread
+                startWorkerThread()
+        })        
     }
 
     // This is where uploaded files and results will be saved.
@@ -750,21 +752,6 @@ class TrainingService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
             
-            def packResults = new File("${getOutputDir()}/pack${trainingInstance.accession_id}.sh")
-            String cmdStr = "cd ${getOutputDir()}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
-            packResults << "${cmdStr}"
-            Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
-            //packResults << "cd ${getOutputDir()}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
-            cmdStr = "bash ${getOutputDir()}/pack${trainingInstance.accession_id}.sh"
-            def cleanUp = "${cmdStr}".execute()
-            Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
-            cleanUp.waitFor()
-            cmdStr = "rm ${getOutputDir()}/pack${trainingInstance.accession_id}.sh &> /dev/null"
-            cleanUp = "${cmdStr}".execute()
-            Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
-            cleanUp.waitFor()
-            deleteDir(trainingInstance)
-            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job completed. Result: ok.")
         }else{
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occurred somewhere: autoAugErr=${autoAugErr}, sgeErr=${sgeErr}, writeResultsErr=${writeResultsErr}, jobStatus=${jobStatus}")
@@ -795,21 +782,6 @@ class TrainingService extends AbstractWebaugustusService {
                 trainingInstance.job_status = 4
                 
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job status is ${trainingInstance.job_error} when autoAug error occurred.")
-                def packResults = new File("${getOutputDir()}/pack${trainingInstance.accession_id}.sh")
-                String cmdStr = "cd ${getOutputDir()}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"
-                packResults << "${cmdStr}"
-                Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "packResults << \"${cmdStr}\"")
-                //packResults << "cd ${getOutputDir()}; tar cf - ${trainingInstance.accession_id} | 7z a -si ${trainingInstance.accession_id}.tar.7z; rm -r ${trainingInstance.accession_id};"
-                cmdStr = "bash ${getOutputDir()}/pack${trainingInstance.accession_id}.sh"
-                def cleanUp = "${cmdStr}".execute()
-                Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
-                cleanUp.waitFor()
-                cmdStr = "rm ${getOutputDir()}/pack${trainingInstance.accession_id}.sh &> /dev/null"
-                cleanUp = "${cmdStr}".execute()
-                Utilities.log(getLogFile(), 2, getLogLevel(), trainingInstance.accession_id, cmdStr)
-                cleanUp.waitFor()
-                deleteDir(trainingInstance)
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
             }
             if (sgeErr) {
                 trainingInstance.job_error = 5
@@ -853,6 +825,15 @@ class TrainingService extends AbstractWebaugustusService {
                 sendMailToUser(trainingInstance, "An error occurred while executing AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
+        }
+        // pack project directory and delete it
+        if ((!sgeErr && !writeResultsErr) || autoAugErr) {
+            if (projectDir.exists()) {
+                def cmd = ["cd ${getOutputDir()}; tar -czvf ${trainingInstance.accession_id}.tar.gz ${trainingInstance.accession_id} &> /dev/null"]
+                Utilities.execute(getLogFile(), 2, trainingInstance.accession_id, "packResults", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "autoAug directory was packed with tar/gz.")
+            }
+            deleteDir(trainingInstance)
         }
     }
     

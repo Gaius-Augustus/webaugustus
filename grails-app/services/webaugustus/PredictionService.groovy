@@ -635,19 +635,12 @@ class PredictionService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail that job computation was successful.")
             }
             
-            def packResults = new File("${getOutputDir()}/pack${predictionInstance.accession_id}.sh")
-            String cmdStr = "cd ${getOutputDir()}; tar -czvf ${predictionInstance.accession_id}.tar.gz ${predictionInstance.accession_id} &> /dev/null"
-            packResults << "${cmdStr}"
-            Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "packResults << \"${cmdStr}\"")
-            cmdStr = "bash ${getOutputDir()}/pack${predictionInstance.accession_id}.sh"
-            def cleanUp = "${cmdStr}".execute()
-            Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, cmdStr)
-            cleanUp.waitFor()
-            cmdStr = "rm ${getOutputDir()}/pack${predictionInstance.accession_id}.sh &> /dev/null"
-            cleanUp = "${cmdStr}".execute()
-            Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, cmdStr)
+            if (projectDir.exists()) {
+                def cmd = ["cd ${getOutputDir()}; tar -czvf ${predictionInstance.accession_id}.tar.gz ${predictionInstance.accession_id} &> /dev/null"]
+                Utilities.execute(getLogFile(), 2, predictionInstance.accession_id, "packResults", cmd)
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "job directory was packed with tar/gz.")            
+            }
             deleteDir(predictionInstance)
-            Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "job directory was packed with tar/gz.")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job completed. Result: ok.")
         }else{
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "an error occurred somewhere: sgeErr=${sgeErr}, executionErr=${executionErr}, writeResultsErr=${writeResultsErr}, jobStatus=${jobStatus}")
