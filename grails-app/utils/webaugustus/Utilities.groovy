@@ -15,17 +15,46 @@ class Utilities {
         CONTAINS_METACHARACTERS        
     }
     
+    /** 
+     * Check if the fasta file at the specified url is a well formatted gene fasta file.
+     *
+     * @param file
+     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(File file) {
         return checkFastaFormat(file, null, false)
     }
     
+    /** 
+     * Check if the fasta file at the specified url is a well formatted gene fasta file.
+     *
+     * @param file
+     * @param seqNames add header lines to this list
+     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(File file, List seqNames) {
         return checkFastaFormat(file, seqNames, false)
     }
+    
+    /** 
+     * Check if the fasta file at the specified url is well formatted.
+     * 
+     * @param file
+     * @param isProtein true for protein fasta, false for gene fasta
+     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(File file, boolean isProtein) {
         return checkFastaFormat(file, null, isProtein)
     }
     
+    /** 
+     * Check if the fasta file at the specified url is well formatted.
+     * 
+     * @param file
+     * @param seqNames add header lines to this list
+     * @param isProtein true for protein fasta, false for gene fasta
+     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(File file, List seqNames, boolean isProtein) {
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
         int allAminoAcidsCounter = 0
@@ -96,10 +125,25 @@ class Utilities {
         return Utilities.FastaStatus.VALID_FASTA
     }
     
+    /** 
+     * Check if the fasta file at the specified url is a well formatted gene fasta file.
+     * Checks only the head of the file.
+     * 
+     * @param url
+     * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(URL url) {
         return checkFastaFormat(url, false)
     }
     
+    /** 
+     * Check if the fasta file at the specified url is well formatted.
+     * Checks only the head of the file.
+     * 
+     * @param url
+     * @param isProtein true for protein fasta, false for gene fasta
+     * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     */
     static Utilities.FastaStatus checkFastaFormat(URL url, boolean isProtein) {
         URLConnection uc = url.openConnection()
         BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
@@ -501,7 +545,6 @@ class Utilities {
             query()
         }
     }
-    
     
 }
 
