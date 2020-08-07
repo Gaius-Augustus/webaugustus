@@ -369,6 +369,7 @@
                               <div id="aug-spinner" style='display:none;' align="center">
                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<g:img dir="images" file="compete.gif" border="0" alt="Spinner" /><br>
                                  <p>We are processing your request... please do not close this window and do not click on the submission button again, until this message disappears!</p>
+                                 <p>If you see this website for a long time or an (timeout) error message, please check that the sizes of the uploaded files are smaller than the allowed sizes.</p>
                               </div>
                            </td>
                            <td><g:img dir="images" file="spacer.jpg" /></td>
