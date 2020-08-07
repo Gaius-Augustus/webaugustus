@@ -355,7 +355,7 @@ class TrainingController {
         // upload of est file
         if (uploadedEstFile != null && !uploadedEstFile.empty) {
             // check file size
-            def long preUploadSize = uploadedEstFile.getSize()
+            long preUploadSize = uploadedEstFile.getSize()
             if(preUploadSize > maxButtonFileSize){
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The selected cDNA file was bigger than ${maxButtonFileSize}.")
                 deleteDir()
@@ -598,7 +598,7 @@ class TrainingController {
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded protein file ${uploadedProteinFile.originalFilename} was renamed to protein.fa and moved to ${dirName}")
             // check fasta format
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), true)
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), Utilities.FastaDataType.PROTEIN)
             
             if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
@@ -686,7 +686,7 @@ class TrainingController {
             if ( !Utilities.isSupportedCompressMode(trainingInstance.protein_ftp_link) ) {
                 // checking web file for protein fasta format:
                 def URL url = new URL("${trainingInstance.protein_ftp_link}");
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url, true)
+                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url, Utilities.FastaDataType.PROTEIN)
                 
                 if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
                     Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")

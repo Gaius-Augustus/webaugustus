@@ -358,7 +358,7 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein file upload finished, file stored as protein.fa at ${dirName}")
 
             // check for fasta protein format:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), true)
+            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), Utilities.FastaDataType.PROTEIN)
             
             if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");

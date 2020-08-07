@@ -12,7 +12,14 @@ class Utilities {
         VALID_FASTA,
         NO_VALID_FASTA,
         NO_PROTEIN_FASTA,
-        CONTAINS_METACHARACTERS        
+        CONTAINS_METACHARACTERS
+    }
+    
+    public enum FastaDataType {
+        COMMON,
+        GENOME,
+        EST,
+        PROTEIN
     }
     
     /** 
@@ -22,7 +29,7 @@ class Utilities {
      * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
     static Utilities.FastaStatus checkFastaFormat(File file) {
-        return checkFastaFormat(file, null, false)
+        return checkFastaFormat(file, null, Utilities.FastaDataType.COMMON)
     }
     
     /** 
@@ -33,18 +40,18 @@ class Utilities {
      * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
     static Utilities.FastaStatus checkFastaFormat(File file, List seqNames) {
-        return checkFastaFormat(file, seqNames, false)
+        return checkFastaFormat(file, seqNames, Utilities.FastaDataType.COMMON)
     }
     
     /** 
      * Check if the fasta file at the specified url is well formatted.
      * 
      * @param file
-     * @param isProtein true for protein fasta, false for gene fasta
+     * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
      * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
-    static Utilities.FastaStatus checkFastaFormat(File file, boolean isProtein) {
-        return checkFastaFormat(file, null, isProtein)
+    static Utilities.FastaStatus checkFastaFormat(File file, Utilities.FastaDataType fastaType) {
+        return checkFastaFormat(file, null, fastaType)
     }
     
     /** 
@@ -52,10 +59,10 @@ class Utilities {
      * 
      * @param file
      * @param seqNames add header lines to this list
-     * @param isProtein true for protein fasta, false for gene fasta
+     * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
      * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
-    static Utilities.FastaStatus checkFastaFormat(File file, List seqNames, boolean isProtein) {
+    static Utilities.FastaStatus checkFastaFormat(File file, List seqNames, Utilities.FastaDataType fastaType) {
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
         int allAminoAcidsCounter = 0
         boolean metacharacterFlag = false
@@ -90,7 +97,7 @@ class Utilities {
                 }
             }
             else {
-                if (isProtein) {
+                if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
                     if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]*$/) ) {
                         fastaFlag = false
                         return;
@@ -109,7 +116,7 @@ class Utilities {
         if (metacharacterFlag) {
             return Utilities.FastaStatus.CONTAINS_METACHARACTERS
         }        
-        if (isProtein) {
+        if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
             if (allAminoAcidsCounter == 0) {
                 return Utilities.FastaStatus.NO_VALID_FASTA
             }
@@ -133,7 +140,7 @@ class Utilities {
      * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
     static Utilities.FastaStatus checkFastaFormat(URL url) {
-        return checkFastaFormat(url, false)
+        return checkFastaFormat(url, Utilities.FastaDataType.COMMON)
     }
     
     /** 
@@ -141,10 +148,10 @@ class Utilities {
      * Checks only the head of the file.
      * 
      * @param url
-     * @param isProtein true for protein fasta, false for gene fasta
+     * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
      * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
      */
-    static Utilities.FastaStatus checkFastaFormat(URL url, boolean isProtein) {
+    static Utilities.FastaStatus checkFastaFormat(URL url, Utilities.FastaDataType fastaType) {
         URLConnection uc = url.openConnection()
         BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
@@ -153,7 +160,7 @@ class Utilities {
             int charCounter = 1
             int inputInt
             char inputChar
-            int maxCharacters = isProtein ? 2000 : 1000
+            int maxCharacters = Utilities.FastaDataType.PROTEIN.equals(fastaType) ? 2000 : 1000
             
             while ( ((inputInt = br.read()) != -1) && (charCounter <= maxCharacters)) {
                 if (inputInt == 65279) { //BOM
@@ -170,7 +177,7 @@ class Utilities {
                     // if the first character is not '>'
                     return Utilities.FastaStatus.NO_VALID_FASTA
                 }
-                else if (isProtein) {
+                else if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
                     if ( !(inputChar =~ /[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]/) ) {
                         // if not contains a valid character
                         return Utilities.FastaStatus.NO_VALID_FASTA
@@ -193,7 +200,7 @@ class Utilities {
             br.close()
         }
         
-        if (isProtein) {
+        if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
             double cRatio = allAminoAcidsCounter == 0 ? 1 : ((double) cytosinCounter)/allAminoAcidsCounter
             if (cRatio >= 0.05) {
                 // check that file contains protein sequence, here defined as not more than 5 percent C or c
