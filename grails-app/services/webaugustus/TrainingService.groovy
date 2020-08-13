@@ -25,7 +25,7 @@ class TrainingService extends AbstractWebaugustusService {
         Thread.start(getServiceName()+"WorkerThread pre start", {
                 sleep(60000) // start training worker thread a bit after prediction worker thread
                 startWorkerThread()
-        })        
+        })
     }
 
     // This is where uploaded files and results will be saved.
@@ -841,7 +841,7 @@ class TrainingService extends AbstractWebaugustusService {
      * delete the email address after the job is done or aborted
      */
     @Transactional
-    protected void deleteEmailAddress(AbstractWebAugustusDomainClass instance) {
+    protected void deleteEmailAddressAfterJobEnd(AbstractWebAugustusDomainClass instance) {
         Training trainingInstance = (Training) instance
         if (trainingInstance.email_adress != null && 
             ("4".equals(trainingInstance.job_status) || "5".equals(trainingInstance.job_status) || "6".equals(trainingInstance.job_status))) {

@@ -698,7 +698,7 @@ class PredictionService extends AbstractWebaugustusService {
      * delete the email address after the job is done or aborted
      */
     @Transactional
-    protected void deleteEmailAddress(AbstractWebAugustusDomainClass instance) {
+    protected void deleteEmailAddressAfterJobEnd(AbstractWebAugustusDomainClass instance) {
         Prediction predictionInstance = (Prediction) instance
         if (predictionInstance.email_adress != null && 
             ("4".equals(predictionInstance.job_status) || "5".equals(predictionInstance.job_status) || "6".equals(predictionInstance.job_status))) {

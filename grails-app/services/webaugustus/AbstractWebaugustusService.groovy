@@ -164,7 +164,7 @@ abstract class AbstractWebaugustusService {
                             Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
                         }
                         sleep(120000) // just wait a bit for the job to get startet
-                        deleteEmailAddress(instance) // just in case the job was aborted
+                        deleteEmailAddressAfterJobEnd(instance) // just in case the job was aborted
                     }
                 }
                 
@@ -174,7 +174,7 @@ abstract class AbstractWebaugustusService {
                         JobExecution.JobStatus jobStatus = checkJobReadyness(instance)
                         if (isJobDone(jobStatus)) {
                             finishJob(instance, jobStatus)
-                            deleteEmailAddress(instance)
+                            deleteEmailAddressAfterJobEnd(instance)
                         }
                     }
                     catch (Throwable t) {
@@ -265,5 +265,5 @@ abstract class AbstractWebaugustusService {
      * delete the email address after the job is done or aborted
      */
     @Transactional
-    protected abstract void deleteEmailAddress(AbstractWebAugustusDomainClass instance)
+    protected abstract void deleteEmailAddressAfterJobEnd(AbstractWebAugustusDomainClass instance)
 }
