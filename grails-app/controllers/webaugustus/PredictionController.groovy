@@ -1,6 +1,7 @@
 package webaugustus
 
 import org.springframework.validation.FieldError
+import org.springframework.context.MessageSource
 
 /**
  * The class PredictionController controls everything that is related to preparing a job for predicting genes with pre-trained parameters on a novel genome
@@ -19,7 +20,7 @@ class PredictionController {
     static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
     
     def predictionService // inject the bean
-    def messageSource     // inject the messageSource
+    MessageSource messageSource     // inject the messageSource
     // human verification:
     def simpleCaptchaService
     

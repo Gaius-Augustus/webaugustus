@@ -1,6 +1,7 @@
 package webaugustus
 
 import org.springframework.validation.FieldError
+import org.springframework.context.MessageSource
 
 /**
  * The class TrainingController controls everything that is related to preparing a job for training AUGUSTUS through the webserver:
@@ -18,7 +19,7 @@ class TrainingController {
     static allowedMethods = [show: "GET", create: "GET", commit: "POST"] // only POST method invokes commit()
     
     def trainingService // inject the bean
-    def messageSource   // inject the messageSource
+    MessageSource messageSource   // inject the messageSource
     // human verification:
     def simpleCaptchaService
     

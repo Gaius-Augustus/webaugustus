@@ -78,26 +78,38 @@ abstract class AbstractWebaugustusService {
     }
     
     public void sendMailToUser(String email_address, String subjectString, String message) {
-        if (email_address != null) {
-            String footer = getEmailFooter()
-            String msgStr = "Hello!\n\n${message}Best regards,\n\nthe AUGUSTUS webserver team${getEmailFooter()}"
+        String msgStr = "Hello!\n\n${message}Best regards,\n\nthe AUGUSTUS webserver team"
+        sendMailInternal(email_address, subjectString, msgStr, "User")
+    }
+    
+    public void sendMailToAdmin(String subjectString, String message) {
+        sendMailInternal(getAdminEmailAddress(), subjectString, message, "Admin")
+    }
+    
+    private void sendMailInternal(String email_address, String subjectString, String message, String receiver) {
+        if (email_address == null) {
+            return
+        
+        }
+        String msgStr = message + getEmailFooter()
+        try {
             sendMail {
                 to "${email_address}"
                 subject "${subjectString}"
                 text "${msgStr}"
             }
         }
-    }
-    
-    public void sendMailToAdmin(String subjectString, String message) {
-        String email_address = getAdminEmailAddress()
-        String footer = getEmailFooter()
-        String msgStr = "${message}${footer}"
-        sendMail {
-            to "${email_address}"
-            subject "${subjectString}"
-            text "${msgStr}"
-        }
+        catch (Throwable t) {
+            System.err.println("Exception catched in sendMailTo${receiver}, service=" + getServiceName())
+            System.err.println("Exception catched in sendMailTo${receiver}, exceptionMessage=" + t.getMessage())
+            System.err.println("Exception catched in sendMailTo${receiver}, exception=" + t)
+            t.printStackTrace(System.err)
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in sendMailTo${receiver} for email_address=" + email_address)
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in sendMailTo${receiver} for subjectString=" + subjectString)
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in sendMailTo${receiver} for message=" + msgStr)
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in sendMailTo${receiver} for exceptionMessage=" + t.getMessage())
+            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in sendMailTo${receiver} for exception=" + t)                
+        }    
     }
     
     private final Object LOCK = new Object()
