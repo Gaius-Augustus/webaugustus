@@ -383,7 +383,7 @@ mdhdltgladrpglrftvpqikcymkqlltglhychvnqv
                      <div id="protein_file_purpose">
                         <h4><a href="#protein_file_purpose">1.3.2.3 - What the protein file is used for</a></h4>
                      </div>
-                     <p>The protein file is used for generating training gene structures by mapping the protein sequences against the supplied genome sequence. You may e.g. upload a file with protein sequences from a closely related species in order to obtain training genes and AUGUSTUS parameters for the new sspecies whose genome you uploaded.</p>
+                     <p>The protein file is used for generating training gene structures by mapping the protein sequences against the supplied genome sequence. You may e.g. upload a file with protein sequences from a closely related species in order to obtain training genes and AUGUSTUS parameters for the new species whose genome you uploaded.</p>
                      <p><a href="#seitenanfang">
                         <g:img dir="images" file="top.gif" hspace="5" height="4" border="0" width="7" alt="Top of page" />
                         Top of page
