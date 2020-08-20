@@ -3,6 +3,7 @@ package webaugustus
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
 import javax.annotation.PostConstruct
+import org.springframework.context.MessageSource
 
 /**
  * The class TrainingService controls everything that is related to a job for training AUGUSTUS through the webserver:
@@ -167,27 +168,23 @@ class TrainingService extends AbstractWebaugustusService {
             int maxNSeqs = getMaxNSeqs()
             if(nSeqNumber == null || nSeqNumber > maxNSeqs){
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains more than ${maxNSeqs} scaffolds: ${nSeqNumber}. Aborting job.");
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds). This is not allowed.\n\n"
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains more than ${maxNSeqs} scaffolds (${nSeqNumber} scaffolds).\nThis is not allowed.\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
             
             // check for fasta format:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"))
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"),
+                trainingInstance.genome_ftp_link, Utilities.FastaDataType.GENOME, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause the provided genome file\n${trainingInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
+            if (!fastaCheckResult.isValidFasta()) {
+                String errorMessage = fastaCheckResult.getErrorMessage()
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, fastaCheckResult.getErrorMessage().replace("\n", " "));
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name} was aborted\nbecause ${errorMessage}\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The genome file was not fasta. ${dirName} is deleted.")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided genome file\n${trainingInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
-                abortJob(trainingInstance, mailStr)
-                return
-            }
-
+            
             // check gff format
             boolean metacharacterFlag = false
             boolean gffColErrorFlag = false
@@ -284,21 +281,17 @@ class TrainingService extends AbstractWebaugustusService {
                 return
             }
             // check for fasta format:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(estFile)
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(estFile, 
+                trainingInstance.est_ftp_link, Utilities.FastaDataType.EST, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
+            if (!fastaCheckResult.isValidFasta()) {
+                String errorMessage = fastaCheckResult.getErrorMessage()
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, fastaCheckResult.getErrorMessage().replace("\n", " "));
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted\nbecause ${errorMessage}\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The EST/cDNA file was not fasta. ${dirName} is deleted.")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided cDNA file\n${trainingInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
-                abortJob(trainingInstance, mailStr)
-                return
-            }
-
+            
             cmd = ["cksum ${dirName}/est.fa"]
             trainingInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
@@ -358,23 +351,13 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein file upload finished, file stored as protein.fa at ${dirName}")
 
             // check for fasta protein format:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), Utilities.FastaDataType.PROTEIN)
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), 
+                trainingInstance.protein_ftp_link, Utilities.FastaDataType.PROTEIN, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                abortJob(trainingInstance, mailStr)
-                return
-            }
-            if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis suspected to contain DNA instead of protein sequences.\n\n"
-                abortJob(trainingInstance, mailStr)
-                return
-            }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The protein file was not protein fasta.")
-                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted because the provided protein file\n${trainingInstance.protein_ftp_link}\nis not in fasta format.\n\n"
+            if (!fastaCheckResult.isValidFasta()) {
+                String errorMessage = fastaCheckResult.getErrorMessage()
+                Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, fastaCheckResult.getErrorMessage().replace("\n", " "));
+                String mailStr = "Your AUGUSTUS training job ${trainingInstance.accession_id} for species\n${trainingInstance.project_name}\nwas aborted\nbecause ${errorMessage}\n\n"
                 abortJob(trainingInstance, mailStr)
                 return
             }

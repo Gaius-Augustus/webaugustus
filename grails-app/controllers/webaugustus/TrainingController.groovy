@@ -141,6 +141,13 @@ class TrainingController {
             render(view:'create', model:[training:trainingInstance])
         }
         
+        def abortCommit = { errorMessage ->
+            Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Job commit cancelled: " + errorMessage.replace("\n", " "));
+            flash.error = errorMessage.replace("\n", " ")
+            deleteDir()
+            cleanRedirect()
+    	}
+        
         //verify that the submitter is a person
         boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
         if (captchaValid == false) {
@@ -270,20 +277,11 @@ class TrainingController {
                 return
             }
             // check for fasta format
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"))
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"),
+                uploadedGenomeFile.originalFilename, Utilities.FastaDataType.GENOME, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
-                deleteDir()
-                flash.error = "The genome file contains metacharacters (*, ?, ...). This is not allowed."
-                cleanRedirect()
-                return
-            }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The genome file was not fasta.")
-                deleteDir()
-                flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
-                cleanRedirect()
+            if (!fastaCheckResult.isValidFasta()) {
+                abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
             cmd = ["cksum ${dirName}/genome.fa"]
@@ -338,14 +336,11 @@ class TrainingController {
             confirmationString = "${confirmationString}Genome file: ${trainingInstance.genome_ftp_link}\n"
             // checking web file for DNA fasta format:
             if ( !Utilities.isSupportedCompressMode(trainingInstance.genome_ftp_link) ) {
-                URL url = new URL("${trainingInstance.genome_ftp_link}")
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(
+                    trainingInstance.genome_ftp_link, Utilities.FastaDataType.GENOME, messageSource)
                 
-                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The first 20 lines in genome file are not fasta.")
-                    deleteDir()
-                    flash.error = "Genome file ${trainingInstance.genome_ftp_link} is not in DNA fasta format."
-                    cleanRedirect()
+                if (!fastaCheckResult.isValidFasta()) {
+                    abortCommit(fastaCheckResult.getErrorMessage())
                     return
                 }
             }else{
@@ -387,23 +382,14 @@ class TrainingController {
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "est.fa"), 
+                uploadedEstFile.originalFilename, Utilities.FastaDataType.EST, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
-                deleteDir()
-                flash.error = "The cDNA file contains metacharacters (*, ?, ...). This is not allowed."
-                cleanRedirect()
+            if (!fastaCheckResult.isValidFasta()) {
+                abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
-                deleteDir()
-                flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
-                cleanRedirect()
-                return
-            }
-
+            
             def cmd = ["cksum ${dirName}/est.fa"]
             trainingInstance.est_cksum = Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.est_size =  Utilities.executeForLong(logFile, verb, trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
@@ -456,14 +442,11 @@ class TrainingController {
 
             // checking web file for DNA fasta format
             if ( !Utilities.isSupportedCompressMode(trainingInstance.est_ftp_link) ) {
-                URL url = new URL("${trainingInstance.est_ftp_link}")
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(
+                    trainingInstance.est_ftp_link, Utilities.FastaDataType.EST, messageSource)
                 
-                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The cDNA file was not fasta.")
-                    deleteDir()
-                    flash.error = "cDNA file ${trainingInstance.est_ftp_link} is not in DNA fasta format."
-                    cleanRedirect()
+                if (!fastaCheckResult.isValidFasta()) {
+                    abortCommit(fastaCheckResult.getErrorMessage())
                     return
                 }
             }else{
@@ -599,27 +582,11 @@ class TrainingController {
             }
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Uploaded protein file ${uploadedProteinFile.originalFilename} was renamed to protein.fa and moved to ${dirName}")
             // check fasta format
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), Utilities.FastaDataType.PROTEIN)
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "protein.fa"), 
+                uploadedProteinFile.originalFilename, Utilities.FastaDataType.PROTEIN, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file contains metacharacters (e.g. * or ?).");
-                deleteDir()
-                flash.error = "The protein file ${uploadedProteinFile.originalFilename} contains metacharacters (*, ?, ...). This is not allowed."
-                cleanRedirect()
-                return
-            }
-            if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
-                deleteDir()
-                flash.error = "The protein file ${uploadedProteinFile.originalFilename} was not recognized as a protein file. It may be DNA file. The training job was not started. Please contact augustus@uni-greifswald.de if you are completely sure this file is a protein fasta file."
-                cleanRedirect()
-                return
-            }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
-                deleteDir()
-                flash.error = "The protein file ${uploadedProteinFile.originalFilename} is not in protein fasta format."
-                cleanRedirect()
+            if (!fastaCheckResult.isValidFasta()) {
+                abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
             
@@ -686,21 +653,11 @@ class TrainingController {
 
             if ( !Utilities.isSupportedCompressMode(trainingInstance.protein_ftp_link) ) {
                 // checking web file for protein fasta format:
-                def URL url = new URL("${trainingInstance.protein_ftp_link}");
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url, Utilities.FastaDataType.PROTEIN)
+                Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(
+                    trainingInstance.protein_ftp_link, Utilities.FastaDataType.PROTEIN, messageSource)
                 
-                if (Utilities.FastaStatus.NO_PROTEIN_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not recognized as protein file (probably DNA sequence).")
-                    deleteDir()
-                    flash.error = "Protein file ${trainingInstance.protein_ftp_link} does not contain protein sequences."
-                    cleanRedirect()
-                    return
-                }
-                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "The protein file was not protein fasta.")
-                    deleteDir()
-                    flash.error = "Protein file ${trainingInstance.protein_ftp_link} is not in fasta format."
-                    cleanRedirect()
+                if (!fastaCheckResult.isValidFasta()) {
+                    abortCommit(fastaCheckResult.getErrorMessage())
                     return
                 }
             }else{

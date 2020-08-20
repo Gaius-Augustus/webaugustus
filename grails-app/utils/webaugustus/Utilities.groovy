@@ -1,6 +1,8 @@
 package webaugustus
 
 import org.apache.commons.lang.StringEscapeUtils
+import org.springframework.context.i18n.LocaleContextHolder
+import org.springframework.context.MessageSource
 
 /**
  *
@@ -8,69 +10,130 @@ import org.apache.commons.lang.StringEscapeUtils
  */
 class Utilities {
     
+    /**
+     * 
+     * TO_LONG_EST_HEADER: the part of an est fasta file header until the first space MUST be less or equal to 90 characters,
+     * this is a limitation of the PASA pipeline, seqclean allows max 510 characters, the PASA MySQL database max 100 (minus the 
+     * name of the alignment program - so choose 90 to be safe)
+     */
     public enum FastaStatus {
         VALID_FASTA,
         NO_VALID_FASTA,
         NO_PROTEIN_FASTA,
-        CONTAINS_METACHARACTERS
+        CONTAINS_METACHARACTERS,
+        TO_LONG_EST_HEADER,
+        SEQUENCE_NAMES_NOT_UNIQUE
     }
     
     public enum FastaDataType {
-        COMMON,
         GENOME,
         EST,
         PROTEIN
     }
     
-    /** 
-     * Check if the fasta file at the specified url is a well formatted gene fasta file.
-     *
-     * @param file
-     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
-     */
-    static Utilities.FastaStatus checkFastaFormat(File file) {
-        return checkFastaFormat(file, null, Utilities.FastaDataType.COMMON)
+    private static final VALID_FASTA_CHECK_RESULT = new FastaCheckResult()
+    
+    public static class FastaCheckResult {
+        final FastaStatus status
+        String errorMessage
+        
+        private FastaCheckResult() {
+            this(FastaStatus.VALID_FASTA)
+        }
+        
+        public FastaCheckResult(FastaStatus status) {
+            this(status, null)
+        }
+        
+        public FastaCheckResult(FastaStatus status, String errorMessage) {
+            this.status = status
+            this.errorMessage = errorMessage
+        }
+        
+        public boolean isValidFasta() {
+            return FastaStatus.VALID_FASTA.equals(status)
+        }
+        
+        public FastaStatus getFastaStatus() {
+            return status
+        }
+        
+        public boolean hasErrorMessage() {
+            return errorMessage != null
+        }
+        
+        public String getErrorMessage() {
+            return errorMessage
+        }
+        
     }
     
-    /** 
-     * Check if the fasta file at the specified url is a well formatted gene fasta file.
-     *
-     * @param file
-     * @param seqNames add header lines to this list
-     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
-     */
-    static Utilities.FastaStatus checkFastaFormat(File file, List seqNames) {
-        return checkFastaFormat(file, seqNames, Utilities.FastaDataType.COMMON)
+    private static getFileTypeName(Utilities.FastaDataType fastaType) {
+        switch (fastaType) {
+            case FastaDataType.GENOME:
+                return "genome"
+            case FastaDataType.EST:                
+                return"cDNA"
+            case FastaDataType.PROTEIN:                
+                return "protein"
+            default:
+                return""
+        }
+    }
+    
+     private static getSequenceTypeName(Utilities.FastaDataType fastaType) {
+        switch (fastaType) {
+            case FastaDataType.GENOME:
+            case FastaDataType.EST:                
+                return"DNA"
+            case FastaDataType.PROTEIN:                
+                return "protein"
+            default:
+                return""
+        }
     }
     
     /** 
      * Check if the fasta file at the specified url is well formatted.
      * 
      * @param file
+     * @param origFileName the file name at upload time
      * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
-     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     * @return FastaCheckResult with status VALID_FASTA, CONTAINS_METACHARACTERS, SEQUENCE_NAMES_NOT_UNIQUE, NO_VALID_FASTA 
+     * or NO_PROTEIN_FASTA and eventually an error message
      */
-    static Utilities.FastaStatus checkFastaFormat(File file, Utilities.FastaDataType fastaType) {
-        return checkFastaFormat(file, null, fastaType)
+    static Utilities.FastaCheckResult checkFastaFormat(File file, String origFileName, Utilities.FastaDataType fastaType, MessageSource messageSource) {
+        return checkFastaFormat(file, origFileName, null, fastaType, messageSource)
     }
     
     /** 
      * Check if the fasta file at the specified url is well formatted.
      * 
      * @param file
+     * @param origFileName the file name at upload time
      * @param seqNames add header lines to this list
      * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
-     * @return VALID_FASTA, CONTAINS_METACHARACTERS, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     * @return FastaCheckResult with status VALID_FASTA, CONTAINS_METACHARACTERS, SEQUENCE_NAMES_NOT_UNIQUE, NO_VALID_FASTA 
+     * or NO_PROTEIN_FASTA and eventually an error message
      */
-    static Utilities.FastaStatus checkFastaFormat(File file, List seqNames, Utilities.FastaDataType fastaType) {
+    static Utilities.FastaCheckResult checkFastaFormat(File file, String origFileName, List seqNames, Utilities.FastaDataType fastaType, MessageSource messageSource) {
+        String fileType = getFileTypeName(fastaType)
+        String sequenceType = getSequenceTypeName(fastaType)
+        
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
         int allAminoAcidsCounter = 0
         boolean metacharacterFlag = false
+        String metacharacter = null
         boolean fastaFlag = true
+        boolean toLongEstHeader = false
+        String notUniqueId = null
+        Set uniqueIdSet = [] as HashSet
         boolean checkFirstLineStart = true
+        boolean checkProtein = Utilities.FastaDataType.PROTEIN.equals(fastaType)
+        boolean checkEst = Utilities.FastaDataType.EST.equals(fastaType)
         
         file.eachLine{line ->
-            if (metacharacterFlag || line.isEmpty()) {
+            if (notUniqueId != null || metacharacterFlag || line.isEmpty()) {
                 return
             }
             if (checkFirstLineStart) {
@@ -79,8 +142,14 @@ class Utilities {
                     fastaFlag = false
                 }
             }
-            if (line =~ /\*/ || line =~ /\?/){
+            if (line.contains("*")) {
                 metacharacterFlag = true
+                metacharacter = "*"
+                return
+            }
+            if (line.contains("?")) {
+                metacharacterFlag = true
+                metacharacter = "?"
                 return
             }
             if (!fastaFlag) {
@@ -95,9 +164,40 @@ class Utilities {
                 if (seqNames != null) {
                     seqNames << line
                 }
+                String id = line.split("\\s", 2)[0] // cut line at first white space
+                if (!uniqueIdSet.add(id)) {
+                    notUniqueId = id
+                    fastaFlag = false
+                    return
+                }
+                if (checkEst) {
+                    if (id.size() > 90) {
+                        // seqclean allows up to 510 characters, PASA mysql database just 100 but store the aligment program 
+                        // name (gmap-) in some fields to - so 90 should be safe
+                        toLongEstHeader = true
+                        fastaFlag = false
+                        return
+                    }
+                    if (id.contains("[") || id.contains("]")) {
+                        // PASA script "assemble_clusters.dbi" throws Error "Didn't obtain assemblies describing all maximal assemblies."
+                        // if the ID contains square brackets
+                        // search internet for "comp24382_c0_seq1_FPKM_all_18.154_FPKM_rel_18.154_len_304_path_[0]"
+                        // - this is the best hit about this constraint
+                        metacharacterFlag = true
+                        metacharacter = "[]"
+                        return
+                    }
+                    if (id.contains(",")) {
+                        // PASA script "assemble_clusters.dbi" throws Error ..."accession contains comma(s).  This is not allowed."
+                        // if the ID contain a comma
+                        metacharacterFlag = true
+                        metacharacter = ","
+                        return
+                    }
+                }
             }
             else {
-                if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
+                if (checkProtein) {
                     if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]*$/) ) {
                         fastaFlag = false
                         return;
@@ -113,34 +213,35 @@ class Utilities {
                 }
             }
         }
+        if (notUniqueId != null) {
+            return new FastaCheckResult(FastaStatus.SEQUENCE_NAMES_NOT_UNIQUE,
+                messageSource.getMessage('errormessage.no_unique_sequence_names', [ fileType, origFileName, notUniqueId ] as Object[], 'SEQUENCE_NAMES_NOT_UNIQUE', LocaleContextHolder.locale) )
+        }
         if (metacharacterFlag) {
-            return Utilities.FastaStatus.CONTAINS_METACHARACTERS
-        }        
-        if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
+            return new FastaCheckResult(FastaStatus.CONTAINS_METACHARACTERS, 
+                messageSource.getMessage('errormessage.metacharacters', [ fileType, origFileName, metacharacter ] as Object[], 'CONTAINS_METACHARACTERS', LocaleContextHolder.locale) )
+        }
+        if (toLongEstHeader) {
+            return new FastaCheckResult(FastaStatus.TO_LONG_EST_HEADER,
+                messageSource.getMessage('errormessage.est.header_exceed_90_characters', [ fileType, origFileName ] as Object[], 'TO_LONG_EST_HEADER', LocaleContextHolder.locale) )
+        }
+        if (checkProtein) {
             if (allAminoAcidsCounter == 0) {
-                return Utilities.FastaStatus.NO_VALID_FASTA
+                return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                    messageSource.getMessage('errormessage.not_fasta', [ fileType, origFileName, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
             }
             double cRatio = ((double) cytosinCounter)/allAminoAcidsCounter
             if (cRatio >= 0.05) {
                 // check that file contains protein sequence, here defined as not more than 5 percent C or c
-                return Utilities.FastaStatus.NO_PROTEIN_FASTA
+                return new FastaCheckResult(FastaStatus.NO_PROTEIN_FASTA,
+                    messageSource.getMessage('errormessage.no_protein_fasta', [ origFileName ] as Object[], 'NO_PROTEIN_FASTA', LocaleContextHolder.locale) )
             }
         }
         if (!fastaFlag) {
-            return Utilities.FastaStatus.NO_VALID_FASTA
+            return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                messageSource.getMessage('errormessage.not_fasta', [ fileType, origFileName, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
         }
-        return Utilities.FastaStatus.VALID_FASTA
-    }
-    
-    /** 
-     * Check if the fasta file at the specified url is a well formatted gene fasta file.
-     * Checks only the head of the file.
-     * 
-     * @param url
-     * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
-     */
-    static Utilities.FastaStatus checkFastaFormat(URL url) {
-        return checkFastaFormat(url, Utilities.FastaDataType.COMMON)
+        return VALID_FASTA_CHECK_RESULT
     }
     
     /** 
@@ -148,19 +249,28 @@ class Utilities {
      * Checks only the head of the file.
      * 
      * @param url
+     * @param ftp_link the name at upload time
      * @param fastaType the data which is in the fasta file: COMMOM, GENOME, PROTEIN, GENE
-     * @return VALID_FASTA, NO_VALID_FASTA or NO_PROTEIN_FASTA
+     * @return FastaCheckResult with status VALID_FASTA, CONTAINS_METACHARACTERS, SEQUENCE_NAMES_NOT_UNIQUE, NO_VALID_FASTA 
+     * or NO_PROTEIN_FASTA and eventually an error message
      */
-    static Utilities.FastaStatus checkFastaFormat(URL url, Utilities.FastaDataType fastaType) {
+    static Utilities.FastaCheckResult checkFastaFormat(String ftp_link, Utilities.FastaDataType fastaType, MessageSource messageSource) {
+        String fileType = getFileTypeName(fastaType)
+        String sequenceType = getSequenceTypeName(fastaType)
+        URL url = new URL(ftp_link)
         URLConnection uc = url.openConnection()
         BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream()))
         int cytosinCounter = 0 // C is cysteine in amino acids, and cytosine in DNA.
         int allAminoAcidsCounter = 0
+        boolean checkProtein = Utilities.FastaDataType.PROTEIN.equals(fastaType)
+        boolean checkEst = Utilities.FastaDataType.EST.equals(fastaType)
+        Set uniqueIdSet = [] as HashSet
+        
         try{
             int charCounter = 1
             int inputInt
             char inputChar
-            int maxCharacters = Utilities.FastaDataType.PROTEIN.equals(fastaType) ? 2000 : 1000
+            int maxCharacters = checkProtein ? 2000 : 1000
             
             while ( ((inputInt = br.read()) != -1) && (charCounter <= maxCharacters)) {
                 if (inputInt == 65279) { //BOM
@@ -171,16 +281,47 @@ class Utilities {
                     continue;
                 }
                 if (inputChar =~ />/) {
-                    br.readLine() // no further checks until end of this line
+                    String line = br.readLine() // no further checks until end of this line
+                    String id = line.split("\\s", 2)[0] // cut line at first white space
+                    if (!uniqueIdSet.add(id)) {
+                        return new FastaCheckResult(FastaStatus.SEQUENCE_NAMES_NOT_UNIQUE,
+                            messageSource.getMessage('errormessage.no_unique_sequence_names', [ fileType, ftp_link, id ] as Object[], 'SEQUENCE_NAMES_NOT_UNIQUE', LocaleContextHolder.locale) )
+                    }
+                    if (checkEst) {                        
+                        if (id.size() > 90) { 
+                            // seqclean allows up to 510 characters, PASA mysql database just 100 but store the aligment program 
+                            // name (gmap-) in some fields to - so 90 should be safe
+                            // search internet for "Which is longer than the pasa mysql database field length, which truncates it"
+                            // - this is the best hit about this constraint
+                            return new FastaCheckResult(FastaStatus.TO_LONG_EST_HEADER,
+                                messageSource.getMessage('errormessage.est.header_exceed_90_characters', [ fileType, ftp_link ] as Object[], 'TO_LONG_EST_HEADER', LocaleContextHolder.locale) )
+                        }
+                        if (id.contains("[") || id.contains("]")) {
+                            // PASA script "assemble_clusters.dbi" throws Error "Didn't obtain assemblies describing all maximal assemblies."
+                            // if the ID contains square brackets
+                            // search internet for "comp24382_c0_seq1_FPKM_all_18.154_FPKM_rel_18.154_len_304_path_[0]"
+                            // - this is the best hit about this constraint
+                            return new FastaCheckResult(FastaStatus.CONTAINS_METACHARACTERS, 
+                                messageSource.getMessage('errormessage.metacharacters', [ fileType, ftp_link, "[]" ] as Object[], 'CONTAINS_METACHARACTERS', LocaleContextHolder.locale) )
+                        }
+                        if (id.contains(",")) {
+                            // PASA script "assemble_clusters.dbi" throws Error ..."accession contains comma(s).  This is not allowed."
+                            // if the ID contain a comma
+                            return new FastaCheckResult(FastaStatus.CONTAINS_METACHARACTERS, 
+                                messageSource.getMessage('errormessage.metacharacters', [ fileType, ftp_link, "," ] as Object[], 'CONTAINS_METACHARACTERS', LocaleContextHolder.locale) )
+                        }
+                    }
                 }
                 else if (charCounter == 1) {
                     // if the first character is not '>'
-                    return Utilities.FastaStatus.NO_VALID_FASTA
+                    return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                        messageSource.getMessage('errormessage.not_fasta', [ fileType, ftp_link, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
                 }
                 else if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
                     if ( !(inputChar =~ /[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]/) ) {
                         // if not contains a valid character
-                        return Utilities.FastaStatus.NO_VALID_FASTA
+                        return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                            messageSource.getMessage('errormessage.not_fasta', [ fileType, ftp_link, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
                     }
                     allAminoAcidsCounter++;
                     if (inputChar =~ /[Cc]/) {
@@ -190,7 +331,8 @@ class Utilities {
                 else {
                     if ( !(inputChar =~ /^[AaTtGgCcHhXxRrYyWwSsMmKkBbVvDdNnUu]/) ) {
                         // if not contains a valid character
-                        return Utilities.FastaStatus.NO_VALID_FASTA
+                        return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                            messageSource.getMessage('errormessage.not_fasta', [ fileType, ftp_link, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
                     }
                 }
                 charCounter++;
@@ -200,15 +342,16 @@ class Utilities {
             br.close()
         }
         
-        if (Utilities.FastaDataType.PROTEIN.equals(fastaType)) {
+        if (checkProtein) {
             double cRatio = allAminoAcidsCounter == 0 ? 1 : ((double) cytosinCounter)/allAminoAcidsCounter
             if (cRatio >= 0.05) {
                 // check that file contains protein sequence, here defined as not more than 5 percent C or c
-                return Utilities.FastaStatus.NO_PROTEIN_FASTA
+                return new FastaCheckResult(FastaStatus.NO_PROTEIN_FASTA,
+                    messageSource.getMessage('errormessage.no_protein_fasta', [ ftp_link ] as Object[], 'NO_PROTEIN_FASTA', LocaleContextHolder.locale) )
             }
         }
         
-        return Utilities.FastaStatus.VALID_FASTA
+        return VALID_FASTA_CHECK_RESULT
     }
     
     /**
@@ -254,7 +397,7 @@ class Utilities {
             }                    
             if (!metacharacterFlag && (line.contains("*") || line.contains("?"))) {
                 metacharacterFlag = true
-                errors.add("Hints file \"${origFileName}\" contains metacharacters (*, ?, ...). This is not allowed.")
+                errors.add("Hints file \"${origFileName}\" contains metacharacters (* ? ...). This is not allowed.")
             }
 
             if (gffColErrorFlag && gffNameErrorFlag && gffSourceErrorFlag && gffFeatureErrorFlag) {

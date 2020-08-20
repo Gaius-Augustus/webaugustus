@@ -3,6 +3,7 @@ package webaugustus
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
 import javax.annotation.PostConstruct
+import org.springframework.context.MessageSource
 
 /**
  * The class PredictionService controls everything that is related to a job for predicting genes with pre-trained parameters on a novel genome
@@ -169,17 +170,13 @@ class PredictionService extends AbstractWebaugustusService {
 
             // check for fasta format & get seq names for gff validation:
             def seqNames = []
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), seqNames)
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), 
+                predictionInstance.genome_ftp_link, seqNames, Utilities.FastaDataType.GENOME, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
-                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
-                abortJob(predictionInstance, mailStr)
-                return
-            }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The genome file was not fasta.")
-                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided genome file\n${predictionInstance.genome_ftp_link}\nwas not in DNA fasta format.\n\n"
+            if (!fastaCheckResult.isValidFasta()) {
+                String errorMessage = fastaCheckResult.getErrorMessage()
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, fastaCheckResult.getErrorMessage().replace("\n", " "));
+                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause ${errorMessage}\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
@@ -230,21 +227,17 @@ class PredictionService extends AbstractWebaugustusService {
             }
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "EST/cDNA file upload finished, file stored as est.fa at ${dirName}")
             // check for fasta format:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
-           
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).");
-                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause the provided cDNA file\n${predictionInstance.est_ftp_link}\ncontains metacharacters (e.g. * or ?). This is not allowed.\n\n"
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "est.fa"),
+                predictionInstance.est_ftp_link, Utilities.FastaDataType.EST, messageSource)
+            
+            if (!fastaCheckResult.isValidFasta()) {
+                String errorMessage = fastaCheckResult.getErrorMessage()
+                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, fastaCheckResult.getErrorMessage().replace("\n", " "));
+                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted\nbecause ${errorMessage}\n\n"
                 abortJob(predictionInstance, mailStr)
                 return
             }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The EST/cDNA file was not fasta.")
-                String mailStr = "Your AUGUSTUS prediction job ${predictionInstance.accession_id} was aborted because the provided cDNA file\n${predictionInstance.est_ftp_link}\nwas not in DNA fasta format.\n\n"
-                abortJob(predictionInstance, mailStr)
-                return
-            }
-
+            
             cmd = ["cksum ${dirName}/est.fa"]
             predictionInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")

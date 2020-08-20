@@ -144,6 +144,13 @@ class PredictionController {
             render(view:'create', model:[prediction:predictionInstance])
         }
         
+        def abortCommit = { errorMessage ->
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job commit cancelled: " + errorMessage.replace("\n", " "));
+            flash.error = errorMessage.replace("\n", " ")
+            deleteDir()
+            cleanRedirect()
+    	}
+        
         //verify that the submitter is a person
         boolean captchaValid = simpleCaptchaService.validateCaptcha(params.captcha)
         if (captchaValid == false) {
@@ -525,20 +532,11 @@ class PredictionController {
             }
 
             // check for fasta format & extract fasta headers for gff validation:
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), seqNames)
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "genome.fa"), 
+                uploadedGenomeFile.originalFilename, seqNames, Utilities.FastaDataType.GENOME, messageSource)
             
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file contains metacharacters (e.g. * or ?).");
-                deleteDir()
-                flash.error = "Genome file contains metacharacters (*, ?, ...). This is not allowed."
-                cleanRedirect()
-                return
-            }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The genome file was not fasta.")
-                deleteDir()
-                flash.error = "Genome file ${uploadedGenomeFile.originalFilename} is not in DNA fasta format."
-                cleanRedirect()
+            if (!fastaCheckResult.isValidFasta()) {
+                abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
             cmd = ["cksum ${dirName}/genome.fa"]
@@ -592,14 +590,11 @@ class PredictionController {
 
             // checking web file for DNA fasta format:
             if ( !Utilities.isSupportedCompressMode(predictionInstance.genome_ftp_link) ) {
-                URL url = new URL("${predictionInstance.genome_ftp_link}");
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(
+                    predictionInstance.genome_ftp_link, Utilities.FastaDataType.GENOME, messageSource)
                 
-                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The first 20 lines in genome file are not fasta.")
-                    deleteDir()
-                    flash.error = "Genome file ${predictionInstance.genome_ftp_link} is not in DNA fasta format."
-                    cleanRedirect()
+                if (!fastaCheckResult.isValidFasta()) {
+                    abortCommit(fastaCheckResult.getErrorMessage())
                     return
                 }
             }else{
@@ -642,23 +637,14 @@ class PredictionController {
             }
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Uploaded EST file ${uploadedEstFile.originalFilename} was renamed to est.fa and moved to ${dirName}")
             // check fasta format
-            Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(new File(projectDir, "est.fa"))
-           
-            if (Utilities.FastaStatus.CONTAINS_METACHARACTERS.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file contains metacharacters (e.g. * or ?).")
-                deleteDir()
-                flash.error = "cDNA file contains metacharacters (*, ?, ...). This is not allowed."
-                cleanRedirect()
+            Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(new File(projectDir, "est.fa"),
+                uploadedEstFile.originalFilename, Utilities.FastaDataType.EST, messageSource)
+            
+            if (!fastaCheckResult.isValidFasta()) {
+                abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
-            if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
-                deleteDir()
-                flash.error = "cDNA file ${uploadedEstFile.originalFilename} is not in DNA fasta format."
-                cleanRedirect()
-                return
-            }
-
+            
             def cmd = ["cksum ${dirName}/est.fa"]
             predictionInstance.est_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.est_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
@@ -710,14 +696,11 @@ class PredictionController {
 
             // checking web file for DNA fasta format
             if ( !Utilities.isSupportedCompressMode(predictionInstance.est_ftp_link) ) {
-                URL url = new URL("${predictionInstance.est_ftp_link}")
-                Utilities.FastaStatus fastaStatus = Utilities.checkFastaFormat(url)
+                Utilities.FastaCheckResult fastaCheckResult = Utilities.checkFastaFormat(
+                    predictionInstance.est_ftp_link, Utilities.FastaDataType.EST, messageSource)
                 
-                if (!Utilities.FastaStatus.VALID_FASTA.equals(fastaStatus)) {
-                    Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "The cDNA file was not fasta.")
-                    deleteDir()
-                    flash.error = "cDNA file ${predictionInstance.est_ftp_link} is not in DNA fasta format."
-                    cleanRedirect()
+                if (!fastaCheckResult.isValidFasta()) {
+                    abortCommit(fastaCheckResult.getErrorMessage())
                     return
                 }
             }else{
