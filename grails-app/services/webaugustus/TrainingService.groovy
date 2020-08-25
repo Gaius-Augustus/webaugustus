@@ -449,26 +449,28 @@ class TrainingService extends AbstractWebaugustusService {
         String cmdStr = "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl --genome=${dirName}/genome.fa --species=${trainingInstance.accession_id} "
         // this has been checked, works.
         if (estExistsFlag && !proteinExistsFlag && !structureExistsFlag) {
-            cmdStr += "--cdna=${dirName}/est.fa --pasa --useGMAPforPASA -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--cdna=${dirName}/est.fa --pasa --useGMAPforPASA "
             // this is currently tested
         }else if (!estExistsFlag && !proteinExistsFlag && structureExistsFlag) {
-            cmdStr += "--trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--trainingset=${dirName}/training-gene-structure.gff "
             // this is currently tested
         }else if (!estExistsFlag && proteinExistsFlag && !structureExistsFlag) {
-            cmdStr += "--trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--trainingset=${dirName}/protein.fa "
             // all following commands still need testing
         }else if (estExistsFlag && proteinExistsFlag && !structureExistsFlag) {
-            cmdStr += "--cdna=${dirName}/est.fa --trainingset=${dirName}/protein.fa -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--cdna=${dirName}/est.fa --trainingset=${dirName}/protein.fa "
         }else if (estExistsFlag && !proteinExistsFlag && structureExistsFlag) {
-            cmdStr += "--cdna=${dirName}/est.fa --trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--cdna=${dirName}/est.fa --trainingset=${dirName}/training-gene-structure.gff "
         }else if(proteinExistsFlag && structureExistsFlag) {
             cmdStr = "echo 'Simultaneous protein and structure file support are currently not implemented. Using the structure file, only.'\n\n${cmdStr}"
-            cmdStr += "--trainingset=${dirName}/training-gene-structure.gff -v --singleCPU --workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "--trainingset=${dirName}/training-gene-structure.gff "
         }else{
             cmdStr = null
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
         }
         if (cmdStr != null) {
+            cmdStr += "-v --singleCPU --webaugustus "
+            cmdStr += "--workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
             cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
             jobFile << "${cmdStr}"
             Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile << \"${cmdStr}\"")
