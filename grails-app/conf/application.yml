@@ -188,13 +188,13 @@ data:
 
 worker:
     # adapt to the actual situation
+    # name of the worker running the autoAug pipeline - currently slurm and sge (Sun Grid Engine) are implemented
+    name: slurm
     # number of  cpus/cores/threads used by the worker machine to run the autoAug pipeline
     cpuCount: 8
             
 slurm:
     # adapt to the actual situation
-    # enabled: true -> use slurm; ;enabled: false -> use Sun Grid Engine
-    enabled: true
     username: xxx
     host: xxx
     path:

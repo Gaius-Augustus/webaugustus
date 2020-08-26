@@ -21,17 +21,21 @@ abstract class JobExecution {
         TRAINING
     }
     
-    private static boolean useSlurm() {
-        return Holders.getConfig().getProperty('slurm.enabled', Boolean, false)
+    private static String getWorkerName() {
+        return Holders.getConfig().getProperty('worker.name', String)
     }
     
     public static JobExecution getDefaultJobExecution() {
-        if (useSlurm()) {
+        String workerName = getWorkerName()
+        if ("slurm".equalsIgnoreCase(workerName)) {
             return new SlurmJobExecution();
         }
-        else {
+        else if ("sge".equalsIgnoreCase(workerName)) {
             return new SunGridEngineJobExecution();
         }
+        throw new IllegalArgumentException(workerName == null 
+            ? "No worker.name specified, which runs the autoAug pipeline."
+            : "Unknown worker.name \"${workerName}\" specified, which runs the autoAug pipeline.")
     }
 
     /**
