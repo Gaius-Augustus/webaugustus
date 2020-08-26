@@ -185,7 +185,11 @@ data:
         training:
             dir: /data/www/webaugustus/webdata/augtrain
             web: /data/www/webaugustus/training-results
-            
+
+worker:
+    # adapt to the actual situation
+    # number of  cpus/cores/threads used by the worker machine to run the autoAug pipeline
+    cpuCount: 8
             
 slurm:
     # adapt to the actual situation

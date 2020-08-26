@@ -80,6 +80,10 @@ abstract class AbstractWebaugustusService {
         return maxStartedJobCount
     }
     
+    public int countWorkerCPUs() {
+        return Holders.getConfig().getProperty('worker.cpuCount', Integer, 1)
+    }
+    
     public void sendMailToUser(String email_address, String subjectString, String message) {
         String msgStr = "Hello!\n\n${message}Best regards,\n\nthe AUGUSTUS webserver team"
         sendMailInternal(email_address, subjectString, msgStr, "User")

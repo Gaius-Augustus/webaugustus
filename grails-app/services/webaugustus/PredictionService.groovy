@@ -369,7 +369,13 @@ class PredictionService extends AbstractWebaugustusService {
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         cmdStr = "mkdir -p ${dirName}/augustus\n"
         if(estExistsFlag){
-            cmdStr = "${cmdStr}blat -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
+            if (countWorkerCPUs() <= 1) {
+                cmdStr += "blat"
+            }
+            else {
+                cmdStr += "pblat -threads= " + countWorkerCPUs()
+            }
+            cmdStr = "${cmdStr} -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
             cmdStr = "${cmdStr}cat ${dirName}/est.psl | sort -n -k 16,16 | sort -s -k 14,14 > ${dirName}/est.s.psl\n"
             cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/blat2hints.pl --in=${dirName}/est.s.psl --out=${dirName}/est.hints --source=E\n"
             cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/blat2gbrowse.pl ${dirName}/est.s.psl ${dirName}/est.gbrowse\n"
