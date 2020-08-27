@@ -373,7 +373,7 @@ class PredictionService extends AbstractWebaugustusService {
                 cmdStr += "blat"
             }
             else {
-                cmdStr += "pblat -threads= " + countWorkerCPUs()
+                cmdStr += "pblat -threads=" + countWorkerCPUs()
             }
             cmdStr = "${cmdStr} -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
             cmdStr = "${cmdStr}cat ${dirName}/est.psl | sort -n -k 16,16 | sort -s -k 14,14 > ${dirName}/est.s.psl\n"
