@@ -2,12 +2,9 @@ package webaugustus
 
 import grails.gorm.transactions.Transactional
 import grails.util.Holders
-import org.springframework.context.MessageSource
 
 @Transactional
 abstract class AbstractWebaugustusService {
-    
-    protected MessageSource messageSource
     
     // max length of the job queue for a service, when is reached "the server is busy" will be displayed
     protected final static int maxJobQueueLength = Holders.getConfig().getProperty('job.queue.maxSize', Integer, 20);

@@ -16,6 +16,8 @@ import org.springframework.context.MessageSource
 @Transactional
 class TrainingService extends AbstractWebaugustusService {
     
+    MessageSource messageSource     // inject the messageSource
+    
     public void sendMailToUser(Training trainingInstance, String subjectString, String message) {
         sendMailToUser(trainingInstance.email_adress, subjectString, message)
     }

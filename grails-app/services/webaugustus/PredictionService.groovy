@@ -15,6 +15,8 @@ import org.springframework.context.MessageSource
  */
 @Transactional
 class PredictionService extends AbstractWebaugustusService {
+    
+    MessageSource messageSource     // inject the messageSource
 
     public void sendMailToUser(Prediction predictionInstance, String subjectString, String message) {
         sendMailToUser(predictionInstance.email_adress, subjectString, message)
