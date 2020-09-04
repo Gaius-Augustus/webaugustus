@@ -392,7 +392,23 @@ class PredictionService extends AbstractWebaugustusService {
         if(hintExistsFlag || estExistsFlag) {
             radioParameterString += " --hintsfile=${dirName}/est.hints --extrinsicCfgFile=${AUGUSTUS_CONFIG_PATH}/extrinsic/extrinsic.ME.cfg"
         }
-        cmdStr = "${cmdStr}cd ${dirName}/augustus\naugustus --species=${species} ${radioParameterString} ${dirName}/genome.fa --codingseq=on --exonnames=on > ${dirName}/augustus/augustus.gff\n"
+        cmdStr += "cd ${dirName}/augustus\n"
+        if (countWorkerCPUs() <= 1 
+            || Utilities.executeForInteger(getLogFile(), 3, predictionInstance.accession_id, "countSequences", ["grep '>' ${dirName}/genome.fa  | wc -l"]) <= 1) {
+            
+            cmdStr += "augustus --species=${species} ${radioParameterString} ${dirName}/genome.fa --codingseq=on --exonnames=on > ${dirName}/augustus/augustus.gff\n"
+        }
+        else {
+            cmdStr += "mkdir -p ${dirName}/autoAug\n"
+            cmdStr += "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && "
+            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/autoAugPred.pl --cpus=${countWorkerCPUs()} --singleCPU "
+            cmdStr += "--workingdir=${dirName}/autoAug "
+            cmdStr += "--predictionresultsdir=${dirName}/autoAug/autoAugPred "
+            cmdStr += "--species=${species} --genome=${dirName}/genome.fa "
+            cmdStr += "--augustusoptions=\"${radioParameterString} --codingseq=on --exonnames=on\"\n"
+            cmdStr += "cp ${dirName}/autoAug/autoAugPred/predictions/augustus.gff ${dirName}/augustus/augustus.gff\n"
+        }        
+        
         cmdStr = "${cmdStr}${AUGUSTUS_SCRIPTS_PATH}/getAnnoFasta.pl --seqfile=${dirName}/genome.fa ${dirName}/augustus/augustus.gff\n"
         cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | perl -ne 'if(m/\\tAUGUSTUS\\t/){print;}' > ${dirName}/augustus/augustus.gtf\n"
         cmdStr = "${cmdStr}cat ${dirName}/augustus/augustus.gff | ${AUGUSTUS_SCRIPTS_PATH}/augustus2gbrowse.pl > ${dirName}/augustus/augustus.gbrowse\n"
