@@ -193,7 +193,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
 
         def cmd = [getAsSSHCommand("cat ${submitFileTemplatePath} | sed \"s#PLACEHOLDER#${parentFolderName}#g\" | sed \"s#--cpus-per-task=.*#--cpus-per-task=${countCPUs}#g\"> ${serverDataPath}/${submitFileName}")]
         int exitCode = Utilities.execute(logFile, maxLogLevel, processName, "handleSubmitFile", cmd)
-        Utilities.log(logFile, 1, maxLogLevel, processName, "copied and adpated slurm submit file ${submitFileName} on ${getSlurmHost()} exitCode=${exitCode}")
+        Utilities.log(logFile, 1, maxLogLevel, processName, "copied and udpated slurm submit file ${submitFileName} on ${getSlurmHost()} exitCode=${exitCode}")
         if (exitCode != 0) {
             return null
         }
