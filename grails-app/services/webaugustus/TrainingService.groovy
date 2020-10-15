@@ -484,6 +484,9 @@ class TrainingService extends AbstractWebaugustusService {
             cmdStr = null
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
         }
+        
+        String jobID = null
+        
         if (cmdStr != null) {
             int countCPUs = countWorkerCPUs()
             if (countCPUs > 1) {
@@ -494,12 +497,11 @@ class TrainingService extends AbstractWebaugustusService {
             cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
             jobFile << "${cmdStr}"
             Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile << \"${cmdStr}\"")
-        }
-        Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile=${cmdStr}")
 
-        jobFile.setExecutable(true, false);
-        
-        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
+            jobFile.setExecutable(true, false);
+
+            jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id, countCPUs)
+        }
 
         if (jobID == null) {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The augustus training job wasn't started")
