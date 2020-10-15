@@ -695,8 +695,11 @@ class TrainingService extends AbstractWebaugustusService {
         boolean autoAugErr = false
         boolean sgeErr = false
         boolean writeResultsErr = false
-        if(new File(projectDir, "AutoAug.err").exists()){
-            autoAugErr = new File(projectDir, "AutoAug.err").size() > 0
+        File autoAugErrFile = new File(projectDir, "AutoAug.err")
+        File sgeErrFile = new File(projectDir, "augtrain.sh.e${jobID}")
+        File writeResultsErrFile = new File(projectDir, "writeResults.err")
+        if (autoAugErrFile.exists()) {
+            autoAugErr = autoAugErrFile.size() > 0
             if (autoAugErr) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "an error occurred when ${AUGUSTUS_SCRIPTS_PATH}/autoAug.pl was executed!")
             }
@@ -710,8 +713,8 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "cleanupJob failed. A ${computeClusterName} error occurred!")
         }
         else {
-            if(new File(projectDir, "augtrain.sh.e${jobID}").exists()){
-                sgeErr = new File(projectDir, "augtrain.sh.e${jobID}").size() > 0
+            if (sgeErrFile.exists()) {
+                sgeErr = sgeErrFile.size() > 0
                 if (sgeErr) {
                     String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
                     Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "A ${computeClusterName} error occurred!")
@@ -726,8 +729,8 @@ class TrainingService extends AbstractWebaugustusService {
             String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "A ${computeClusterName} error occurred! jobStatus=${jobStatus}")
         }
-        if(new File(projectDir, "writeResults.err").exists()){
-            writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
+        if (writeResultsErrFile.exists()) {
+            writeResultsErr = writeResultsErrFile.size() > 0
             if (writeResultsErr) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "an error occurred during writing results!");
             }
@@ -779,7 +782,60 @@ class TrainingService extends AbstractWebaugustusService {
             if (trainingInstance.email_adress == null) {
                 msgStr += "not "
             }
-            msgStr += "been informed."
+            msgStr += "been informed.\n\n"
+            try {
+                msgStr += "Details:\n"
+                if (autoAugErr) {
+                    String fileName = autoAugErrFile.getName()
+                    if (autoAugErrFile.exists()) {
+                        msgStr += "Last 10 lines of AutoAug.err :\n"
+                        def cmd = ["tail --lines=10 " + autoAugErrFile.getAbsolutePath()]
+                        msgStr += Utilities.executeForString(getLogFile(), getLogLevel(), trainingInstance.accession_id, "tail " + fileName, cmd)
+                        msgStr += "\n\n"
+                    }
+                    else {
+                        msgStr += "- Expected file \"${fileName}\" doesn't exists. \n\n"
+                    }
+                }
+                if (sgeErr) {
+                    if (exitCode != 0) {
+                        msgStr += "ExitCode=${exitCode}\n"
+                    }
+                    else if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                        msgStr += "JobStatus = TIMEOUT\n\n"
+                    }
+                    else if (JobExecution.JobStatus.ERROR.equals(jobStatus)) {
+                        msgStr += "JobStatus = ERROR\n\n"
+                    }
+                    String fileName = sgeErrFile.getName()
+                    if (sgeErrFile.exists()) {
+                         msgStr += "Last 10 lines of ${fileName} :\n"
+                        def cmd = ["tail --lines=10 " + sgeErrFile.getAbsolutePath()]
+                        msgStr += Utilities.executeForString(getLogFile(), getLogLevel(), trainingInstance.accession_id, "tail " + fileName, cmd)
+                        msgStr += "\n\n"
+                    }
+                    else {
+                        msgStr += "- Expected file \"${fileName}\" doesn't exists. \n\n"
+                    }
+                }
+                if (writeResultsErr) {
+                    String fileName = writeResultsErrFile.getName()
+                    if (writeResultsErrFile.exists()) {
+                         msgStr += "Last 10 lines of ${fileName} :\n"
+                        def cmd = ["tail --lines=10 " + writeResultsErrFile.getAbsolutePath()]
+                        msgStr += Utilities.executeForString(getLogFile(), getLogLevel(), trainingInstance.accession_id, "tail " + fileName, cmd)
+                        msgStr += "\n\n"
+                    }
+                    else {
+                        msgStr += "- Expected file \"${fileName}\" doesn't exists. \n\n"
+                    }
+                }
+            }
+            catch (Throwable t) {
+                System.err.println("Exception catched. message=" + t.getMessage())
+                System.err.println("Exception catched. exception=" + t)
+                t.printStackTrace(System.err)
+            }
             sendMailToAdmin("Error in AUGUSTUS training job ${trainingInstance.accession_id}", msgStr)
                
             if (autoAugErr) {

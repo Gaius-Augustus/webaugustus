@@ -621,14 +621,16 @@ class PredictionService extends AbstractWebaugustusService {
         boolean sgeErr = false
         boolean executionErr = false
         boolean writeResultsErr = false
+        File sgeErrFile = new File(projectDir, "aug-pred.sh.e${jobID}")
+        File writeResultsErrFile = new File(projectDir, "writeResults.err")
         if (exitCode != 0) {
             sgeErr = true
             String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "cleanupJob failed. A ${computeClusterName} error occurred!")
         }
         else {
-            if(new File(projectDir, "aug-pred.sh.e${jobID}").exists()){
-                executionErr = new File(projectDir, "aug-pred.sh.e${jobID}").size() > 0
+            if (sgeErrFile.exists()) {
+                executionErr = sgeErrFile.size() > 0
                 if (executionErr) {
                     Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "an error occurred during script execution!");
                 }
@@ -642,8 +644,8 @@ class PredictionService extends AbstractWebaugustusService {
             String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "A ${computeClusterName} error occurred! jobStatus=${jobStatus}")
         }
-        if(new File(projectDir, "writeResults.err").exists()){
-            writeResultsErr = new File(projectDir, "writeResults.err").size() > 0
+        if (writeResultsErrFile.exists()) {
+            writeResultsErr = writeResultsErrFile.size() > 0
             if (writeResultsErr) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "an error occurred during writing results!");
             }
@@ -700,7 +702,51 @@ class PredictionService extends AbstractWebaugustusService {
             if (predictionInstance.email_adress == null) {
                 msgStr += "not "
             }
-            msgStr += "been informed."
+            msgStr += "been informed.\n\n"
+            
+            try {
+                msgStr += "Details:\n"
+                if (sgeErr) {
+                    if (exitCode != 0) {
+                        msgStr += "ExitCode=${exitCode}\n\n"
+                    }
+                    else if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                        msgStr += "JobStatus = TIMEOUT\n\n"
+                    }
+                    else if (JobExecution.JobStatus.ERROR.equals(jobStatus)) {
+                        msgStr += "JobStatus = ERROR\n\n"
+                    }
+                }
+                if (executionErr) {
+                    String fileName = sgeErrFile.getName()
+                    if (sgeErrFile.exists()) {
+                         msgStr += "Last 10 lines of ${fileName} :\n"
+                        def cmd = ["tail --lines=10 " + sgeErrFile.getAbsolutePath()]
+                        msgStr += Utilities.executeForString(getLogFile(), getLogLevel(), predictionInstance.accession_id, "tail " + fileName, cmd)
+                        msgStr += "\n\n"
+                    }
+                    else {
+                        msgStr += "- Expected file \"${fileName}\" doesn't exists. \n\n"
+                    }
+                }
+                if (writeResultsErr) {
+                    String fileName = writeResultsErrFile.getName()
+                    if (writeResultsErrFile.exists()) {
+                         msgStr += "Last 10 lines of ${fileName} :\n"
+                        def cmd = ["tail --lines=10 " + writeResultsErrFile.getAbsolutePath()]
+                        msgStr += Utilities.executeForString(getLogFile(), getLogLevel(), predictionInstance.accession_id, "tail " + fileName, cmd)
+                        msgStr += "\n\n"
+                    }
+                    else {
+                        msgStr += "- Expected file \"${fileName}\" doesn't exists. \n\n"
+                    }
+                }
+            }
+            catch (Throwable t) {
+                System.err.println("Exception catched. message=" + t.getMessage())
+                System.err.println("Exception catched. exception=" + t)
+                t.printStackTrace(System.err)
+            }
             
             sendMailToAdmin("Error in AUGUSTUS prediction job ${predictionInstance.accession_id}", msgStr)
             
