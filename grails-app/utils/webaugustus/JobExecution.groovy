@@ -58,10 +58,11 @@ abstract class JobExecution {
      * @param parentPath parent path of the script
      * @param scriptName file name of the script
      * @param jobType is it a prediction or training job
+     * @param countCPUs number of cpus/cores/threads used by the worker machine running the autoAug pipeline
      * 
      * @return the job identifier or null if the jobs wasn't started
      */
-    public abstract String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName)
+    public abstract String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName, int countCPUs)
     
     /**
      * Returns the job status 

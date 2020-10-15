@@ -112,17 +112,18 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * @param parentPath parent path of the script
      * @param scriptName file name of the script
      * @param jobType is it a prediction or training job
+     * @param countCPUs number of cpus/cores/threads used by the worker machine running the autoAug pipeline
      * 
      * @return the job identifier or null if the job wasn't started
      */
-    public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName) {
-        String jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName)
+    public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName, int countCPUs) {
+        String jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
         if (jobID == null && !isSlurmLocal()) {
             // try again later - perhaps a ssh connection was cut
             for (int i = 0; i < 10; i++) {
                 Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again.")
                 sleep(600000) // 600000 = 10 minutes
-                jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName)
+                jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
                 if (jobID != null) {
                     return jobID
                 }
@@ -140,7 +141,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * 
      * @return the job identifier or null if the job wasn't started
      */
-    public String startJobInternal(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName) {
+    public String startJobInternal(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName, int countCPUs) {
         String parentFolderName = new File(parentPath).getName()
         String serverDataPath = parentPath
             
@@ -181,7 +182,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             return "0"
         }
 
-        def cmd = [getAsSSHCommand("cat ${submitFileTemplatePath} | sed \"s#PLACEHOLDER#${parentFolderName}#g\" > ${serverDataPath}/${submitFileName}")]
+        def cmd = [getAsSSHCommand("cat ${submitFileTemplatePath} | sed \"s#PLACEHOLDER#${parentFolderName}#g\" | sed \"s#--cpus-per-task=.*#--cpus-per-task=${countCPUs}#g\"> ${serverDataPath}/${submitFileName}")]
         int exitCode = Utilities.execute(logFile, maxLogLevel, processName, "handleSubmitFile", cmd)
         Utilities.log(logFile, 1, maxLogLevel, processName, "copied and adpated slurm submit file ${submitFileName} on ${getSlurmHost()} exitCode=${exitCode}")
         if (exitCode != 0) {

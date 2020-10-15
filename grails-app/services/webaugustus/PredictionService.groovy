@@ -18,14 +18,23 @@ class PredictionService extends AbstractWebaugustusService {
     
     MessageSource messageSource     // inject the messageSource
 
-    public void sendMailToUser(Prediction predictionInstance, String subjectString, String message) {
-        sendMailToUser(predictionInstance.email_adress, subjectString, message)
-    }
-    
     @PostConstruct
     def init() {
         Utilities.log(getLogFile(), 1, 1, "startup     ", "PredictionService")
         startWorkerThread()
+    }
+    
+    /**
+     * number of cpus/cores/threads used by the worker machine running the autoAug pipeline
+     * 
+     * @return cpu count
+     */ 
+    public int countWorkerCPUs() {
+        return Holders.getConfig().getProperty('worker.prediction.cpuCount', Integer, 1)
+    }
+    
+    public void sendMailToUser(Prediction predictionInstance, String subjectString, String message) {
+        sendMailToUser(predictionInstance.email_adress, subjectString, message)
     }
     
     // This is where uploaded files and results will be saved.
@@ -363,6 +372,16 @@ class PredictionService extends AbstractWebaugustusService {
         //Create script:
         String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
         Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Writing ${computeClusterName} submission script.")
+        
+        int countCPUs = 1
+        if (estExistsFlag) {
+            countCPUs = countWorkerCPUs()
+        }
+        else {
+            int fastaEntryCount = Utilities.executeForInteger(getLogFile(), 3, predictionInstance.accession_id, "countSequences", ["grep '>' ${dirName}/genome.fa  | wc -l"])
+            countCPUs = Math.min(countWorkerCPUs(), fastaEntryCount)
+        }
+        
         File jobFile = new File(projectDir, "aug-pred.sh")
         if (jobFile.exists()) {
             jobFile.delete()
@@ -371,11 +390,11 @@ class PredictionService extends AbstractWebaugustusService {
         jobFile << "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -cwd\n\n"
         cmdStr = "mkdir -p ${dirName}/augustus\n"
         if(estExistsFlag){
-            if (countWorkerCPUs() <= 1) {
+            if (countCPUs <= 1) {
                 cmdStr += "blat"
             }
             else {
-                cmdStr += "pblat -threads=" + countWorkerCPUs()
+                cmdStr += "pblat -threads=" + countCPUs
             }
             cmdStr = "${cmdStr} -noHead ${dirName}/genome.fa ${dirName}/est.fa ${dirName}/est.psl\n"
             cmdStr = "${cmdStr}cat ${dirName}/est.psl | sort -n -k 16,16 | sort -s -k 14,14 > ${dirName}/est.s.psl\n"
@@ -393,15 +412,13 @@ class PredictionService extends AbstractWebaugustusService {
             radioParameterString += " --hintsfile=${dirName}/est.hints --extrinsicCfgFile=${AUGUSTUS_CONFIG_PATH}/extrinsic/extrinsic.ME.cfg"
         }
         cmdStr += "cd ${dirName}/augustus\n"
-        if (countWorkerCPUs() <= 1 
-            || Utilities.executeForInteger(getLogFile(), 3, predictionInstance.accession_id, "countSequences", ["grep '>' ${dirName}/genome.fa  | wc -l"]) <= 1) {
-            
+        if (countCPUs <= 1) {
             cmdStr += "augustus --species=${species} ${radioParameterString} ${dirName}/genome.fa --codingseq=on --exonnames=on > ${dirName}/augustus/augustus.gff\n"
         }
         else {
             cmdStr += "mkdir -p ${dirName}/autoAug\n"
             cmdStr += "export AUGUSTUS_CONFIG_PATH=${AUGUSTUS_CONFIG_PATH} && "
-            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/autoAugPred.pl --cpus=${countWorkerCPUs()} --singleCPU "
+            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/autoAugPred.pl -v -v -v --cpus=${countCPUs} --singleCPU "
             cmdStr += "--workingdir=${dirName}/autoAug "
             cmdStr += "--predictionresultsdir=${dirName}/autoAug/autoAugPred "
             cmdStr += "--species=${species} --genome=${dirName}/genome.fa "
@@ -418,7 +435,7 @@ class PredictionService extends AbstractWebaugustusService {
         
         jobFile.setExecutable(true, false);
         
-        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
+        String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id, countCPUs)
 
         if (jobID == null) {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The augustus job wasn't started")

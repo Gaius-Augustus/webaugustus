@@ -32,10 +32,11 @@ class SunGridEngineJobExecution extends webaugustus.JobExecution {
      * @param parentPath parent path of the script
      * @param scriptName file name of the script
      * @param jobType is it a prediction or training job
+     * @param countCPUs number of cpus/cores/threads used by the worker machine running the autoAug pipeline
      * 
      * @return the job identifier or null if the jobs wasn't started
      */
-    public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName) {
+    public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName, int countCPUs) {
         def cmd = ["cd ${parentPath}; qsub ${scriptName} 2> /dev/null"]
         Integer jobID = Utilities.executeForInteger(logFile, maxLogLevel, processName, "startJobScript", cmd, "Your job (\\d+).*")
         Utilities.log(logFile, 1, maxLogLevel, processName, "start SGE job with ${scriptName} in ${parentPath} with jobID ${jobID}")

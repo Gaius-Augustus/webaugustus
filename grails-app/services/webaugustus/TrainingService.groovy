@@ -18,10 +18,6 @@ class TrainingService extends AbstractWebaugustusService {
     
     MessageSource messageSource     // inject the messageSource
     
-    public void sendMailToUser(Training trainingInstance, String subjectString, String message) {
-        sendMailToUser(trainingInstance.email_adress, subjectString, message)
-    }
-    
     @PostConstruct
     def init() {
         Utilities.log(getLogFile(), 1, 1, "startup      ", "TrainingService")
@@ -29,6 +25,19 @@ class TrainingService extends AbstractWebaugustusService {
                 sleep(60000) // start training worker thread a bit after prediction worker thread
                 startWorkerThread()
         })
+    }
+    
+    /**
+     * number of cpus/cores/threads used by the worker machine running the autoAug pipeline
+     * 
+     * @return cpu count
+     */ 
+    public int countWorkerCPUs() {
+        return Holders.getConfig().getProperty('worker.training.cpuCount', Integer, 1)
+    }
+    
+    public void sendMailToUser(Training trainingInstance, String subjectString, String message) {
+        sendMailToUser(trainingInstance.email_adress, subjectString, message)
     }
 
     // This is where uploaded files and results will be saved.
@@ -471,10 +480,11 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "EST: ${estExistsFlag} Protein: ${proteinExistsFlag} Structure: ${structureExistsFlag} ${computeClusterName}-script remains empty! This an error that should not be possible.")
         }
         if (cmdStr != null) {
-            if (countWorkerCPUs() > 1) {
-                cmdStr += "--cpus=" + countWorkerCPUs() + " "
+            int countCPUs = countWorkerCPUs()
+            if (countCPUs > 1) {
+                cmdStr += "--cpus=" + countCPUs + " "
             }
-            cmdStr += "-v --singleCPU --webaugustus "
+            cmdStr += "-v -v -v --singleCPU --webaugustus "
             cmdStr += "--workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
             cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
             jobFile << "${cmdStr}"
