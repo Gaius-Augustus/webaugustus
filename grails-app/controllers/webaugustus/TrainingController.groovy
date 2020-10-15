@@ -113,7 +113,7 @@ class TrainingController {
             Utilities.log(logFile, 1, verb, trainingInstance.accession_id, "Internal error 6.")
             String senderAddress = TrainingService.getWebaugustusEmailAddress()
             flash.error = "Internal error 6. Please contact ${senderAddress} if the problem persists!"
-            redirect(action:'create', controller: 'prediction')
+            redirect(action:'create', controller: 'training')
             return
         }
         
