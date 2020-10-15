@@ -150,9 +150,10 @@ class PredictionService extends AbstractWebaugustusService {
         
         String dirName = "${getOutputDir()}/${predictionInstance.accession_id}"
         File projectDir = new File(dirName)
-            
-        // retrieve genome file
-        if (predictionInstance.genome_ftp_link != null) {
+        
+        boolean ftpFileUploaded = false            
+        // retrieve genome file if not already done
+        if (predictionInstance.genome_ftp_link != null && (predictionInstance.genome_size == null || predictionInstance.genome_size.equals("0"))) {
             projectDir.mkdirs()
 
             def cmd = ["wget -O ${dirName}/genome.fa ${predictionInstance.genome_ftp_link}  &> /dev/null"]
@@ -197,7 +198,7 @@ class PredictionService extends AbstractWebaugustusService {
             def gffNameErrorFlag = 0
             def gffSourceErrorFlag = 0
             File structFile = new File(projectDir, "hints.gff")
-            if (structFile.exists() && predictionInstance.genome_ftp_link != null) { // if seqNames already exists
+            if (structFile.exists()) { // if seqNames already exists
                 // gff format validation: number of columns 9, + or - in column 7, column 1 has to be member of seqNames
                 Utilities.log(getLogFile(), 2, getLogLevel(), predictionInstance.accession_id, "Checking hints.gff file format")
                 
@@ -219,11 +220,12 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "genome.fa is ${predictionInstance.genome_size} big and has a cksum of ${predictionInstance.genome_cksum}.")
+            ftpFileUploaded = true
         } // end of if(!(predictionInstance.genome_ftp_link == null))
 
-        // retrieve EST file
-        if(!(predictionInstance.est_ftp_link == null)){
-
+        // retrieve EST file if not already done
+        if (predictionInstance.est_ftp_link != null && (predictionInstance.est_size == null || predictionInstance.est_size.equals("0"))) {
+        
             def cmd = ["wget -O ${dirName}/est.fa ${predictionInstance.est_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "getEstScript", cmd)
 
@@ -253,6 +255,7 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
+            ftpFileUploaded = true
         } // end of if(!(predictionInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -291,7 +294,7 @@ class PredictionService extends AbstractWebaugustusService {
         }
 
         // confirm file upload via e-mail
-        if (predictionInstance.genome_ftp_link != null || predictionInstance.est_ftp_link != null) {
+        if (ftpFileUploaded) {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete them\nfrom the public server, now, without affecting the AUGUSTUS prediction job.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"

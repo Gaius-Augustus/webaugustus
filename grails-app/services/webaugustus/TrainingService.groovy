@@ -156,8 +156,9 @@ class TrainingService extends AbstractWebaugustusService {
         String dirName = "${getOutputDir()}/${trainingInstance.accession_id}"
         File projectDir = new File(dirName)
         
-        // retrieve genome file
-        if (trainingInstance.genome_ftp_link != null) {
+        boolean ftpFileUploaded = false
+        // retrieve genome file if not already done
+        if (trainingInstance.genome_ftp_link != null && (trainingInstance.genome_size == null || trainingInstance.genome_size.equals("0"))) {
             projectDir.mkdirs()
 
             def cmd = ["wget -O ${dirName}/genome.fa ${trainingInstance.genome_ftp_link}  &> /dev/null"]
@@ -265,11 +266,13 @@ class TrainingService extends AbstractWebaugustusService {
             cmd = ["cksum ${dirName}/genome.fa"]
             trainingInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
+            Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "genome.fa is ${trainingInstance.genome_size} big and has a cksum of ${trainingInstance.genome_cksum}.")
+            ftpFileUploaded = true
         } // end of if(!(trainingInstance.genome_ftp_link == null))
 
-        // retrieve EST file
-        if (trainingInstance.est_ftp_link != null) {
-
+        // retrieve EST file if not already done
+        if (trainingInstance.est_ftp_link != null && (trainingInstance.est_size == null || trainingInstance.est_size.equals("0"))) {
+            
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieving EST/cDNA file ${trainingInstance.est_ftp_link}")
             def cmd = ["wget -O ${dirName}/est.fa ${trainingInstance.est_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getEstScript", cmd)
@@ -307,6 +310,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "est.fa is ${trainingInstance.est_size} big and has a cksum of ${trainingInstance.est_cksum}.")
+            ftpFileUploaded = true
         } // end of if(!(trainingInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -343,9 +347,9 @@ class TrainingService extends AbstractWebaugustusService {
             }
         }
 
-        // retrieve protein file
-        if (trainingInstance.protein_ftp_link != null) {
-
+        // retrieve protein file if not already done
+        if (trainingInstance.protein_ftp_link != null && (trainingInstance.protein_size == null || trainingInstance.protein_size.equals("0"))) {
+        
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieving protein file ${trainingInstance.protein_ftp_link}")    
             def cmd = ["wget -O ${dirName}/protein.fa ${trainingInstance.protein_ftp_link}  &> /dev/null"]
             Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "getProteinScript", cmd)
@@ -387,10 +391,11 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.protein_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.protein_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
+            ftpFileUploaded = true
         } // end of (!(trainingInstance.protein_ftp_link == null))
         
         // confirm file upload via e-mail
-        if (trainingInstance.genome_ftp_link != null || trainingInstance.protein_ftp_link != null || trainingInstance.est_ftp_link != null) {
+        if (ftpFileUploaded) {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete\nthem from the public server, now, without affecting the AUGUSTUS training job.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
