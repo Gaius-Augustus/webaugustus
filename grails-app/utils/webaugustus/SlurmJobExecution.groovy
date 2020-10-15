@@ -121,8 +121,17 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         if (jobID == null && !isSlurmLocal()) {
             // try again later - perhaps a ssh connection was cut
             for (int i = 0; i < 10; i++) {
-                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again.")
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in 10 minutes.")
                 sleep(600000) // 600000 = 10 minutes
+                jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
+                if (jobID != null) {
+                    return jobID
+                }
+            }
+            // try again later - perhaps a ssh connection was cut - try for three days
+            for (int i = 0; i < 72; i++) {
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in a hour.")
+                sleep(600000) // 3600000 = 1 hour
                 jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
                 if (jobID != null) {
                     return jobID
