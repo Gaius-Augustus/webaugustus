@@ -35,7 +35,7 @@
                            You can upload cDNA sequences together with the genomic DNA. Your ESTs or mRNA will be used to improve the gene prediction.
                            <p align="center"><a href="${resource( dir:'images', file:'AUG.cDNA.gif' )}"><g:img dir="images" file="AUG.cDNA.gif"  alt="with cDNA" width="70%" /></a><br><i>Click on image to enlarge!</i></p>
                         </li>
-                        <li> AUGUSTUS ususally belongs to the most accurate programs for the species it is trained
+                        <li> AUGUSTUS usually belongs to the most accurate programs for the species it is trained
                            for. Often it is the most accurate <i>ab initio</i> program. For example, at the independent gene finder
                            assessment (EGASP) on the human ENCODE regions AUGUSTUS was the most accurate gene finder among the
                            tested <i>ab initio</i> programs. At the more recent nGASP (worm), it was among the best in the <i>ab initio</i>
