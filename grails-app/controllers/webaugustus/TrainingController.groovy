@@ -49,8 +49,8 @@ class TrainingController {
         def maxJobQueueLength = trainingService.getMaxJobQueueLength()
 
         if(jobQueueLength >= maxJobQueueLength){
-            def logMessage = "Somebody tried to invoke the Training webserver but the job queue was was ${jobQueueLength} longer "
-            logMessage += "than ${maxJobQueueLength} and the user was informed that submission is currently not possible"
+            String logMessage = "Somebody tried to invoke the Training webserver but the job queue length is currently ${jobQueueLength} and longer "
+            logMessage += "than ${maxJobQueueLength} is not allowed. The user was informed that submission is currently not possible."
             Utilities.log(logFile, 1, logVerb, "Training creation", logMessage)
 
             def m1 = "You tried to access the AUGUSTUS training job submission page."
