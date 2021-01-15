@@ -131,6 +131,7 @@ class Utilities {
         boolean checkFirstLineStart = true
         boolean checkProtein = Utilities.FastaDataType.PROTEIN.equals(fastaType)
         boolean checkEst = Utilities.FastaDataType.EST.equals(fastaType)
+        boolean hasSequence = false
         
         file.eachLine{line ->
             if (notUniqueId != null || metacharacterFlag || line.isEmpty()) {
@@ -197,6 +198,9 @@ class Utilities {
                 }
             }
             else {
+                if (!hasSequence) {
+                    hasSequence = line.trim().size() > 0
+                }
                 if (checkProtein) {
                     if ( !(line =~ /^[AaRrNnDdCcEeQqGgHhIiLlKkMmFfPpSsTtWwYyVvUuOoBbZzJjXx]*$/) ) {
                         fastaFlag = false
@@ -238,6 +242,10 @@ class Utilities {
             }
         }
         if (!fastaFlag) {
+            return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
+                messageSource.getMessage('errormessage.not_fasta', [ fileType, origFileName, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
+        }
+        if (!hasSequence) {
             return new FastaCheckResult(FastaStatus.NO_VALID_FASTA, 
                 messageSource.getMessage('errormessage.not_fasta', [ fileType, origFileName, sequenceType ] as Object[], 'NO_VALID_FASTA', LocaleContextHolder.locale) )
         }
