@@ -452,7 +452,7 @@ class PredictionController {
         }else if(predictionInstance.species_select == "Bombus terrestris (animal)"){
             predictionInstance.project_id = "bombus_terrestris2"
         }else if(predictionInstance.species_select == "Rhodnius prolixus (animal)"){
-            predictionInstance.project_id = "rhodnium"
+            predictionInstance.project_id = "rhodnius"
         }else if(predictionInstance.species_select == "Conidiobolus coronatus (fungus)"){
             predictionInstance.project_id = "Conidiobolus_coronatus"
         }else if(predictionInstance.species_select == "Sulfolobus solfataricus (archaeon)"){
