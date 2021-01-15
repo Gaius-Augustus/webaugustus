@@ -117,6 +117,11 @@ dataSource:
     password: 'xxx'
 #    logSql: true
     properties:
+        # Mysql specific driver properties
+        # https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html
+        # https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-usagenotes-tomcat.html
+        # let Tomcat JDBC Pool handle reconnecting
+        autoReconnect: false
         maxIdle: 25
         minIdle: 5
         initialSize: 5
@@ -129,8 +134,9 @@ dataSource:
         validationInterval: 15000
         testOnBorrow: true
         testWhileIdle: true
+        # http://tomcat.apache.org/tomcat-8.0-doc/jdbc-pool.html#JDBC_interceptors
         jdbcInterceptors: ConnectionState
-        defaultTransactionIsolation: 2 # TRANSACTION_READ_COMMITTED
+        defaultTransactionIsolation: java.sql.Connection.TRANSACTION_READ_COMMITTED // safe default
 
 environments:
     development:

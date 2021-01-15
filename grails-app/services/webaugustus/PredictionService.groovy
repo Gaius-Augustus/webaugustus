@@ -132,7 +132,7 @@ class PredictionService extends AbstractWebaugustusService {
         
         predictionInstance.results_urls = null
         predictionInstance.job_status = jobStatus
-        predictionInstance.save(flush: true)
+        Utilities.saveDomainWithTransaction(predictionInstance)
     }
     
     /**
@@ -221,6 +221,7 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "genome.fa is ${predictionInstance.genome_size} big and has a cksum of ${predictionInstance.genome_cksum}.")
             ftpFileUploaded = true
+            Utilities.saveDomainWithTransaction(predictionInstance)
         } // end of if(!(predictionInstance.genome_ftp_link == null))
 
         // retrieve EST file if not already done
@@ -256,6 +257,7 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
             ftpFileUploaded = true
+            Utilities.saveDomainWithTransaction(predictionInstance)
         } // end of if(!(predictionInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -298,7 +300,7 @@ class PredictionService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete them\nfrom the public server, now, without affecting the AUGUSTUS prediction job.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             
             sendMailToUser(predictionInstance, "File upload has been completed for AUGUSTUS prediction job ${predictionInstance.accession_id}", mailStr)
         }
@@ -338,7 +340,7 @@ class PredictionService extends AbstractWebaugustusService {
             String mailStr = "You submitted job ${predictionInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
             predictionInstance.old_url = "${getRelativeURL()}prediction/show/${oldID}"
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             
             mailStr += "The old job with identical input files and identical parameters "
             mailStr += "is available at\n${getHttpBaseURL()}show/${oldID}.\n\n"
@@ -436,7 +438,11 @@ class PredictionService extends AbstractWebaugustusService {
         jobFile << "${cmdStr}"
         Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "jobFile=${cmdStr}")
         
-        jobFile.setExecutable(true, false);
+        jobFile.setExecutable(true, false)
+        
+        // commit any changes - if starting the job takes longer than the jdbc connections 'wait_timeout' 
+        // a CommunicationsException and than a TransactionException is thrown when the commit is done after the job start
+        Utilities.saveDomainWithTransaction(predictionInstance)
         
         String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id, countCPUs)
 
@@ -450,7 +456,7 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.message = "${predictionInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${userMailStr}"
             predictionInstance.message = "${predictionInstance.message}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
             
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             
             if (predictionInstance.email_adress == null) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
@@ -479,7 +485,7 @@ class PredictionService extends AbstractWebaugustusService {
 
         predictionInstance.job_id = jobID
         predictionInstance.job_status = 1 // submitted
-        predictionInstance.save(flush: true)
+        Utilities.saveDomainWithTransaction(predictionInstance)
         Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${jobID} submitted.")
     }
     
@@ -574,14 +580,14 @@ class PredictionService extends AbstractWebaugustusService {
         else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
             if (!predictionInstance.job_status.equals("2")) {
                 predictionInstance.job_status = '2'
-                predictionInstance.save(flush: true)
+                Utilities.saveDomainWithTransaction(predictionInstance)
             }
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!predictionInstance.job_status.equals("3")) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
                 predictionInstance.job_status = '3'
-                predictionInstance.save(flush: true)
+                Utilities.saveDomainWithTransaction(predictionInstance)
             }
         }
         
@@ -615,7 +621,7 @@ class PredictionService extends AbstractWebaugustusService {
         // collect results link information
         if(new File("${getWebOutputDir()}/${predictionInstance.accession_id}/predictions.tar.gz").exists()){
             predictionInstance.results_urls = "<p><b>Prediction archive</b>&nbsp;&nbsp;<a href=\"${getWebOutputURL()}${predictionInstance.accession_id}/predictions.tar.gz\">predictions.tar.gz</a><br></p>"
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
         }
         // check whether errors occurred by log-file-sizes
         boolean sgeErr = false
@@ -661,7 +667,7 @@ class PredictionService extends AbstractWebaugustusService {
             predictionInstance.message += mailStr
             predictionInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             predictionInstance.job_status = 4
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             
             if(predictionInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail address was supplied.")
@@ -773,7 +779,7 @@ class PredictionService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "Sent confirmation Mail, the job is in an error state.")
             }
             predictionInstance.job_status = 5
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
         }
     }
     
@@ -787,7 +793,7 @@ class PredictionService extends AbstractWebaugustusService {
             ("4".equals(predictionInstance.job_status) || "5".equals(predictionInstance.job_status) || "6".equals(predictionInstance.job_status))) {
 
             predictionInstance.email_adress = null
-            predictionInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(predictionInstance)
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "delete email address of user")
         }
     }

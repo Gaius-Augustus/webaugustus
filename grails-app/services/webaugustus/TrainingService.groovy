@@ -137,7 +137,7 @@ class TrainingService extends AbstractWebaugustusService {
         
         trainingInstance.results_urls = null
         trainingInstance.job_status = jobStatus
-        trainingInstance.save(flush: true)
+        Utilities.saveDomainWithTransaction(trainingInstance)
     }
     
     /**
@@ -268,6 +268,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "genome.fa is ${trainingInstance.genome_size} big and has a cksum of ${trainingInstance.genome_cksum}.")
             ftpFileUploaded = true
+            Utilities.saveDomainWithTransaction(trainingInstance)
         } // end of if(!(trainingInstance.genome_ftp_link == null))
 
         // retrieve EST file if not already done
@@ -311,6 +312,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.est_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "est.fa is ${trainingInstance.est_size} big and has a cksum of ${trainingInstance.est_cksum}.")
             ftpFileUploaded = true
+            Utilities.saveDomainWithTransaction(trainingInstance)
         } // end of if(!(trainingInstance.est_ftp_link == null))
 
         // check whether EST file is NOT RNAseq, i.e. does not contain on average very short entries
@@ -392,6 +394,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.protein_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "protein.fa is ${trainingInstance.protein_size} big and has a cksum of ${trainingInstance.protein_cksum}.")
             ftpFileUploaded = true
+            Utilities.saveDomainWithTransaction(trainingInstance)
         } // end of (!(trainingInstance.protein_ftp_link == null))
         
         // confirm file upload via e-mail
@@ -399,7 +402,7 @@ class TrainingService extends AbstractWebaugustusService {
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Retrieved all ftp files successfully.")
             String mailStr = "We have retrieved all files that you specified, successfully. You may delete\nthem from the public server, now, without affecting the AUGUSTUS training job.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------\n${new Date()} - Message:\n----------------------------------------\n\n${mailStr}"
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             
             sendMailToUser(trainingInstance, "File upload has been completed for AUGUSTUS training job ${trainingInstance.accession_id}", mailStr)
         }
@@ -431,7 +434,7 @@ class TrainingService extends AbstractWebaugustusService {
             String mailStr = "You submitted job ${trainingInstance.accession_id}.\nThe job was aborted because the files that you submitted were submitted, before.\n\n"
             trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${mailStr}"
             trainingInstance.old_url = "${getRelativeURL()}training/show/${oldID}"
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             
             mailStr += "The old job with identical input files and identical parameters "
             mailStr += "is available at\n${getHttpBaseURL()}show/${oldID}.\n\n"
@@ -498,7 +501,11 @@ class TrainingService extends AbstractWebaugustusService {
             jobFile << "${cmdStr}"
             Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile << \"${cmdStr}\"")
 
-            jobFile.setExecutable(true, false);
+            jobFile.setExecutable(true, false)
+            
+            // commit any changes - if starting the job takes longer than the jdbc connections 'wait_timeout' 
+            // a CommunicationsException and than a TransactionException is thrown when the commit is done after the job start
+            Utilities.saveDomainWithTransaction(trainingInstance)
 
             jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id, countCPUs)
         }
@@ -513,7 +520,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.message = "${trainingInstance.message}----------------------------------------------\n${new Date()} - Error Message:\n----------------------------------------------\n\n${userMailStr}"
             trainingInstance.message = "${trainingInstance.message}Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
             
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             
             if (trainingInstance.email_adress == null) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
@@ -542,7 +549,7 @@ class TrainingService extends AbstractWebaugustusService {
 
         trainingInstance.job_id = jobID
         trainingInstance.job_status = '1' // submitted
-        trainingInstance.save(flush: true)
+        Utilities.saveDomainWithTransaction(trainingInstance)
         Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${jobID} submitted.")
     }
     
@@ -564,14 +571,14 @@ class TrainingService extends AbstractWebaugustusService {
         else if (JobExecution.JobStatus.WAITING_FOR_EXECUTION.equals(status)) {
             if (!trainingInstance.job_status.equals("2")) {
                 trainingInstance.job_status = '2'
-                trainingInstance.save(flush: true)
+                Utilities.saveDomainWithTransaction(trainingInstance)
             }
         }
         else if (JobExecution.JobStatus.COMPUTING.equals(status)) {
             if (!trainingInstance.job_status.equals("3")) {
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Job ${jobID} begins running at ${new Date()}.")
                 trainingInstance.job_status = '3'
-                trainingInstance.save(flush: true)
+                Utilities.saveDomainWithTransaction(trainingInstance)
             }
         }
         
@@ -749,7 +756,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.message += mailStr
             trainingInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             trainingInstance.job_status = 4
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             
             if(trainingInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "Computation was successful. Did not send e-mail to user because no e-mail address was supplied.")
@@ -873,7 +880,7 @@ class TrainingService extends AbstractWebaugustusService {
             if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
                 trainingInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             }
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             
             if(trainingInstance.email_adress == null){
                 Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "The job is in an error state. Could not send e-mail to anonymous user because no email address was supplied.")
@@ -910,7 +917,7 @@ class TrainingService extends AbstractWebaugustusService {
             ("4".equals(trainingInstance.job_status) || "5".equals(trainingInstance.job_status) || "6".equals(trainingInstance.job_status))) {
             
             trainingInstance.email_adress = null
-            trainingInstance.save(flush: true)
+            Utilities.saveDomainWithTransaction(trainingInstance)
             Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "delete email address of user")
         }
     }
