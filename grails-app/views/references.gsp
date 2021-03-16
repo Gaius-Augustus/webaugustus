@@ -20,7 +20,7 @@
                         </div>
                      </div>
                      <h2>Link to the old AUGUSTUS web server</h2>
-                     <p>The old AUGUSTUS web server for predictions with pre-trained models is available at <a href="//bioinf.uni-greifswald.de/augustus/">http://augustus.gobics.de</a>.</p>
+                     <p>The old AUGUSTUS web server for predictions with pre-trained models is available at <a href="//bioinf.uni-greifswald.de/augustus/">https://bioinf.uni-greifswald.de/augustus/</a>.</p>
                      <h2>References</h2>
                      <p>Please cite the following references when using the AUGUSTUS training web server results in your publication:</p>
                      <ul>
