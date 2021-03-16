@@ -2246,8 +2246,6 @@ html.ie .grid--stretch .grid__column > .csc-default > .csc-textpic{
     font-style:normal;
     font-size:inherit;
     text-rendering:auto;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
 }
 body{
     font-size:100%;
