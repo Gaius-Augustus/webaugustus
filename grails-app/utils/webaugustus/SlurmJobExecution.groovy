@@ -93,7 +93,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      */
     public int countStartedJobs(File logFile, int maxLogLevel) {
         def processForLog = getName()
-        def cmd = [getAsSSHCommand("module load slurm; squeue -u ${getSlurmUserName()} | wc -l")]
+        def cmd = [getAsSSHCommand("squeue -u ${getSlurmUserName()} | wc -l")]
         Integer count = Utilities.executeForInteger(logFile, maxLogLevel, processForLog, "qstatScript", cmd)
         
         if (count == null) {
@@ -211,7 +211,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         }
         
         // start job
-        cmd = [getAsSSHCommand("module load slurm; sbatch ${serverDataPath}/${submitFileName}")]
+        cmd = [getAsSSHCommand("sbatch ${serverDataPath}/${submitFileName}")]
         Integer jobID = Utilities.executeForInteger(logFile, maxLogLevel, processName, "startJobScript", cmd, ".*\\s*job\\s*(\\d+).*")
         Utilities.log(logFile, 1, maxLogLevel, processName, "start SLURM job with ${scriptName} in ${parentPath} with jobID ${jobID}")
         if (jobID == null || jobID == 0) {
@@ -230,9 +230,9 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking slurm job status...")
-        def cmd = [getAsSSHCommand("module load slurm; sacct -j ${jobIdentifier} -n --format=JobID,State,Reason | grep \"^${jobIdentifier} \"")]
+        def cmd = [getAsSSHCommand("sacct -j ${jobIdentifier} -n --format=JobID,State%20,Reason | grep \"^${jobIdentifier} \"")]
         // or 
-        // def cmd = [getAsSSHCommand("module load slurm; squeue -h -j ${jobIdentifier} -o '%i %T %r' | grep \"^${jobIdentifier} \"")]
+        // def cmd = [getAsSSHCommand("squeue -h -j ${jobIdentifier} -o '%i %T %r' | grep \"^${jobIdentifier} \"")]
         
         def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "statusScript", cmd)
         
@@ -293,7 +293,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      */
     private void releaseJob(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "release job after JobHeldUser")
-        def cmd = [getAsSSHCommand("module load slurm; scontrol release ${jobIdentifier}")]
+        def cmd = [getAsSSHCommand("scontrol release ${jobIdentifier}")]
         def statusContent = Utilities.executeForString(logFile, maxLogLevel, processName, "releaseJob", cmd)
     }
     
