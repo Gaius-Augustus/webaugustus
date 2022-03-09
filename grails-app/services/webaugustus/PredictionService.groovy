@@ -571,7 +571,7 @@ class PredictionService extends AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
     protected JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance) {
@@ -603,7 +603,7 @@ class PredictionService extends AbstractWebaugustusService {
     /**
      * Do all tasks needed to process the job data and cleanup
      * 
-     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
+     * @param jobStatus the job status (either TIMEOUT, OUT_OF_MEMORY, ERROR or FINISHED)
      */
     @Transactional
     protected void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus) {
@@ -651,7 +651,9 @@ class PredictionService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "the aug-pred.sh.e${jobID} output file was not created, probably the script was not started")
             }
         }
-        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
+        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) 
+                        || JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)
+                        || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
             sgeErr = true
             String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", predictionInstance.accession_id, "A ${computeClusterName} error occurred! jobStatus=${jobStatus}")
@@ -725,6 +727,9 @@ class PredictionService extends AbstractWebaugustusService {
                     else if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
                         msgStr += "JobStatus = TIMEOUT\n\n"
                     }
+                    else if (JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
+                        msgStr += "JobStatus = OUT_OF_MEMORY\n\n"
+                    }
                     else if (JobExecution.JobStatus.ERROR.equals(jobStatus)) {
                         msgStr += "JobStatus = ERROR\n\n"
                     }
@@ -766,6 +771,10 @@ class PredictionService extends AbstractWebaugustusService {
             String mailStr = ""
             if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
                 mailStr += "The AUGUSTUS prediction job ${predictionInstance.accession_id} was cancelled, the maximum computation time has been reached.\n"
+                mailStr += "If your genome file contains multiple fasta entries, split this file into smaller parts and try again.\n\n"
+            }
+            else if (JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
+                mailStr += "The AUGUSTUS prediction job ${predictionInstance.accession_id} was cancelled, the maximum memory limit has been reached.\n"
                 mailStr += "If your genome file contains multiple fasta entries, split this file into smaller parts and try again.\n\n"
             }
             else {

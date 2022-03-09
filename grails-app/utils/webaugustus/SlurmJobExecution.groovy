@@ -217,7 +217,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
      * Returns the job status 
      *
      * @param jobIdentifier the job identifier - returned by method startJob
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking slurm job status...")
@@ -257,6 +257,10 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             else if ( (statusContent =~ /  TO /) || (statusContent =~ /TIMEOUT/)  ) {
                 Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} by TIMEOUT.")
                 return JobStatus.TIMEOUT
+            }
+            else if ( (statusContent =~ /  OOM /) || (statusContent =~ /OUT_OF_MEMORY/)  ) {
+                Utilities.log(logFile, 1, maxLogLevel, processName, "Job ${jobIdentifier} left slurm at ${new Date()} by OUT_OF_MEMORY.")
+                return JobStatus.OUT_OF_MEMORY
             }
             else if ( (statusContent =~ /  F /) || (statusContent =~ /FAILED/) 
                 || (statusContent =~ /  CA /) || (statusContent =~ /CANCELLED/) ) {

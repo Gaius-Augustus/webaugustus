@@ -11,6 +11,7 @@ abstract class JobExecution {
         WAITING_FOR_EXECUTION,
         COMPUTING,
         TIMEOUT,
+        OUT_OF_MEMORY,
         UNKNOWN,
         ERROR,
         FINISHED
@@ -68,7 +69,7 @@ abstract class JobExecution {
      * Returns the job status 
      *
      * @param job identifier - returned by method startJob
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     public abstract JobExecution.JobStatus getJobStatus(String identifier, File logFile, int maxLogLevel, String processName)
 	

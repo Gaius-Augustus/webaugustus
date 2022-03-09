@@ -52,7 +52,7 @@ class SunGridEngineJobExecution extends webaugustus.JobExecution {
      * Returns the job status 
      *
      * @param jobIdentifier the job identifier - returned by method startJob
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     public JobExecution.JobStatus getJobStatus(String jobIdentifier, File logFile, int maxLogLevel, String processName) {
         Utilities.log(logFile, 1, maxLogLevel, processName, "checking job SGE status...")

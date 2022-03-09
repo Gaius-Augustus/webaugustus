@@ -566,7 +566,7 @@ class TrainingService extends AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
     protected JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance) {
@@ -598,7 +598,7 @@ class TrainingService extends AbstractWebaugustusService {
     /**
      * Do all tasks needed to process the job data and cleanup
      * 
-     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
+     * @param jobStatus the job status (either TIMEOUT, OUT_OF_MEMORY, ERROR or FINISHED)
      */
     @Transactional
     protected void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus) {
@@ -743,7 +743,9 @@ class TrainingService extends AbstractWebaugustusService {
                 Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "sgeErr file was not created.")
             }
         }
-        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
+        if (!sgeErr && (JobExecution.JobStatus.TIMEOUT.equals(jobStatus) 
+                        || JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)
+                        || JobExecution.JobStatus.ERROR.equals(jobStatus)) ) {
             sgeErr = true
             String computeClusterName = JobExecution.getDefaultJobExecution().getName().trim()
             Utilities.log(getLogFile(), 1, getLogLevel(), "SEVERE", trainingInstance.accession_id, "A ${computeClusterName} error occurred! jobStatus=${jobStatus}")
@@ -823,6 +825,9 @@ class TrainingService extends AbstractWebaugustusService {
                     else if (JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
                         msgStr += "JobStatus = TIMEOUT\n\n"
                     }
+                    else if (JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
+                        msgStr += "JobStatus = OUT_OF_MEMORY\n\n"
+                    }                    
                     else if (JobExecution.JobStatus.ERROR.equals(jobStatus)) {
                         msgStr += "JobStatus = ERROR\n\n"
                     }
@@ -880,6 +885,10 @@ class TrainingService extends AbstractWebaugustusService {
                 mailStr += "The AUGUSTUS training job ${trainingInstance.accession_id} was cancelled, the maximum computation time has been reached.\n"
                 mailStr += "Maybe you can start a new training job with a smaller training set.\n\n"
             }
+            else if (JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
+                mailStr += "The AUGUSTUS training job ${trainingInstance.accession_id} was cancelled, the maximum memory limit has been reached.\n"
+                mailStr += "Maybe you can start a new training job with a smaller training set.\n\n"
+            }     
             else {
                 mailStr += "An error occurred while running the AUGUSTUS training job ${trainingInstance.accession_id}.\n\n"
                 mailStr += "Please check the log-files carefully before proceeding to work with the produced results.\n\n"
@@ -887,7 +896,7 @@ class TrainingService extends AbstractWebaugustusService {
             trainingInstance.message += "----------------------------------------------\n${new Date()} - Error Message:\n"
             trainingInstance.message += "----------------------------------------------\n\n"
             trainingInstance.message += mailStr
-            if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+            if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus) && !JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
                 trainingInstance.message += "Results of your job are deleted from our server after 180 days.\n\n"
             }
             Utilities.saveDomainWithTransaction(trainingInstance)
@@ -898,7 +907,7 @@ class TrainingService extends AbstractWebaugustusService {
                 String senderAdress = TrainingService.getWebaugustusEmailAddress()
                 msgStr = "${mailStr}You find the results of your job at ${getHttpBaseURL()}/show/${trainingInstance.id}.\n\n"
                 msgStr += "The administrator of the AUGUSTUS web server has been informed.\n"
-                if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus)) {
+                if (!JobExecution.JobStatus.TIMEOUT.equals(jobStatus) && !JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)) {
                     msgStr += "Please contact ${senderAdress} if you want to find out what went wrong.\n\n"
                     msgStr += "Results of your job are deleted from our server after 180 days.\n\n"
                 }

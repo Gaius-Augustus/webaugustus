@@ -216,12 +216,13 @@ abstract class AbstractWebaugustusService {
     
     /**
      * 
-     * @param status the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @param status the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      * @return true if the job is done
      */
     private boolean isJobDone(JobExecution.JobStatus jobStatus) {
         return jobStatus != null && 
             (  JobExecution.JobStatus.TIMEOUT.equals(jobStatus)
+            || JobExecution.JobStatus.OUT_OF_MEMORY.equals(jobStatus)
             || JobExecution.JobStatus.ERROR.equals(jobStatus)
             || JobExecution.JobStatus.FINISHED.equals(jobStatus))
     }
@@ -260,7 +261,7 @@ abstract class AbstractWebaugustusService {
     /**
      * Check if the augustus job is still running and set the job_status accordingly
      * 
-     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, UNKNOWN, ERROR or FINISHED)
+     * @return the job status (either WAITING_FOR_EXECUTION, COMPUTING, TIMEOUT, OUT_OF_MEMORY, UNKNOWN, ERROR or FINISHED)
      */
     @Transactional
     protected abstract JobExecution.JobStatus checkJobReadyness(AbstractWebAugustusDomainClass instance)
@@ -268,7 +269,7 @@ abstract class AbstractWebaugustusService {
     /**
      * Do all tasks needed to process the job data and cleanup
      * 
-     * @param jobStatus the job status (either TIMEOUT, ERROR or FINISHED)
+     * @param jobStatus the job status (either TIMEOUT, OUT_OF_MEMORY, ERROR or FINISHED)
      */
     @Transactional
     protected abstract void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus)
