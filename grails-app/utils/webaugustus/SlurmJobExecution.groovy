@@ -119,19 +119,28 @@ class SlurmJobExecution extends webaugustus.JobExecution {
     public String startJob(String parentPath, String scriptName, JobType jobType, File logFile, int maxLogLevel, String processName, int countCPUs) {
         String jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
         if (jobID == null && !isSlurmLocal()) {
-            // try again later - perhaps a ssh connection was cut
+            // try again later - perhaps a ssh connection was cut or the worker machine is down
             for (int i = 0; i < 10; i++) {
-                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in 10 minutes.")
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in 10 minutes - try " + (i+1) + " / 10 && 1/144 && 1/93")
                 sleep(600000) // 600000 = 10 minutes
                 jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
                 if (jobID != null) {
                     return jobID
                 }
             }
-            // try again later - perhaps a ssh connection was cut - try for three days
+            // try again later - perhaps a ssh connection was cut or the worker machine is down - try for three days
             for (int i = 0; i < 144; i++) {
-                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in a hour.")
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in a hour - try " + (i+1) + " / 144 && 1/93")
                 sleep(3600000) // 3600000 = 1 hour
+                jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
+                if (jobID != null) {
+                    return jobID
+                }
+            }
+            // try again later - perhaps a ssh connection was cut or the worker machine is down - try for 31 days
+            for (int i = 0; i < 93; i++) {
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "startJob failed - try again in 8 hours - try " + (i+1) + " / 93")
+                sleep(28800000) // 28800000 = 8 hours.
                 jobID = startJobInternal(parentPath, scriptName, jobType, logFile, maxLogLevel, processName, countCPUs)
                 if (jobID != null) {
                     return jobID
@@ -301,7 +310,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
         if (exitCode != 0 && !isSlurmLocal()) {
             // try again later - perhaps a ssh connection was cut
             for (int i = 0; i < 10; i++) {
-                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again in 10 minutes.")
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again in 10 minutes - for the " + i + ". time.")
                 sleep(600000) // 600000 = 10 minutes
                 exitCode = cleanupJobInternal(parentPath, serviceInstance, jobType, logFile, maxLogLevel, processName)
                 if (exitCode == 0) {
@@ -310,7 +319,7 @@ class SlurmJobExecution extends webaugustus.JobExecution {
             }					
             // try again later - perhaps a ssh connection was cut - try for three days
             for (int i = 0; i < 144; i++) {
-                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again in a hour.")
+                Utilities.log(logFile, 1, maxLogLevel, "SEVERE", processName, "cleanupJob failed - try again in a hour - for the " + i + ". time.")
                 sleep(3600000) // 3600000 = 1 hour
                 exitCode = cleanupJobInternal(parentPath, serviceInstance, jobType, logFile, maxLogLevel, processName)
                 if (exitCode == 0) {

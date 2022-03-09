@@ -506,8 +506,8 @@ class TrainingService extends AbstractWebaugustusService {
                 cmdStr += "--cpus=" + countCPUs + " "
             }
             cmdStr += "-v -v -v --singleCPU --webaugustus "
-            cmdStr += "--workingdir=${dirName} > ${dirName}/AutoAug.log 2> ${dirName}/AutoAug.err\n\n"
-            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 > ${dirName}/writeResults.log 2> ${dirName}/writeResults.err"
+            cmdStr += "--workingdir=${dirName} >> ${dirName}/AutoAug.log 2>> ${dirName}/AutoAug.err\n\n"
+            cmdStr += "${AUGUSTUS_SCRIPTS_PATH}/writeResultsPage.pl ${trainingInstance.accession_id} ${trainingInstance.project_name} '${trainingInstance.dateCreated}' ${getOutputDir()} ${getWebOutputDir()} ${AUGUSTUS_CONFIG_PATH} ${AUGUSTUS_SCRIPTS_PATH} 1 >> ${dirName}/writeResults.log 2>> ${dirName}/writeResults.err"
             jobFile << "${cmdStr}"
             Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "jobFile << \"${cmdStr}\"")
 

@@ -583,9 +583,19 @@ class Utilities {
                 outputValue = "IOException: " + e.getMessage()
             }
             
-            log(logFile, 1, maxLogLevel, process, "Exception status code=${exitCode} (${errorValue})  outputValue=${outputValue}")
+            log(logFile, 1, maxLogLevel, process, "Exception status code=${exitCode} outputValue=${outputValue} (errorValue=${errorValue})")
         }
         else {
+            
+            def errorValue = "Null"
+            
+            try {
+                errorValue = execute.err.text
+            }
+            catch (IOException e) {
+                errorValue = "IOException: " + e.getMessage()
+            }
+            
             def outputValue = "Null"
 
             try {
@@ -596,7 +606,7 @@ class Utilities {
             }
 
             
-            log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\"")
+            log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\" (errorValue=${errorValue})")
         }
         
         
