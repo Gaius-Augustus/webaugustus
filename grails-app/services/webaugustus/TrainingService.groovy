@@ -263,6 +263,10 @@ class TrainingService extends AbstractWebaugustusService {
                     return
                 }
             }
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/genome.fa"]
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "remove empty lines from genome.fa", cmd)
+            
             cmd = ["cksum ${dirName}/genome.fa"]
             trainingInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
@@ -306,6 +310,9 @@ class TrainingService extends AbstractWebaugustusService {
                 abortJob(trainingInstance, mailStr)
                 return
             }
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/est.fa"]
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "remove empty lines from est.fa", cmd)
             
             cmd = ["cksum ${dirName}/est.fa"]
             trainingInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
@@ -388,7 +395,10 @@ class TrainingService extends AbstractWebaugustusService {
                 abortJob(trainingInstance, mailStr)
                 return
             }
-
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/protein.fa"]
+            Utilities.execute(getLogFile(), getLogLevel(), trainingInstance.accession_id, "remove empty lines from protein.fa", cmd)
+            
             cmd = ["cksum ${dirName}/protein.fa"]
             trainingInstance.protein_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "(\\d*) \\d* ")
             trainingInstance.protein_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), trainingInstance.accession_id, "proteinCksumScript", cmd, "\\d* (\\d*) ")

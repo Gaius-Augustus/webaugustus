@@ -215,7 +215,10 @@ class PredictionService extends AbstractWebaugustusService {
                     return
                 }
             }
-
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/genome.fa"]
+            Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "remove empty lines from genome.fa", cmd)
+            
             cmd = ["cksum ${dirName}/genome.fa"]
             predictionInstance.genome_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.genome_size =  Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ")
@@ -251,6 +254,9 @@ class PredictionService extends AbstractWebaugustusService {
                 abortJob(predictionInstance, mailStr)
                 return
             }
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/est.fa"]
+            Utilities.execute(getLogFile(), getLogLevel(), predictionInstance.accession_id, "remove empty lines from est.fa", cmd)
             
             cmd = ["cksum ${dirName}/est.fa"]
             predictionInstance.est_cksum = Utilities.executeForLong(getLogFile(), getLogLevel(), predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")

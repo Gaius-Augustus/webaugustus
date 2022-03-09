@@ -539,6 +539,10 @@ class PredictionController {
                 abortCommit(fastaCheckResult.getErrorMessage())
                 return
             }
+            
+            cmd = ["sed -i '/^ *\$/d' ${dirName}/genome.fa"]
+            Utilities.execute(logFile, verb, predictionInstance.accession_id, "remove empty lines from genome.fa", cmd)
+            
             cmd = ["cksum ${dirName}/genome.fa"]
             predictionInstance.genome_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.genome_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "genomeCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
@@ -645,7 +649,10 @@ class PredictionController {
                 return
             }
             
-            def cmd = ["cksum ${dirName}/est.fa"]
+            def cmd = ["sed -i '/^ *\$/d' ${dirName}/est.fa"]
+            Utilities.execute(logFile, verb, predictionInstance.accession_id, "remove empty lines from est.fa", cmd)
+            
+            cmd = ["cksum ${dirName}/est.fa"]
             predictionInstance.est_cksum = Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "(\\d*) \\d* ")
             predictionInstance.est_size =  Utilities.executeForLong(logFile, verb, predictionInstance.accession_id, "estCksumScript", cmd, "\\d* (\\d*) ") // just in case the file was gzipped
             Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "est.fa is ${predictionInstance.est_size} big and has a cksum of ${predictionInstance.est_cksum}.")
