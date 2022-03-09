@@ -268,7 +268,7 @@
                            <tr>
                               <td><font size="1">Gallus gallus domesticus</font></td>
                               <td><font size="1">chicken</font></td>
-                              <td><font size="1">Stefanie Koenig</font></td>
+                              <td><font size="1">Stefanie K&ouml;nig</font></td>
                            </tr>
                            <tr>
                               <td><font size="1">Homo sapiens</font></td>
