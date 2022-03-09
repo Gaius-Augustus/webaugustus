@@ -25,7 +25,7 @@ appender('STDOUT', ConsoleAppender) {
                         '%clr(%5p) ' + // Log level
                         '%clr(---){faint} %clr([%15.15t]){faint} ' + // Thread
                         '%clr(%-40.40logger{39}){cyan} %clr(:){faint} ' + // Logger
-                        '%m%n%wex' // Message
+                        '%m{nolookups}%n%wex' // Message
     }
 }
 
@@ -57,7 +57,7 @@ appender('ROLLING', RollingFileAppender) {
             '%clr(%5p) ' + // Log level
             '%clr(---){faint} %clr([%15.15t]){faint} ' + // Thread
             '%clr(%-40.40logger{39}){cyan} %clr(:){faint} ' + // Logger
-            '%m%n%wex' // Message
+            '%m{nolookups}%n%wex' // Message
     }
 }
 
