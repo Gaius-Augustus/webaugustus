@@ -3,6 +3,7 @@ package webaugustus
 import org.apache.commons.lang.StringEscapeUtils
 import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.context.MessageSource
+import java.util.concurrent.TimeUnit
 
 /**
  *
@@ -522,21 +523,32 @@ class Utilities {
      * 
      * @return the return value of the command or null in case of an error
      */
-    static String executeForString(File logFile, int maxLogLevel, String process, String scriptName, List cmd) {
+    static String executeForString(File logFile, int maxLogLevel, String processName, String scriptName, List cmd) {
         def cmd2Script = cmd.join(" ")
         def logScript = cleanCommandForLog(cmd2Script)
-        log(logFile, 3, maxLogLevel, process, "${scriptName} << \"${logScript}\"")
+        log(logFile, 3, maxLogLevel, processName, "${scriptName} << \"${logScript}\"")
         
-        def execute = cmd.size == 1 ? ['bash', '-c', cmd2Script].execute() : cmd.execute()
-        execute.waitFor()
+        def process = cmd.size == 1 ? ['bash', '-c', cmd2Script].execute() : cmd.execute()
+        process.waitFor(4L, TimeUnit.HOURS)
         
-        if (execute.exitValue()) {
-            log(logFile, 1, maxLogLevel, process, "Exception status code=${execute.exitValue()} (${execute.err.text})")
+        def exitCode = 0
+        try {
+            exitCode = process.exitValue()
+        }
+        catch (IllegalThreadStateException e) {
+            // thrown if the process has not yet terminated (after 4 hours)
+            log(logFile, 1, maxLogLevel, processName, "IllegalThreadStateException: " + e.getMessage())
+            process.destroy()
+            return null
         }
         
-        String outputValue = execute.text.trim()
-        log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\"")
-        if (execute.exitValue() && outputValue.isEmpty()) {
+        if (exitCode) {
+            log(logFile, 1, maxLogLevel, processName, "Exception status code=${exitCode} (${process.err.text})")
+        }
+        
+        String outputValue = process.text.trim()
+        log(logFile, 3, maxLogLevel, processName, "${scriptName} returned \"${outputValue}\"")
+        if (exitCode && outputValue.isEmpty()) {
             return null
         }
         return outputValue
@@ -554,21 +566,30 @@ class Utilities {
      * 
      * @return 0 if everything is ok else a status code from the executed command
      */
-    static int execute(File logFile, int maxLogLevel, String process, String scriptName, List cmd) {
+    static int execute(File logFile, int maxLogLevel, String processName, String scriptName, List cmd) {
         def cmd2Script = cmd.join(" ")
         def logScript = cleanCommandForLog(cmd2Script)
-        log(logFile, 3, maxLogLevel, process, "${scriptName} << \"${logScript}\"")
+        log(logFile, 3, maxLogLevel, processName, "${scriptName} << \"${logScript}\"")
         
-        def execute = cmd.size == 1 ? ['bash', '-c', cmd2Script].execute() : cmd.execute()
-        execute.waitFor()
+        def process = cmd.size == 1 ? ['bash', '-c', cmd2Script].execute() : cmd.execute()
+        process.waitFor(4L, TimeUnit.HOURS)
         
-        def exitCode = execute.exitValue()
+        def exitCode = 0
+        try {
+            exitCode = process.exitValue()
+        }
+        catch (IllegalThreadStateException e) {
+            // thrown if the process has not yet terminated (after 4 hours)
+            log(logFile, 1, maxLogLevel, processName, "IllegalThreadStateException: " + e.getMessage())
+            process.destroy()
+            return 255
+        }
         
         if (exitCode) {
             def errorValue = "Null"
             
             try {
-                errorValue = execute.err.text
+                errorValue = process.err.text
             }
             catch (IOException e) {
                 errorValue = "IOException: " + e.getMessage()
@@ -577,20 +598,20 @@ class Utilities {
             def outputValue = "Null"
 
             try {
-                outputValue = execute.text.trim()
+                outputValue = process.text.trim()
             }
             catch (IOException e) {
                 outputValue = "IOException: " + e.getMessage()
             }
             
-            log(logFile, 1, maxLogLevel, process, "Exception status code=${exitCode} outputValue=${outputValue} (errorValue=${errorValue})")
+            log(logFile, 1, maxLogLevel, processName, "Exception status code=${exitCode} outputValue=${outputValue} (errorValue=${errorValue})")
         }
         else {
             
             def errorValue = "Null"
             
             try {
-                errorValue = execute.err.text
+                errorValue = process.err.text
             }
             catch (IOException e) {
                 errorValue = "IOException: " + e.getMessage()
@@ -599,14 +620,14 @@ class Utilities {
             def outputValue = "Null"
 
             try {
-                outputValue = execute.text.trim()
+                outputValue = process.text.trim()
             }
             catch (IOException e) {
                 outputValue = "IOException: " + e.getMessage()
             }
 
             
-            log(logFile, 3, maxLogLevel, process, "${scriptName} returned \"${outputValue}\" (errorValue=${errorValue})")
+            log(logFile, 3, maxLogLevel, processName, "${scriptName} returned \"${outputValue}\" (errorValue=${errorValue})")
         }
         
         
