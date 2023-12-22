@@ -106,6 +106,7 @@ server:
         context-path: /webaugustus
 
 dataSource:
+    # https://docs.grails.org/4.0.8/guide/conf.html
     pooled: true
     dbCreate: update
     jmxExport: true
@@ -117,11 +118,9 @@ dataSource:
     password: 'xxx'
 #    logSql: true
     properties:
-        # Mysql specific driver properties
-        # https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html
-        # https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-usagenotes-tomcat.html
-        # let Tomcat JDBC Pool handle reconnecting
-        autoReconnect: false
+        # Documentation for Tomcat JDBC Pool
+        # https://tomcat.apache.org/tomcat-8.0-doc/jdbc-pool.html#Common_Attributes
+        # https://tomcat.apache.org/tomcat-8.0-doc/api/org/apache/tomcat/jdbc/pool/PoolConfiguration.html
         maxIdle: 25
         minIdle: 5
         initialSize: 5
@@ -129,14 +128,20 @@ dataSource:
         timeBetweenEvictionRunsMillis: 60000
         maxWait: 10000
         maxAge: 600000
-        validationQuery: SELECT 1
+        validationQuery: 'SELECT 1'
         validationQueryTimeout: 3
         validationInterval: 15000
         testOnBorrow: true
         testWhileIdle: true
         # http://tomcat.apache.org/tomcat-8.0-doc/jdbc-pool.html#JDBC_interceptors
         jdbcInterceptors: ConnectionState
-        defaultTransactionIsolation: java.sql.Connection.TRANSACTION_READ_COMMITTED // safe default
+        defaultTransactionIsolation: java.sql.Connection.TRANSACTION_READ_COMMITTED
+        dbProperties:
+            # Mysql specific driver properties
+            # https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html
+            # https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-usagenotes-tomcat.html
+            # let Tomcat JDBC Pool handle reconnecting
+            autoReconnect: false
 
 environments:
     development:
