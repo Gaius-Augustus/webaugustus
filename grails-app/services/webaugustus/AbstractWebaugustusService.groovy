@@ -171,9 +171,9 @@ abstract class AbstractWebaugustusService {
                             loadDataAndStartJob(instance)
                         }
                         catch (Throwable t) {
-                            System.err.println("Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
+                            System.err.println("Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage() + " class=" + t.getClass().getName())
                             t.printStackTrace(System.err)
-                            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage())
+                            Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in loadDataAndStartJob for \"" + instance + "\", message=" + t.getMessage() + " class=" + t.getClass().getName())
                         }
                         sleep(120000) // just wait a bit for the job to get startet
                         deleteEmailAddressAfterJobEnd(instance) // just in case the job was aborted
@@ -190,9 +190,9 @@ abstract class AbstractWebaugustusService {
                         }
                     }
                     catch (Throwable t) {
-                        System.err.println("Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage())
+                        System.err.println("Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage() + " class=" + t.getClass().getName())
                         t.printStackTrace(System.err)
-                        Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage())
+                        Utilities.log(getLogFile(), 1, getLogLevel(), getServiceName(), "Exception catched in finishJob for \"" + instance + "\", message=" + t.getMessage() + " class=" + t.getClass().getName())
                     }                        
                 }
                 
