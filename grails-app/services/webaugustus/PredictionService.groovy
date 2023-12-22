@@ -391,6 +391,7 @@ class PredictionService extends AbstractWebaugustusService {
         else {
             int fastaEntryCount = Utilities.executeForInteger(getLogFile(), 3, predictionInstance.accession_id, "countSequences", ["grep '>' ${dirName}/genome.fa  | wc -l"])
             countCPUs = Math.min(countWorkerCPUs(), fastaEntryCount)
+            countCPUs = Math.max(countCPUs, 1)
         }
         
         File jobFile = new File(projectDir, "aug-pred.sh")
