@@ -451,8 +451,14 @@ class PredictionService extends AbstractWebaugustusService {
         // a CommunicationsException and than a TransactionException is thrown when the commit is done after the job start
         Utilities.saveDomainWithTransaction(predictionInstance)
         
+        String predictionID = predictionInstance.id;
+        
         String jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id, countCPUs)
-
+        
+        // reload - just in case the job start took longer than the hibernate connection timeout:
+        // "Could not roll back Hibernate transaction; nested exception is org.hibernate.TransactionException: Unable to rollback against JDBC Connection"
+        predictionInstance = Prediction.get(predictionID)
+        
         if (jobID == null) {
             Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "The augustus job wasn't started")
             predictionInstance.results_urls = null
@@ -609,6 +615,7 @@ class PredictionService extends AbstractWebaugustusService {
     @Transactional
     protected void finishJob(AbstractWebAugustusDomainClass instance, JobExecution.JobStatus jobStatus) {
         Prediction predictionInstance = (Prediction) instance
+        String predictionID = predictionInstance.id;
         Utilities.log(getLogFile(), 1, getLogLevel(), predictionInstance.accession_id, "finishJob jobStatus=${jobStatus}")
         
         String jobID = predictionInstance.job_id
@@ -616,6 +623,10 @@ class PredictionService extends AbstractWebaugustusService {
         File projectDir = new File(dirName)
         
         int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.PREDICTION, getLogFile(), getLogLevel(), predictionInstance.accession_id)
+        
+        // reload - just in case the job cleanup took longer than the hibernate connection timeout:
+        // "Could not roll back Hibernate transaction; nested exception is org.hibernate.TransactionException: Unable to rollback against JDBC Connection"
+        predictionInstance = Prediction.get(predictionID)
         
         // set file rigths to readable by others
         Utilities.log(getLogFile(), 3, getLogLevel(), predictionInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${predictionInstance.accession_id}")

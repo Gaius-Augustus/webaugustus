@@ -516,8 +516,14 @@ class TrainingService extends AbstractWebaugustusService {
             // commit any changes - if starting the job takes longer than the jdbc connections 'wait_timeout' 
             // a CommunicationsException and than a TransactionException is thrown when the commit is done after the job start
             Utilities.saveDomainWithTransaction(trainingInstance)
+            
+            String trainingID = trainingInstance.id;
 
             jobID = JobExecution.getDefaultJobExecution().startJob(dirName, jobFile.getName(), JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id, countCPUs)
+            
+            // reload - just in case the job start took longer than the hibernate connection timeout:
+            // "Could not roll back Hibernate transaction; nested exception is org.hibernate.TransactionException: Unable to rollback against JDBC Connection"
+            trainingInstance = Training.get(trainingID) 
         }
 
         if (jobID == null) {
@@ -607,6 +613,7 @@ class TrainingService extends AbstractWebaugustusService {
         String AUGUSTUS_SCRIPTS_PATH = getAugustusScriptPath()
         
         Training trainingInstance = (Training) instance
+        String trainingID = trainingInstance.id;
         Utilities.log(getLogFile(), 1, getLogLevel(), trainingInstance.accession_id, "finishJob jobStatus=${jobStatus}")
         
         String jobID = trainingInstance.job_id
@@ -615,6 +622,10 @@ class TrainingService extends AbstractWebaugustusService {
         
         int exitCode = JobExecution.getDefaultJobExecution().cleanupJob(dirName, this, JobExecution.JobType.TRAINING, getLogFile(), getLogLevel(), trainingInstance.accession_id)
         
+        // reload - just in case the job cleanup took longer than the hibernate connection timeout:
+        // "Could not roll back Hibernate transaction; nested exception is org.hibernate.TransactionException: Unable to rollback against JDBC Connection"
+        trainingInstance = Training.get(trainingID) 
+            
         // set file rigths to readable by others
         Utilities.log(getLogFile(), 3, getLogLevel(), trainingInstance.accession_id, "set file permissions on ${getWebOutputDir()}/${trainingInstance.accession_id}")
         def webOutputDir = new File(getWebOutputDir(), trainingInstance.accession_id)
