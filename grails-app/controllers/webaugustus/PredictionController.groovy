@@ -86,7 +86,7 @@ class PredictionController {
         redirect(action:'create', controller: 'prediction', params:[genome_ftp_link:"http://bioinf.uni-greifswald.de/webaugustus/examples/LG16.fa",project_id:"honeybee1"])
     }
 
-    // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Prediction Controller and contains a Thread method that will continue running as a background process after the user is redirected to the job status page.
+    // the method commit is started if the "Submit Job" button on the website is hit. It is the main method of Prediction Controller and starts a Thread method that will continue running as a background process after the user is redirected to the job status page.
     def commit() {
         
         def logFile = predictionService.getLogFile()
@@ -855,7 +855,7 @@ class PredictionController {
             predictionService.startWorkerThread()
             redirect(action:'show', controller: 'prediction', id: predictionInstance.id)
         } else {
-            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "An error occurred in the predictionInstance (e.g. E-Mail missing, see domain restrictions).")
+            Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "An error occurred in the predictionInstance (see domain restrictions).")
             deleteDir()
             if(predictionInstance.email_adress == null){
                 Utilities.log(logFile, 1, verb, predictionInstance.accession_id, "Job ${predictionInstance.accession_id} by anonymous user is aborted!")
